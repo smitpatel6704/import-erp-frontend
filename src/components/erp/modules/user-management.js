@@ -6,8 +6,8 @@ import {
   Plus,
   RefreshCw,
   Shield,
+  Trash2,
   UserCog,
-  UserX,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -37,6 +37,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useERPStore } from "@/lib/store";
 import { readJsonResponse } from "@/lib/utils";
 
 const modules = [
@@ -85,6 +86,7 @@ const setAccess = (permissions, module, access) => {
 };
 
 export default function UserManagement() {
+  const currentUser = useERPStore((state) => state.user);
   const [users, setUsers] = useState([]);
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
@@ -180,9 +182,25 @@ export default function UserManagement() {
       setMessage(error.message);
     }
   };
-  const deactivate = async (user) => {
-    await fetch(`/api/settings/users/${user.id}`, { method: "DELETE" });
-    fetchUsers();
+  const deleteUser = async (user) => {
+    if (
+      !window.confirm(
+        `Permanently delete ${user.name} (${user.email})? This cannot be undone.`,
+      )
+    )
+      return;
+    setMessage("");
+    try {
+      const res = await fetch(`/api/settings/users/${user.id}`, {
+        method: "DELETE",
+      });
+      const json = await readJsonResponse(res);
+      if (!res.ok) throw new Error(json.error || "Unable to delete user");
+      setMessage("User deleted permanently.");
+      await fetchUsers();
+    } catch (error) {
+      setMessage(error.message);
+    }
   };
   return _jsxs("div", {
     className: "space-y-4",
@@ -298,13 +316,13 @@ export default function UserManagement() {
                                           className: "h-4 w-4",
                                         }),
                                       }),
-                                    user.isActive &&
+                                    user.id !== currentUser?.id &&
                                       _jsx(Button, {
                                         variant: "ghost",
                                         size: "icon",
-                                        onClick: () => deactivate(user),
-                                        title: "Deactivate user",
-                                        children: _jsx(UserX, {
+                                        onClick: () => deleteUser(user),
+                                        title: "Delete user permanently",
+                                        children: _jsx(Trash2, {
                                           className: "h-4 w-4 text-destructive",
                                         }),
                                       }),
