@@ -21,6 +21,53 @@ const defaultProductFilter = {
     status: "all",
 };
 export const useERPStore = create((set, get) => ({
+    // Authentication
+    user: null,
+    token: null,
+    authReady: false,
+    setAuth: (user, token) => {
+        if (typeof window !== "undefined") {
+            localStorage.setItem("nexport_token", token);
+            localStorage.setItem("nexport_user", JSON.stringify(user));
+        }
+        set({ user, token, authReady: true });
+    },
+    setCurrentUser: (user) => {
+        if (typeof window !== "undefined")
+            localStorage.setItem("nexport_user", JSON.stringify(user));
+        set({ user });
+    },
+    initializeAuth: () => {
+        if (typeof window === "undefined")
+            return;
+        const token = localStorage.getItem("nexport_token");
+        const storedUser = localStorage.getItem("nexport_user");
+        let user = null;
+        try {
+            user = storedUser ? JSON.parse(storedUser) : null;
+        }
+        catch (_a) {
+            user = null;
+        }
+        set({ token, user, authReady: true });
+    },
+    logout: () => {
+        if (typeof window !== "undefined") {
+            localStorage.removeItem("nexport_token");
+            localStorage.removeItem("nexport_user");
+        }
+        set({ user: null, token: null, authReady: true });
+    },
+    permissionFor: (module) => {
+        const user = get().user;
+        if (!user)
+            return null;
+        if (user.role === "admin" || user.role === "super_admin")
+            return "edit";
+        return (user.permissions || []).find((item) => item.module === module)?.access || null;
+    },
+    canView: (module) => Boolean(get().permissionFor(module)),
+    canEdit: (module) => get().permissionFor(module) === "edit",
     // Navigation
     activeModule: "dashboard",
     setActiveModule: (module) => set({ activeModule: module }),

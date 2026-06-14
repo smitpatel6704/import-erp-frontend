@@ -3,5 +3,18 @@ import { twMerge } from "tailwind-merge";
 export function cn(...inputs) {
     return twMerge(clsx(inputs));
 }
+
+export async function readJsonResponse(response) {
+    const text = await response.text();
+    if (!text)
+        return {};
+    try {
+        return JSON.parse(text);
+    }
+    catch {
+        throw new Error(response.ok ? "Server returned an invalid response" : text);
+    }
+}
+
 export const API_BASE_URL = (process.env.BACKEND_URL ||
     (process.env.NODE_ENV === 'development' ? 'http://localhost:5001' : '')).replace(/\/$/, '');

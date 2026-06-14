@@ -25,7 +25,8 @@ import {
 } from 'recharts';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { cn } from '@/lib/utils';
+import { cn, readJsonResponse } from '@/lib/utils';
+import { useERPStore } from '@/lib/store';
 
 const emptyData = {
   shipments: {
@@ -74,6 +75,7 @@ const currency = (value) =>
   }).format(Number(value || 0));
 
 export default function DashboardModule() {
+  const canViewNotifications = useERPStore((state) => state.canView('notifications'));
   const [data, setData] = useState(emptyData);
   const [highPriority, setHighPriority] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -83,12 +85,14 @@ export default function DashboardModule() {
     const timer = window.setTimeout(async () => {
       try {
         setLoading(true);
-        const [dashboardResponse, notificationResponse] = await Promise.all([
-          fetch('/api/dashboard'),
-          fetch('/api/notifications?limit=6&sortBy=createdAt&sortOrder=desc'),
-        ]);
-        const dashboardJson = await dashboardResponse.json();
-        const notificationJson = await notificationResponse.json();
+        const dashboardResponse = await fetch('/api/dashboard');
+        const notificationResponse = canViewNotifications
+          ? await fetch('/api/notifications?limit=6&sortBy=createdAt&sortOrder=desc')
+          : null;
+        const dashboardJson = await readJsonResponse(dashboardResponse);
+        const notificationJson = notificationResponse
+          ? await readJsonResponse(notificationResponse)
+          : { data: [] };
         if (!dashboardResponse.ok) throw new Error(dashboardJson.error || 'Unable to load dashboard');
         setData({
           ...emptyData,
@@ -110,7 +114,7 @@ export default function DashboardModule() {
       }
     }, 0);
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [canViewNotifications]);
 
   const shipments = data.shipments;
   const kpis = [

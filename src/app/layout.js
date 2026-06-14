@@ -12,7 +12,7 @@ const geistMono = Geist_Mono({
     subsets: ["latin"],
 });
 export const metadata = {
-    title: "ImportERP - Enterprise Import Management",
+    title: "Nexport ERP - Enterprise Import Management",
     description: "Comprehensive enterprise resource planning system for import management. Track shipments, containers, customs, logistics, and financial operations in one unified platform.",
     keywords: [
         "ERP",
@@ -23,9 +23,9 @@ export const metadata = {
         "Shipment Tracking",
         "Enterprise",
     ],
-    authors: [{ name: "ImportERP Team" }],
+    authors: [{ name: "Nexport ERP Team" }],
     openGraph: {
-        title: "ImportERP - Enterprise Import Management",
+        title: "Nexport ERP - Enterprise Import Management",
         description: "Comprehensive ERP system for import management and logistics",
         type: "website",
     },
