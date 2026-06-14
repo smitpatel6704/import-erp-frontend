@@ -8,7 +8,7 @@ export function AuthGate({ children }) {
     const router = useRouter();
     const params = useParams();
     const routeModule = params?.module ? (Array.isArray(params.module) ? params.module[0] : params.module) : "dashboard";
-    const { token, authReady, initializeAuth, setCurrentUser } = useERPStore();
+    const { token, authReady, initializeAuth, refreshCurrentUser } = useERPStore();
     const patched = useRef(false);
     useEffect(() => {
         initializeAuth();
@@ -63,14 +63,7 @@ export function AuthGate({ children }) {
                 return;
             refreshing = true;
             try {
-                const response = await window.fetch("/api/auth/me", {
-                    cache: "no-store",
-                });
-                if (!response.ok)
-                    return;
-                const json = await response.json();
-                if (!stopped && json.data)
-                    setCurrentUser(json.data);
+                await refreshCurrentUser();
             }
             catch {
                 // Keep the current session during temporary network interruptions.
@@ -93,7 +86,7 @@ export function AuthGate({ children }) {
             window.removeEventListener("focus", refreshCurrentUser);
             document.removeEventListener("visibilitychange", refreshWhenVisible);
         };
-    }, [authReady, token, setCurrentUser]);
+    }, [authReady, token, refreshCurrentUser]);
     useEffect(() => {
         if (!authReady)
             return;

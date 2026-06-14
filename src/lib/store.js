@@ -37,6 +37,19 @@ export const useERPStore = create((set, get) => ({
             localStorage.setItem("nexport_user", JSON.stringify(user));
         set({ user });
     },
+    refreshCurrentUser: async () => {
+        if (typeof window === "undefined" || !get().token)
+            return null;
+        const response = await window.fetch("/api/auth/me", {
+            cache: "no-store",
+        });
+        if (!response.ok)
+            return null;
+        const json = await response.json();
+        if (json.data)
+            get().setCurrentUser(json.data);
+        return json.data || null;
+    },
     initializeAuth: () => {
         if (typeof window === "undefined")
             return;
