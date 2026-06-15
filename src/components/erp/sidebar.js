@@ -2,7 +2,7 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { LayoutDashboard, Ship, Box, Building2, FolderOpen, Shield, Truck, Bell, BarChart3, Settings, ChevronLeft, ChevronRight, LogOut, Anchor, } from "lucide-react";
+import { LayoutDashboard, Ship, Box, Building2, FolderOpen, Truck, Bell, BarChart3, Settings, ChevronLeft, ChevronRight, LogOut, Anchor, } from "lucide-react";
 import { useERPStore } from "@/lib/store";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
@@ -14,7 +14,6 @@ const navItems = [
     { id: "containers", label: "Containers", icon: Box, section: "Operations" },
     { id: "companies", label: "Companies", icon: Building2, section: "Operations" },
     { id: "documents", label: "Documents", icon: FolderOpen, section: "Operations" },
-    { id: "customs", label: "Customs", icon: Shield, section: "Compliance" },
     { id: "logistics", label: "Logistics", icon: Truck, section: "Compliance" },
     { id: "notifications", label: "Notifications", icon: Bell, section: "System" },
     { id: "reports", label: "Reports", icon: BarChart3, section: "System" },

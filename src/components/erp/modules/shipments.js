@@ -1,6 +1,6 @@
 "use client";
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Ship,
@@ -19,6 +19,12 @@ import {
   Globe,
   Pencil,
   Building2,
+  RefreshCw,
+  Loader2,
+  WandSparkles,
+  Keyboard,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -134,6 +140,43 @@ const currencyFmt = (val, cur = "USD") =>
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(val);
+const dateInputValue = (value) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toISOString().slice(0, 10);
+};
+const shipmentStatusFromCarrier = (status) => {
+  const value = String(status || "").toLowerCase();
+  if (value.includes("delivered") || value.includes("empty received"))
+    return "delivered";
+  if (
+    value.includes("arrived") ||
+    value.includes("discharge") ||
+    value.includes("import to consignee")
+  )
+    return "at_pod";
+  if (
+    value.includes("depart") ||
+    value.includes("in transit") ||
+    value.includes("loaded on vessel")
+  )
+    return "in_transit";
+  if (value.includes("gate in") || value.includes("export received"))
+    return "at_pol";
+  return "booking_confirmed";
+};
+const carrierSupported = (shippingLine) => {
+  const value = String(shippingLine || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+  return (
+    value.includes("maersk") ||
+    value.includes("mersk") ||
+    value.includes("msc") ||
+    value.includes("mediterraneanshipping")
+  );
+};
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function ShipmentsModule() {
   var _a, _b, _c, _d, _e;
@@ -144,6 +187,7 @@ export default function ShipmentsModule() {
   const [documentChecklist, setDocumentChecklist] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [exporterCompanies, setExporterCompanies] = useState([]);
+  const [notificationUsers, setNotificationUsers] = useState([]);
   const [shipments, setShipments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState("table");
@@ -180,8 +224,13 @@ export default function ShipmentsModule() {
     notes: "",
     internalNotes: "",
     requiredDocumentIds: [],
+    notificationUserIds: [],
     containers: [],
   });
+  const [entryMode, setEntryMode] = useState("automatic");
+  const [trackingFetchState, setTrackingFetchState] = useState("idle");
+  const [trackingFetchMessage, setTrackingFetchMessage] = useState("");
+  const lastAutomaticLookup = useRef("");
   // Document upload state
   const [uploadDocOpen, setUploadDocOpen] = useState(false);
   const [docUploading, setDocUploading] = useState(false);
@@ -192,7 +241,7 @@ export default function ShipmentsModule() {
   useEffect(() => {
     const fetchOptions = async () => {
       try {
-        const [lines, sizes, types, docs, checklist, comps, exps] =
+        const [lines, sizes, types, docs, checklist, comps, exps, users] =
           await Promise.all([
             fetch("/api/settings/options?category=shipping_line").then((r) =>
               r.json(),
@@ -211,6 +260,7 @@ export default function ShipmentsModule() {
             ),
             fetch("/api/companies").then((r) => r.json()),
             fetch("/api/exporter-companies").then((r) => r.json()),
+            fetch("/api/shipments/notification-users").then((r) => r.json()),
           ]);
         if (lines.data) setShippingLines(lines.data.map((d) => d.label));
         if (sizes.data) setContainerSizes(sizes.data.map((d) => d.label));
@@ -220,12 +270,92 @@ export default function ShipmentsModule() {
           setDocumentChecklist(checklist.data.filter((item) => item.isActive));
         if (comps.data) setCompanies(comps.data);
         if (exps.data) setExporterCompanies(exps.data);
+        if (users.data) setNotificationUsers(users.data);
       } catch (err) {
         console.error("Failed to fetch settings options:", err);
       }
     };
     fetchOptions();
   }, []);
+  const fetchTrackingDetails = useCallback(async (blNumber, shippingLine) => {
+    const trackingNumber = String(blNumber || "").trim().toUpperCase();
+    if (!trackingNumber || !shippingLine) return;
+    setTrackingFetchState("loading");
+    setTrackingFetchMessage("Fetching shipment details from the carrier...");
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/shipments/tracking/lookup`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ trackingNumber, shippingLine }),
+        },
+      );
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload.error || "Carrier tracking request failed");
+      }
+      const details = payload.data || {};
+      if (details.error) {
+        throw new Error(details.error);
+      }
+      setNewForm((current) => ({
+        ...current,
+        blNumber: trackingNumber,
+        vesselName: details.vesselName || current.vesselName,
+        voyageNumber: details.voyageNumber || current.voyageNumber,
+        etd: dateInputValue(details.etd) || current.etd,
+        eta: dateInputValue(details.eta) || current.eta,
+        originCountry: details.originCountry || current.originCountry,
+        originPort: details.origin || current.originPort,
+        destinationPort: details.destination || current.destinationPort,
+        status: shipmentStatusFromCarrier(details.status),
+        containers:
+          details.containers?.length > 0
+            ? details.containers.map((container) => ({
+                containerNumber: container.containerNumber || "",
+                size: container.containerSize || "20FT",
+                type: container.containerType || "Dry Container",
+                goodsDescription: "",
+              }))
+            : current.containers,
+      }));
+      setTrackingFetchState("success");
+      setTrackingFetchMessage(
+        details.lastEvent
+          ? `Fetched successfully. Latest: ${details.lastEvent}`
+          : "Shipment details fetched successfully.",
+      );
+    } catch (error) {
+      setTrackingFetchState("error");
+      setTrackingFetchMessage(String(error.message || error));
+    }
+  }, []);
+  useEffect(() => {
+    if (
+      !newShipmentOpen ||
+      editingId ||
+      entryMode !== "automatic" ||
+      !newForm.blNumber.trim() ||
+      !carrierSupported(newForm.shippingLine)
+    ) {
+      return;
+    }
+    const lookupKey = `${newForm.shippingLine}:${newForm.blNumber.trim().toUpperCase()}`;
+    if (lastAutomaticLookup.current === lookupKey) return;
+    const timeout = setTimeout(() => {
+      lastAutomaticLookup.current = lookupKey;
+      void fetchTrackingDetails(newForm.blNumber, newForm.shippingLine);
+    }, 700);
+    return () => clearTimeout(timeout);
+  }, [
+    newShipmentOpen,
+    editingId,
+    entryMode,
+    newForm.blNumber,
+    newForm.shippingLine,
+    fetchTrackingDetails,
+  ]);
   const fetchShipments = useCallback(async () => {
     var _a;
     setLoading(true);
@@ -336,8 +466,15 @@ export default function ShipmentsModule() {
       goodsDescription: shipment.goodsDescription || "",
       notes: shipment.notes || "",
       requiredDocumentIds: [],
+      notificationUserIds: Array.isArray(shipment.notificationUserIds)
+        ? shipment.notificationUserIds
+        : [],
       containers: [], // Handle existing containers if needed
     });
+    setEntryMode("manual");
+    setTrackingFetchState("idle");
+    setTrackingFetchMessage("");
+    lastAutomaticLookup.current = "";
     setNewShipmentOpen(true);
     setDetailOpen(false);
   };
@@ -372,6 +509,10 @@ export default function ShipmentsModule() {
       });
       setNewShipmentOpen(false);
       setEditingId(null);
+      setEntryMode("automatic");
+      setTrackingFetchState("idle");
+      setTrackingFetchMessage("");
+      lastAutomaticLookup.current = "";
       setNewForm({
         blNumber: "",
         shippingLine: "",
@@ -393,6 +534,7 @@ export default function ShipmentsModule() {
         notes: "",
         internalNotes: "",
         requiredDocumentIds: [],
+        notificationUserIds: [],
         containers: [],
       });
       fetchShipments();
@@ -532,6 +674,10 @@ export default function ShipmentsModule() {
                     className: "h-9 text-xs ml-auto",
                     onClick: () => {
                       setEditingId(null);
+                      setEntryMode("automatic");
+                      setTrackingFetchState("idle");
+                      setTrackingFetchMessage("");
+                      lastAutomaticLookup.current = "";
                       setNewForm({
                         blNumber: "",
                         shippingLine: "",
@@ -555,6 +701,7 @@ export default function ShipmentsModule() {
                         requiredDocumentIds: documentChecklist
                           .filter((item) => item.isRequired)
                           .map((item) => item.id),
+                        notificationUserIds: [],
                         containers: [],
                       });
                       setNewShipmentOpen(true);
@@ -1881,6 +2028,95 @@ export default function ShipmentsModule() {
               children: _jsxs("div", {
                 className: "space-y-4 pt-4",
                 children: [
+                  !editingId &&
+                    _jsxs("div", {
+                      className: "rounded-lg border bg-muted/20 p-3 space-y-3",
+                      children: [
+                        _jsxs("div", {
+                          children: [
+                            _jsx(Label, {
+                              className: "text-xs font-semibold",
+                              children: "Shipment Entry Method",
+                            }),
+                            _jsx("p", {
+                              className: "text-[11px] text-muted-foreground mt-0.5",
+                              children:
+                                "Choose whether carrier details should be fetched or entered manually.",
+                            }),
+                          ],
+                        }),
+                        _jsxs("div", {
+                          className: "grid grid-cols-2 gap-2",
+                          children: [
+                            _jsxs("button", {
+                              type: "button",
+                              onClick: () => {
+                                setEntryMode("automatic");
+                                setTrackingFetchState("idle");
+                                setTrackingFetchMessage("");
+                                lastAutomaticLookup.current = "";
+                              },
+                              className: cn(
+                                "flex items-start gap-2 rounded-md border p-2.5 text-left transition-colors",
+                                entryMode === "automatic"
+                                  ? "border-teal-500 bg-teal-500/10 text-teal-800 dark:text-teal-200"
+                                  : "bg-background hover:bg-muted/50",
+                              ),
+                              children: [
+                                _jsx(WandSparkles, {
+                                  className: "h-4 w-4 mt-0.5 shrink-0",
+                                }),
+                                _jsxs("span", {
+                                  children: [
+                                    _jsx("span", {
+                                      className: "block text-xs font-semibold",
+                                      children: "Automatic Fetch",
+                                    }),
+                                    _jsx("span", {
+                                      className:
+                                        "block text-[10px] opacity-75 mt-0.5",
+                                      children: "Fill from Maersk or MSC",
+                                    }),
+                                  ],
+                                }),
+                              ],
+                            }),
+                            _jsxs("button", {
+                              type: "button",
+                              onClick: () => {
+                                setEntryMode("manual");
+                                setTrackingFetchState("idle");
+                                setTrackingFetchMessage("");
+                              },
+                              className: cn(
+                                "flex items-start gap-2 rounded-md border p-2.5 text-left transition-colors",
+                                entryMode === "manual"
+                                  ? "border-teal-500 bg-teal-500/10 text-teal-800 dark:text-teal-200"
+                                  : "bg-background hover:bg-muted/50",
+                              ),
+                              children: [
+                                _jsx(Keyboard, {
+                                  className: "h-4 w-4 mt-0.5 shrink-0",
+                                }),
+                                _jsxs("span", {
+                                  children: [
+                                    _jsx("span", {
+                                      className: "block text-xs font-semibold",
+                                      children: "Manual Entry",
+                                    }),
+                                    _jsx("span", {
+                                      className:
+                                        "block text-[10px] opacity-75 mt-0.5",
+                                      children: "Enter every field yourself",
+                                    }),
+                                  ],
+                                }),
+                              ],
+                            }),
+                          ],
+                        }),
+                      ],
+                    }),
                   _jsxs("div", {
                     className: "grid grid-cols-2 gap-4",
                     children: [
@@ -2007,6 +2243,101 @@ export default function ShipmentsModule() {
                           }),
                         ],
                       }),
+                      !editingId &&
+                        entryMode === "automatic" &&
+                        _jsxs("div", {
+                          className:
+                            "col-span-2 rounded-md border px-3 py-2.5 bg-background",
+                          children: [
+                            _jsxs("div", {
+                              className:
+                                "flex items-center justify-between gap-3",
+                              children: [
+                                _jsxs("div", {
+                                  className: "flex items-start gap-2 min-w-0",
+                                  children: [
+                                    trackingFetchState === "loading"
+                                      ? _jsx(Loader2, {
+                                          className:
+                                            "h-4 w-4 mt-0.5 shrink-0 animate-spin text-teal-600",
+                                        })
+                                      : trackingFetchState === "success"
+                                        ? _jsx(CheckCircle2, {
+                                            className:
+                                              "h-4 w-4 mt-0.5 shrink-0 text-emerald-600",
+                                          })
+                                        : trackingFetchState === "error"
+                                          ? _jsx(AlertCircle, {
+                                              className:
+                                                "h-4 w-4 mt-0.5 shrink-0 text-red-600",
+                                            })
+                                          : _jsx(WandSparkles, {
+                                              className:
+                                                "h-4 w-4 mt-0.5 shrink-0 text-muted-foreground",
+                                            }),
+                                    _jsxs("div", {
+                                      className: "min-w-0",
+                                      children: [
+                                        _jsx("p", {
+                                          className: "text-xs font-medium",
+                                          children:
+                                            trackingFetchState === "idle"
+                                              ? "Enter BL and select Maersk or MSC"
+                                              : trackingFetchState === "loading"
+                                                ? "Fetching carrier details"
+                                                : trackingFetchState ===
+                                                    "success"
+                                                  ? "Carrier details added"
+                                                  : "Could not fetch details",
+                                        }),
+                                        _jsx("p", {
+                                          className: cn(
+                                            "text-[10px] mt-0.5 break-words",
+                                            trackingFetchState === "error"
+                                              ? "text-red-600"
+                                              : "text-muted-foreground",
+                                          ),
+                                          children:
+                                            trackingFetchMessage ||
+                                            "Vessel, ports, dates, status and containers will be filled automatically.",
+                                        }),
+                                      ],
+                                    }),
+                                  ],
+                                }),
+                                _jsxs(Button, {
+                                  type: "button",
+                                  variant: "outline",
+                                  size: "sm",
+                                  className: "h-7 text-[11px] shrink-0",
+                                  disabled:
+                                    trackingFetchState === "loading" ||
+                                    !newForm.blNumber.trim() ||
+                                    !carrierSupported(newForm.shippingLine),
+                                  onClick: () => {
+                                    lastAutomaticLookup.current = `${newForm.shippingLine}:${newForm.blNumber.trim().toUpperCase()}`;
+                                    void fetchTrackingDetails(
+                                      newForm.blNumber,
+                                      newForm.shippingLine,
+                                    );
+                                  },
+                                  children: [
+                                    _jsx(RefreshCw, {
+                                      className: cn(
+                                        "h-3 w-3 mr-1",
+                                        trackingFetchState === "loading" &&
+                                          "animate-spin",
+                                      ),
+                                    }),
+                                    trackingFetchState === "success"
+                                      ? "Refresh"
+                                      : "Fetch Now",
+                                  ],
+                                }),
+                              ],
+                            }),
+                          ],
+                        }),
                       _jsxs("div", {
                         children: [
                           _jsx(Label, {
@@ -2258,6 +2589,86 @@ export default function ShipmentsModule() {
                           }),
                         ],
                       }),
+                    ],
+                  }),
+                  _jsxs("div", {
+                    className: "border rounded-lg p-3 space-y-2",
+                    children: [
+                      _jsxs("div", {
+                        children: [
+                          _jsx(Label, {
+                            className: "text-xs font-semibold",
+                            children: "Tracking Notification Recipients",
+                          }),
+                          _jsx("p", {
+                            className: "text-[10px] text-muted-foreground mt-0.5",
+                            children:
+                              "All active admins are included automatically. Select additional people for status and ETA emails.",
+                          }),
+                        ],
+                      }),
+                      notificationUsers.length === 0
+                        ? _jsx("p", {
+                            className: "text-xs text-muted-foreground",
+                            children: "No active users are available.",
+                          })
+                        : _jsx("div", {
+                            className:
+                              "grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-36 overflow-y-auto",
+                            children: notificationUsers
+                              .filter(
+                                (user) =>
+                                  !["admin", "super_admin"].includes(user.role),
+                              )
+                              .map((user) =>
+                                _jsxs(
+                                  "label",
+                                  {
+                                    className:
+                                      "flex items-start gap-2 rounded-md border px-3 py-2 text-xs cursor-pointer",
+                                    children: [
+                                      _jsx("input", {
+                                        type: "checkbox",
+                                        className: "mt-0.5",
+                                        checked:
+                                          newForm.notificationUserIds.includes(
+                                            user.id,
+                                          ),
+                                        onChange: (event) =>
+                                          setNewForm({
+                                            ...newForm,
+                                            notificationUserIds: event.target
+                                              .checked
+                                              ? [
+                                                  ...newForm.notificationUserIds,
+                                                  user.id,
+                                                ]
+                                              : newForm.notificationUserIds.filter(
+                                                  (id) => id !== user.id,
+                                                ),
+                                          }),
+                                      }),
+                                      _jsxs("span", {
+                                        className: "min-w-0",
+                                        children: [
+                                          _jsx("span", {
+                                            className:
+                                              "block font-medium truncate",
+                                            children: user.name,
+                                          }),
+                                          _jsx("span", {
+                                            className:
+                                              "block text-[10px] text-muted-foreground truncate",
+                                            children: user.email,
+                                          }),
+                                        ],
+                                      }),
+                                    ],
+                                  },
+                                  user.id,
+                                ),
+                              ),
+                          }),
                     ],
                   }),
                   !editingId &&

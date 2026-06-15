@@ -39,7 +39,27 @@ export function AuthGate({ children }) {
             const headers = new Headers(init.headers || input?.headers);
             if (currentToken && !isPublicAuth)
                 headers.set("Authorization", `Bearer ${currentToken}`);
-            const response = await originalFetch(input, Object.assign(Object.assign({}, init), { headers }));
+            const requestInit = Object.assign(Object.assign({}, init), { headers });
+            const method = String(requestInit.method || input?.method || "GET").toUpperCase();
+            const retryable = method === "GET" || method === "HEAD";
+            let response;
+            let lastError;
+            for (let attempt = 0; attempt < (retryable ? 3 : 1); attempt += 1) {
+                if (attempt > 0)
+                    await new Promise((resolve) => window.setTimeout(resolve, attempt * 500));
+                try {
+                    response = await originalFetch(input, requestInit);
+                    if (!retryable || response.status < 500)
+                        break;
+                }
+                catch (error) {
+                    lastError = error;
+                    if (!retryable || attempt === 2)
+                        throw error;
+                }
+            }
+            if (!response)
+                throw lastError || new Error("Unable to reach the server");
             if (response.status === 401 && !isPublicAuth) {
                 useERPStore.getState().logout();
                 router.replace("/login");

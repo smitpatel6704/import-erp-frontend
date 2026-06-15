@@ -98,7 +98,7 @@ function AuditLogTab() {
     const fetchActivities = useCallback(async () => {
         try {
             setLoading(true);
-            const params = new URLSearchParams({ limit: '50' });
+      const params = new URLSearchParams({ limit: '50', adminOnly: 'true' });
             if (filterAction !== 'all')
                 params.set('action', filterAction);
             if (filterEntity !== 'all')

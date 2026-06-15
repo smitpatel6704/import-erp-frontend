@@ -118,13 +118,12 @@ function useReportData() {
     const [loading, setLoading] = useState(true);
     const refresh = useCallback(async () => {
         try {
-            const [shipments, containers, expenses, customs] = await Promise.all([
+            const [shipments, containers, expenses] = await Promise.all([
                 fetchReportEndpoint('shipments'),
                 fetchReportEndpoint('containers'),
                 fetchReportEndpoint('expenses'),
-                fetchReportEndpoint('customs'),
             ]);
-            setData({ shipments, containers, expenses, customs });
+            setData({ shipments, containers, expenses, customs: [] });
         }
         finally {
             setLoading(false);
@@ -140,7 +139,7 @@ function useReportData() {
 export function ReportsModule() {
     const [activeTab, setActiveTab] = useState('operational');
     const { data, loading } = useReportData();
-    return (_jsx("div", { className: "space-y-6", children: _jsx(motion.div, { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.3 }, children: _jsxs(Tabs, { value: activeTab, onValueChange: setActiveTab, children: [_jsxs(TabsList, { className: "h-9", children: [_jsxs(TabsTrigger, { value: "operational", className: "text-xs px-4", children: [_jsx(Ship, { className: "h-3.5 w-3.5 mr-1.5" }), " Operational"] }), _jsxs(TabsTrigger, { value: "financial", className: "text-xs px-4", children: [_jsx(DollarSign, { className: "h-3.5 w-3.5 mr-1.5" }), " Financial"] }), _jsxs(TabsTrigger, { value: "customs", className: "text-xs px-4", children: [_jsx(Shield, { className: "h-3.5 w-3.5 mr-1.5" }), " Customs"] }), _jsxs(TabsTrigger, { value: "analytics", className: "text-xs px-4", children: [_jsx(BarChart3, { className: "h-3.5 w-3.5 mr-1.5" }), " Analytics"] })] }), _jsx(TabsContent, { value: "operational", className: "mt-4", children: _jsx(OperationalReports, { data: data, loading: loading }) }), _jsx(TabsContent, { value: "financial", className: "mt-4", children: _jsx(FinancialReports, { data: data, loading: loading }) }), _jsx(TabsContent, { value: "customs", className: "mt-4", children: _jsx(CustomsReports, { data: data, loading: loading }) }), _jsx(TabsContent, { value: "analytics", className: "mt-4", children: _jsx(AnalyticsReports, { data: data, loading: loading }) })] }) }) }));
+    return (_jsx("div", { className: "space-y-6", children: _jsx(motion.div, { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.3 }, children: _jsxs(Tabs, { value: activeTab, onValueChange: setActiveTab, children: [_jsxs(TabsList, { className: "h-9", children: [_jsxs(TabsTrigger, { value: "operational", className: "text-xs px-4", children: [_jsx(Ship, { className: "h-3.5 w-3.5 mr-1.5" }), " Operational"] }), _jsxs(TabsTrigger, { value: "financial", className: "text-xs px-4", children: [_jsx(DollarSign, { className: "h-3.5 w-3.5 mr-1.5" }), " Financial"] }), _jsxs(TabsTrigger, { value: "analytics", className: "text-xs px-4", children: [_jsx(BarChart3, { className: "h-3.5 w-3.5 mr-1.5" }), " Analytics"] })] }), _jsx(TabsContent, { value: "operational", className: "mt-4", children: _jsx(OperationalReports, { data: data, loading: loading }) }), _jsx(TabsContent, { value: "financial", className: "mt-4", children: _jsx(FinancialReports, { data: data, loading: loading }) }), _jsx(TabsContent, { value: "analytics", className: "mt-4", children: _jsx(AnalyticsReports, { data: data, loading: loading }) })] }) }) }));
 }
 function ReportLoading() {
     return (_jsx("div", { className: "h-[250px] flex items-center justify-center", children: _jsx("div", { className: "animate-spin h-6 w-6 border-2 border-teal border-t-transparent rounded-full" }) }));

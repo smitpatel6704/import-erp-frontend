@@ -3,7 +3,7 @@ import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useEffect, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useParams, useRouter } from "next/navigation";
-import { LayoutDashboard, Ship, Box, Building2, FolderOpen, Shield, Truck, Bell, BarChart3, Settings, } from "lucide-react";
+import { LayoutDashboard, Ship, Box, Building2, FolderOpen, Truck, Bell, BarChart3, Settings, } from "lucide-react";
 import { useERPStore } from "@/lib/store";
 import { ERPSidebar } from "@/components/erp/sidebar";
 import { ERPHeader } from "@/components/erp/header";
@@ -15,7 +15,6 @@ import DashboardModule from "@/components/erp/modules/dashboard";
 import ShipmentsModule from "@/components/erp/modules/shipments";
 import ContainersModule from "@/components/erp/modules/containers";
 import CompaniesModule from "@/components/erp/modules/companies";
-import { CustomsModule } from "@/components/erp/modules/customs";
 import { LogisticsModule } from "@/components/erp/modules/logistics";
 import { NotificationsModule } from "@/components/erp/modules/notifications";
 import { ReportsModule } from "@/components/erp/modules/reports";
@@ -58,12 +57,6 @@ const moduleConfig = {
         title: "Documents",
         description: "Import document management",
         icon: FolderOpen,
-    },
-    customs: {
-        component: CustomsModule,
-        title: "Customs",
-        description: "Customs and compliance management",
-        icon: Shield,
     },
     logistics: {
         component: LogisticsModule,

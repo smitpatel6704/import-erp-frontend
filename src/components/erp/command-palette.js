@@ -2,7 +2,7 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { LayoutDashboard, Ship, Box, Building2, FolderOpen, Shield, Truck, Bell, BarChart3, Settings, Plus, Download, Upload, RefreshCw, } from "lucide-react";
+import { LayoutDashboard, Ship, Box, Building2, FolderOpen, Truck, Bell, BarChart3, Settings, Plus, Download, Upload, RefreshCw, } from "lucide-react";
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, } from "@/components/ui/command";
 import { useERPStore } from "@/lib/store";
 const moduleIcons = {
@@ -11,7 +11,6 @@ const moduleIcons = {
     containers: Box,
     companies: Building2,
     documents: FolderOpen,
-    customs: Shield,
     logistics: Truck,
     notifications: Bell,
     reports: BarChart3,
@@ -23,7 +22,6 @@ const moduleLabels = {
     containers: "Containers",
     companies: "Companies",
     documents: "Documents",
-    customs: "Customs",
     logistics: "Logistics",
     notifications: "Notifications",
     reports: "Reports",
@@ -32,7 +30,6 @@ const moduleLabels = {
 const recentItems = [
     { id: "ship-0892", label: "Shipment SH-2024-0892", module: "shipments" },
     { id: "cont-0156", label: "Container CT-2024-0156", module: "containers" },
-    { id: "cust-0089", label: "Customs Declaration CD-0089", module: "customs" },
 ];
 export function CommandPalette() {
     const { searchOpen, setSearchOpen, setActiveModule } = useERPStore();
