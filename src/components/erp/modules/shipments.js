@@ -258,7 +258,7 @@ export default function ShipmentsModule() {
             fetch("/api/shipment-documents/checklist-types").then((r) =>
               r.json(),
             ),
-            fetch("/api/companies").then((r) => r.json()),
+            fetch("/api/companies?companyType=importer").then((r) => r.json()),
             fetch("/api/exporter-companies").then((r) => r.json()),
             fetch("/api/shipments/notification-users").then((r) => r.json()),
           ]);

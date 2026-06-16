@@ -80,7 +80,7 @@ export function ImporterCompanyManagement() {
         var _a;
         setLoading(true);
         try {
-            const params = new URLSearchParams(Object.assign({ page: String(page), limit: '20' }, (searchQuery && { search: searchQuery })));
+            const params = new URLSearchParams(Object.assign({ page: String(page), limit: '20', companyType: 'importer' }, (searchQuery && { search: searchQuery })));
             const res = await fetch(`/api/companies?${params}`);
             const json = await res.json();
             setCompanies(json.data || []);
@@ -114,7 +114,7 @@ export function ImporterCompanyManagement() {
             await fetch(`/api/companies`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(Object.assign(Object.assign({}, newForm), { creditLimit: parseFloat(newForm.creditLimit) || 0 })),
+                body: JSON.stringify(Object.assign(Object.assign({}, newForm), { creditLimit: parseFloat(newForm.creditLimit) || 0, companyType: 'importer' })),
             });
             setNewCompanyOpen(false);
             setNewForm({

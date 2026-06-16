@@ -16,5 +16,4 @@ export async function readJsonResponse(response) {
     }
 }
 
-export const API_BASE_URL = (process.env.BACKEND_URL ||
-    (process.env.NODE_ENV === 'development' ? 'http://localhost:5001' : '')).replace(/\/$/, '');
+export const API_BASE_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || '').replace(/\/$/, '');
