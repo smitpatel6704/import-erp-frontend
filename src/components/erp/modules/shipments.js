@@ -56,7 +56,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { cn, API_BASE_URL } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 // ─── Constants ────────────────────────────────────────────────────────────────
 const STATUSES = [
@@ -283,21 +283,22 @@ export default function ShipmentsModule() {
     setTrackingFetchState("loading");
     setTrackingFetchMessage("Fetching shipment details from the carrier...");
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/shipments/tracking/lookup`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ trackingNumber, shippingLine }),
-        },
-      );
+      const response = await fetch("/api/shipments/tracking/lookup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ trackingNumber, shippingLine }),
+      });
       const payload = await response.json();
       if (!response.ok) {
         throw new Error(payload.error || "Carrier tracking request failed");
       }
       const details = payload.data || {};
       if (details.error) {
-        throw new Error(details.error);
+        const manualMessage = [
+          details.error,
+          "Continue by entering the shipment details manually.",
+        ].filter(Boolean).join(" ");
+        throw new Error(manualMessage);
       }
       setNewForm((current) => ({
         ...current,
@@ -329,6 +330,7 @@ export default function ShipmentsModule() {
     } catch (error) {
       setTrackingFetchState("error");
       setTrackingFetchMessage(String(error.message || error));
+      setEntryMode("manual");
     }
   }, []);
   useEffect(() => {
@@ -480,9 +482,9 @@ export default function ShipmentsModule() {
   };
   const saveShipment = async () => {
     try {
-      const url = editingId
-        ? `${API_BASE_URL}/api/shipments/${editingId}`
-        : `${API_BASE_URL}/api/shipments`;
+    const url = editingId
+        ? `/api/shipments/${editingId}`
+        : `/api/shipments`;
       const method = editingId ? "PUT" : "POST";
       await fetch(url, {
         method,
