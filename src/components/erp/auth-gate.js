@@ -30,6 +30,7 @@ export function AuthGate({ children }) {
             const publicAuthPaths = [
                 "/api/auth/status",
                 "/api/auth/login",
+                "/api/auth/verify-email-otp",
                 "/api/auth/bootstrap",
                 "/api/auth/invitation",
                 "/api/auth/setup-password",
