@@ -1,5 +1,4 @@
-const rawBackendUrl = process.env.BACKEND_URL ||
-    (process.env.NODE_ENV === 'development' ? 'http://localhost:5001' : '');
+const rawBackendUrl = process.env.BACKEND_URL || '';
 const isPrivateHostname = (hostname) => hostname === 'localhost' ||
     hostname === '127.0.0.1' ||
     hostname.startsWith('10.') ||
@@ -23,11 +22,17 @@ const backendUrl = (() => {
 })();
 const nextConfig = {
     output: "standalone",
+    env: {
+        BACKEND_URL: backendUrl,
+    },
     turbopack: {
         root: __dirname,
     },
     reactStrictMode: false,
-    allowedDevOrigins: ['172.20.10.3', 'localhost'],
+    allowedDevOrigins: (process.env.ALLOWED_DEV_ORIGINS || '')
+        .split(',')
+        .map((origin) => origin.trim())
+        .filter(Boolean),
     async rewrites() {
         if (!backendUrl)
             return [];
