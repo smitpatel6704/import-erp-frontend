@@ -20,21 +20,31 @@ const defaultProductFilter = {
     origin: "",
     status: "all",
 };
+const authStorage = () => typeof window === "undefined" ? null : window.sessionStorage;
+const clearPersistentAuthStorage = () => {
+    if (typeof window === "undefined")
+        return;
+    window.localStorage.removeItem("nexport_token");
+    window.localStorage.removeItem("nexport_user");
+};
 export const useERPStore = create((set, get) => ({
     // Authentication
     user: null,
     token: null,
     authReady: false,
     setAuth: (user, token) => {
-        if (typeof window !== "undefined") {
-            localStorage.setItem("nexport_token", token);
-            localStorage.setItem("nexport_user", JSON.stringify(user));
+        const storage = authStorage();
+        if (storage) {
+            clearPersistentAuthStorage();
+            storage.setItem("nexport_token", token);
+            storage.setItem("nexport_user", JSON.stringify(user));
         }
         set({ user, token, authReady: true });
     },
     setCurrentUser: (user) => {
-        if (typeof window !== "undefined")
-            localStorage.setItem("nexport_user", JSON.stringify(user));
+        const storage = authStorage();
+        if (storage)
+            storage.setItem("nexport_user", JSON.stringify(user));
         set({ user });
     },
     refreshCurrentUser: async () => {
@@ -53,8 +63,10 @@ export const useERPStore = create((set, get) => ({
     initializeAuth: () => {
         if (typeof window === "undefined")
             return;
-        const token = localStorage.getItem("nexport_token");
-        const storedUser = localStorage.getItem("nexport_user");
+        clearPersistentAuthStorage();
+        const storage = authStorage();
+        const token = storage?.getItem("nexport_token") || null;
+        const storedUser = storage?.getItem("nexport_user") || null;
         let user = null;
         try {
             user = storedUser ? JSON.parse(storedUser) : null;
@@ -66,8 +78,9 @@ export const useERPStore = create((set, get) => ({
     },
     logout: () => {
         if (typeof window !== "undefined") {
-            localStorage.removeItem("nexport_token");
-            localStorage.removeItem("nexport_user");
+            clearPersistentAuthStorage();
+            sessionStorage.removeItem("nexport_token");
+            sessionStorage.removeItem("nexport_user");
         }
         set({ user: null, token: null, authReady: true });
     },
