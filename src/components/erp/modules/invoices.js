@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { cn, API_BASE_URL } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 // ─── Constants ──────────────────────────────────────────────────────────
 const INVOICE_TYPES = [
@@ -126,7 +126,7 @@ export function InvoicesModule() {
     // Fetch companies
     const fetchCompanies = useCallback(async () => {
         try {
-            const res = await fetch(`${API_BASE_URL}/api/companies?limit=50`);
+            const res = await fetch('/api/companies?limit=50');
             const json = await res.json();
             setCompanies((json.data || []).map((c) => ({ id: c.id, name: c.name })));
         }
@@ -198,7 +198,7 @@ export function InvoicesModule() {
     const handleCreateInvoice = async () => {
         setSubmitting(true);
         try {
-            await fetch(`${API_BASE_URL}/api/invoices`, {
+            await fetch('/api/invoices', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(Object.assign(Object.assign({}, newInvoice), { subtotal: lineItemsSubtotal, taxAmount: lineItemsTax, totalAmount: lineItemsTotal, items: lineItems.filter((item) => item.description.trim()), issueDate: newInvoice.issueDate || new Date().toISOString(), dueDate: newInvoice.dueDate || null })),

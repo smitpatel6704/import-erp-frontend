@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { cn, API_BASE_URL } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, } from 'recharts';
 import { format } from 'date-fns';
 // ─── Constants ──────────────────────────────────────────────────────────
@@ -197,7 +197,7 @@ export function FinanceModule() {
             return;
         setSubmitting(true);
         try {
-            await fetch(`${API_BASE_URL}/api/expenses`, {
+            await fetch('/api/expenses', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(Object.assign(Object.assign({}, newExpense), { amount: parseFloat(newExpense.amount), exchangeRate: 1 })),

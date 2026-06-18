@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, } from '@/components/ui/table';
 import { Separator } from '@/components/ui/separator';
-import { cn, API_BASE_URL } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend, } from 'recharts';
 const CHART_COLORS = ['#0d9488', '#f59e0b', '#10b981', '#f97316', '#6b7280', '#14b8a6', '#ef4444', '#8b5cf6'];
 const emptyReportData = {
@@ -107,7 +107,7 @@ function exportPrintableReport(title, rows) {
     win.print();
 }
 async function fetchReportEndpoint(endpoint) {
-    const res = await fetch(`${API_BASE_URL}/api/${endpoint}?limit=1000&isActive=true`, { cache: 'no-store' });
+    const res = await fetch(`/api/${endpoint}?limit=1000&isActive=true`, { cache: 'no-store' });
     if (!res.ok)
         throw new Error(`Failed to fetch ${endpoint}`);
     const json = await res.json();

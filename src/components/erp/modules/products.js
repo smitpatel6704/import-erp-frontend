@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { cn, API_BASE_URL } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { useERPStore } from '@/lib/store';
 // ─── Constants ──────────────────────────────────────────────────────────
 const CATEGORIES = [
@@ -97,7 +97,7 @@ export function ProductsModule() {
     // Fetch companies for select dropdown
     const fetchCompanies = useCallback(async () => {
         try {
-            const res = await fetch(`${API_BASE_URL}/api/companies?limit=50`);
+            const res = await fetch('/api/companies?limit=50');
             const json = await res.json();
             setCompanies((json.data || []).map((c) => ({ id: c.id, name: c.name })));
         }
@@ -128,7 +128,7 @@ export function ProductsModule() {
             return;
         setSubmitting(true);
         try {
-            await fetch(`${API_BASE_URL}/api/products`, {
+            await fetch('/api/products', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(newProduct),
