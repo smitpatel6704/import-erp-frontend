@@ -150,6 +150,7 @@ const shipmentStatusFromCarrier = (status) => {
   const value = String(status || "").toLowerCase();
   if (value.includes("delivered") || value.includes("empty received"))
     return "delivered";
+  if (value.includes("transship")) return "in_transit";
   if (
     value.includes("arrived") ||
     value.includes("discharge") ||
@@ -174,7 +175,9 @@ const carrierSupported = (shippingLine) => {
     value.includes("maersk") ||
     value.includes("mersk") ||
     value.includes("msc") ||
-    value.includes("mediterraneanshipping")
+    value.includes("mediterraneanshipping") ||
+    value.includes("evergreen") ||
+    value.includes("shipmentlink")
   );
 };
 // ─── Main Component ───────────────────────────────────────────────────────────
