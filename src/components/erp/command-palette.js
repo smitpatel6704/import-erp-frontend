@@ -2,7 +2,7 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { LayoutDashboard, Ship, Box, Building2, FolderOpen, Truck, Bell, BarChart3, Settings, Plus, Download, Upload, RefreshCw, } from "lucide-react";
+import { LayoutDashboard, Ship, Box, Building2, FolderOpen, Bell, BarChart3, Settings, Plus, Download, Upload, RefreshCw, } from "lucide-react";
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, } from "@/components/ui/command";
 import { useERPStore } from "@/lib/store";
 const moduleIcons = {
@@ -11,7 +11,6 @@ const moduleIcons = {
     containers: Box,
     companies: Building2,
     documents: FolderOpen,
-    logistics: Truck,
     notifications: Bell,
     reports: BarChart3,
     admin: Settings,
@@ -22,7 +21,6 @@ const moduleLabels = {
     containers: "Containers",
     companies: "Companies",
     documents: "Documents",
-    logistics: "Logistics",
     notifications: "Notifications",
     reports: "Reports",
     admin: "Admin",

@@ -2,7 +2,7 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { LayoutDashboard, Ship, Box, Building2, FolderOpen, Truck, Bell, BarChart3, Settings, ChevronLeft, ChevronRight, LogOut, Anchor, } from "lucide-react";
+import { LayoutDashboard, Ship, Box, Building2, FolderOpen, Bell, BarChart3, Settings, ChevronLeft, ChevronRight, LogOut, Anchor, } from "lucide-react";
 import { useERPStore } from "@/lib/store";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
@@ -14,12 +14,11 @@ const navItems = [
     { id: "containers", label: "Containers", icon: Box, section: "Operations" },
     { id: "companies", label: "Companies", icon: Building2, section: "Operations" },
     { id: "documents", label: "Documents", icon: FolderOpen, section: "Operations" },
-    { id: "logistics", label: "Logistics", icon: Truck, section: "Compliance" },
     { id: "notifications", label: "Notifications", icon: Bell, section: "System" },
     { id: "reports", label: "Reports", icon: BarChart3, section: "System" },
     { id: "admin", label: "Settings", icon: Settings, section: "System" },
 ];
-const sections = ["Overview", "Operations", "Compliance", "System"];
+const sections = ["Overview", "Operations", "System"];
 export function ERPSidebar() {
     const { activeModule, sidebarOpen, toggleSidebar, user, canView, logout } = useERPStore();
     return (_jsxs(motion.aside, { initial: false, animate: { width: sidebarOpen ? 260 : 72 }, transition: { duration: 0.3, ease: [0.4, 0, 0.2, 1] }, className: "sidebar-gradient fixed left-0 top-0 z-40 flex h-screen flex-col border-r border-white/[0.06] shadow-xl", children: [_jsxs("div", { className: "flex h-16 items-center gap-3 px-4 border-b border-white/[0.06]", children: [_jsx("div", { className: "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-teal/20 text-teal", children: _jsx(Anchor, { className: "h-5 w-5" }) }), _jsx(AnimatePresence, { children: sidebarOpen && (_jsxs(motion.div, { initial: { opacity: 0, x: -10 }, animate: { opacity: 1, x: 0 }, exit: { opacity: 0, x: -10 }, transition: { duration: 0.2 }, className: "flex flex-col overflow-hidden", children: [_jsx("span", { className: "text-sm font-bold text-white tracking-wide", children: "Nexport ERP" }), _jsx("span", { className: "text-[10px] font-medium text-white/40 uppercase tracking-widest", children: "Enterprise Suite" })] })) })] }), _jsx("nav", { className: "flex-1 overflow-y-auto sidebar-scrollbar py-4 px-2", children: sections.map((section) => {

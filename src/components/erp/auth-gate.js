@@ -79,7 +79,7 @@ export function AuthGate({ children }) {
             return;
         let stopped = false;
         let refreshing = false;
-        const refreshCurrentUser = async () => {
+        const refreshSessionUser = async () => {
             if (stopped || refreshing)
                 return;
             refreshing = true;
@@ -95,16 +95,16 @@ export function AuthGate({ children }) {
         };
         const refreshWhenVisible = () => {
             if (document.visibilityState === "visible")
-                refreshCurrentUser();
+                refreshSessionUser();
         };
-        refreshCurrentUser();
-        const interval = window.setInterval(refreshCurrentUser, 3000);
-        window.addEventListener("focus", refreshCurrentUser);
+        refreshSessionUser();
+        const interval = window.setInterval(refreshSessionUser, 3000);
+        window.addEventListener("focus", refreshSessionUser);
         document.addEventListener("visibilitychange", refreshWhenVisible);
         return () => {
             stopped = true;
             window.clearInterval(interval);
-            window.removeEventListener("focus", refreshCurrentUser);
+            window.removeEventListener("focus", refreshSessionUser);
             document.removeEventListener("visibilitychange", refreshWhenVisible);
         };
     }, [authReady, token, refreshCurrentUser]);

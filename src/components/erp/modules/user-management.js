@@ -46,7 +46,6 @@ const modules = [
   ["containers", "Containers"],
   ["companies", "Companies"],
   ["documents", "Documents"],
-  ["logistics", "Logistics"],
   ["notifications", "Notifications"],
   ["reports", "Reports"],
 ];
