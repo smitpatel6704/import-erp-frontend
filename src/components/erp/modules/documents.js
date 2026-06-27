@@ -18,6 +18,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { API_BASE_URL, cn } from '@/lib/utils';
+import { useERPStore } from '@/lib/store';
+import { toast } from '@/hooks/use-toast';
 const shipmentStages = ['booking', 'arrival', 'clearance', 'delivery'];
 const emptyChecklistType = () => ({
     id: '',
@@ -184,10 +186,18 @@ function ManageChecklistTypesDialog({ open, onOpenChange, onSaved }) {
             await fetchTypes();
             setDraft(emptyChecklistType());
             onSaved();
+            toast({
+                title: isNew ? 'Document requirement added' : 'Document requirement saved',
+                description: `${name} is now updated in the checklist.`,
+            });
         }
         catch (error) {
             console.error('Document type save error:', error);
-            alert('Failed to save document type. Please try again.');
+            toast({
+                title: 'Document requirement could not be saved',
+                description: error.message || 'Please try again.',
+                variant: 'destructive',
+            });
         }
         finally {
             setSavingId(null);
@@ -215,6 +225,8 @@ function ShipmentChecklistModal({ shipment, shipments, open, onOpenChange, onNav
     const [selectedMergeIds, setSelectedMergeIds] = useState([]);
     const [mergeOrderIds, setMergeOrderIds] = useState([]);
     const [merging, setMerging] = useState(false);
+    const canUploadDocuments = useERPStore((state) => state.canAction('documents', 'upload'));
+    const canVerifyDocuments = useERPStore((state) => state.canAction('documents', 'verify'));
     const mergeSensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
     const fetchChecklist = useCallback(async () => {
         if (!shipment)
@@ -242,16 +254,28 @@ function ShipmentChecklistModal({ shipment, shipments, open, onOpenChange, onNav
     }, [open, fetchChecklist]);
     const handleStatusUpdate = async (docId, status, rejectedReason) => {
         try {
-            await fetch(`/api/shipment-documents/${docId}/status`, {
+            const res = await fetch(`/api/shipment-documents/${docId}/status`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status, rejectedReason }),
             });
+            const json = await res.json().catch(() => ({}));
+            if (!res.ok)
+                throw new Error(json.error || 'Failed to update document status');
             fetchChecklist();
             onRefresh();
+            toast({
+                title: status === 'verified' ? 'Document verified' : 'Document rejected',
+                description: 'Document checklist was updated successfully.',
+            });
         }
         catch (error) {
             console.error(error);
+            toast({
+                title: 'Document status could not be updated',
+                description: error.message || 'Please try again.',
+                variant: 'destructive',
+            });
         }
     };
     const handleUpload = async () => {
@@ -267,17 +291,26 @@ function ShipmentChecklistModal({ shipment, shipments, open, onOpenChange, onNav
                 method: 'POST',
                 body: formData,
             });
+            const json = await res.json().catch(() => ({}));
             if (!res.ok)
-                throw new Error('Upload failed');
+                throw new Error(json.error || 'Upload failed');
             setUploadingItem(null);
             setUploadRemarks('');
             setSelectedFile(null);
             await fetchChecklist();
             onRefresh();
+            toast({
+                title: 'Document uploaded',
+                description: `${uploadingItem.name} was uploaded successfully.`,
+            });
         }
         catch (error) {
             console.error('Upload error:', error);
-            alert('Failed to upload document. Please try again.');
+            toast({
+                title: 'Document upload failed',
+                description: error.message || 'Please try again.',
+                variant: 'destructive',
+            });
         }
         finally {
             setSubmitting(false);
@@ -285,7 +318,11 @@ function ShipmentChecklistModal({ shipment, shipments, open, onOpenChange, onNav
     };
     const openDocumentUrl = (fileUrl) => {
         if (!fileUrl) {
-            alert('Document preview not available');
+            toast({
+                title: 'Preview not available',
+                description: 'This document does not have a file URL.',
+                variant: 'destructive',
+            });
             return;
         }
         let url = fileUrl;
@@ -296,6 +333,32 @@ function ShipmentChecklistModal({ shipment, shipments, open, onOpenChange, onNav
             url = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
         }
         window.open(url, '_blank');
+    };
+    const downloadFile = async (fileUrl, fileName = 'shipment-documents.pdf') => {
+        if (!fileUrl) {
+            toast({
+                title: 'Download not available',
+                description: 'Merged PDF file URL is missing.',
+                variant: 'destructive',
+            });
+            return;
+        }
+        let url = fileUrl;
+        if (url.startsWith('/')) {
+            url = `${API_BASE_URL}${url}`;
+        }
+        const res = await fetch(url);
+        if (!res.ok)
+            throw new Error('Failed to download merged PDF');
+        const blob = await res.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(blobUrl);
     };
     const mergeableDocuments = checklist.filter(item => {
         var _a, _b;
@@ -351,11 +414,19 @@ function ShipmentChecklistModal({ shipment, shipments, open, onOpenChange, onNav
             if (!res.ok)
                 throw new Error(json.error || 'Failed to merge documents');
             setExportOpen(false);
-            openDocumentUrl(json.data?.fileUrl);
+            await downloadFile(json.data?.downloadUrl || json.data?.fileUrl, json.data?.fileName || `${shipment.shipmentNumber} export documents.pdf`);
+            toast({
+                title: 'Merged PDF downloaded',
+                description: 'Export documents were merged and downloaded.',
+            });
         }
         catch (error) {
             console.error('Document merge error:', error);
-            alert(error.message || 'Failed to merge documents. Please try again.');
+            toast({
+                title: 'PDF merge failed',
+                description: error.message || 'Please try again.',
+                variant: 'destructive',
+            });
         }
         finally {
             setMerging(false);
@@ -402,7 +473,7 @@ function ShipmentChecklistModal({ shipment, shipments, open, onOpenChange, onNav
                     </Button>
                     <Button size="sm" className="bg-teal-600 hover:bg-teal-700" disabled={merging || selectedMergeIds.length < 2} onClick={handleMergeDocuments}>
                         {merging ? <Loader2 className="h-3 w-3 mr-2 animate-spin" /> : <Merge className="h-3 w-3 mr-2" />}
-                        Merge PDF
+                        Download PDF
                     </Button>
                 </DialogFooter>
             </DialogContent>
@@ -421,15 +492,19 @@ function ShipmentChecklistModal({ shipment, shipments, open, onOpenChange, onNav
                                                                                 "bg-muted text-muted-foreground"), children: item.status === 'verified' ? _jsx(CheckCircle2, { className: "h-4 w-4" }) :
                                                                         item.status === 'uploaded' ? _jsx(Clock, { className: "h-4 w-4" }) :
                                                                             item.status === 'rejected' ? _jsx(AlertTriangle, { className: "h-4 w-4" }) :
-                                                                                _jsx(FileText, { className: "h-4 w-4" }) }), _jsxs("div", { children: [_jsxs("div", { className: "flex items-center gap-2", children: [_jsx("span", { className: "text-sm font-medium", children: item.name }), item.isRequired && (_jsx(Badge, { variant: "outline", className: "text-[8px] h-3.5 px-1 bg-red-50 text-red-600 border-red-100 uppercase font-bold", children: "Required" }))] }), _jsx("p", { className: "text-[10px] text-muted-foreground", children: item.document ? `Uploaded ${format(new Date(item.document.uploadedAt), 'MMM dd, HH:mm')}` : 'Not uploaded yet' })] })] }), _jsx("div", { className: "flex items-center gap-2", children: item.status === 'pending' || item.status === 'rejected' ? (_jsxs(Button, { size: "sm", variant: "outline", className: "h-8 text-[10px] gap-1.5", onClick: () => setUploadingItem(item), children: [_jsx(Upload, { className: "h-3 w-3" }), item.status === 'rejected' ? 'Re-upload' : 'Upload'] })) : (_jsxs("div", { className: "flex items-center gap-1", children: [_jsx(Button, { size: "sm", variant: "ghost", className: "h-8 w-8 p-0", title: "View Document", onClick: () => {
+                                                                        _jsx(FileText, { className: "h-4 w-4" }) }), _jsxs("div", { children: [_jsxs("div", { className: "flex items-center gap-2", children: [_jsx("span", { className: "text-sm font-medium", children: item.name }), item.isRequired && (_jsx(Badge, { variant: "outline", className: "text-[8px] h-3.5 px-1 bg-red-50 text-red-600 border-red-100 uppercase font-bold", children: "Required" }))] }), _jsx("p", { className: "text-[10px] text-muted-foreground", children: item.document ? `Uploaded ${format(new Date(item.document.uploadedAt), 'MMM dd, HH:mm')}` : 'Not uploaded yet' })] })] }), _jsx("div", { className: "flex items-center gap-2", children: item.status === 'pending' || item.status === 'rejected' ? (canUploadDocuments && _jsxs(Button, { size: "sm", variant: "outline", className: "h-8 text-[10px] gap-1.5", onClick: () => setUploadingItem(item), children: [_jsx(Upload, { className: "h-3 w-3" }), item.status === 'rejected' ? 'Re-upload' : 'Upload'] })) : (_jsxs("div", { className: "flex items-center gap-1", children: [_jsx(Button, { size: "sm", variant: "ghost", className: "h-8 w-8 p-0", title: "View Document", onClick: () => {
                                                                             var _a;
                                                                             if ((_a = item.document) === null || _a === void 0 ? void 0 : _a.fileUrl) {
                                                                                 openDocumentUrl(item.document.fileUrl);
                                                                             }
                                                                             else {
-                                                                                alert('Document preview not available');
+                                                                                toast({
+                                                                                    title: 'Preview not available',
+                                                                                    description: 'This document does not have a file URL.',
+                                                                                    variant: 'destructive',
+                                                                                });
                                                                             }
-                                                                        }, children: _jsx(Eye, { className: "h-3.5 w-3.5" }) }), item.status === 'uploaded' && (_jsxs(_Fragment, { children: [_jsx(Button, { size: "sm", className: "h-8 text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white", onClick: () => handleStatusUpdate(item.document.id, 'verified'), children: "Verify" }), _jsx(Button, { size: "sm", variant: "destructive", className: "h-8 text-[10px]", onClick: () => handleStatusUpdate(item.document.id, 'rejected', 'Document quality poor'), children: "Reject" })] })), item.status === 'verified' && (_jsx(Badge, { className: "bg-emerald-500/20 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/20 text-[10px] h-7", children: "Verified" }))] })) })] }, item.checklistId))) })] }, stage));
+                                                                        }, children: _jsx(Eye, { className: "h-3.5 w-3.5" }) }), item.status === 'uploaded' && canVerifyDocuments && (_jsxs(_Fragment, { children: [_jsx(Button, { size: "sm", className: "h-8 text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white", onClick: () => handleStatusUpdate(item.document.id, 'verified'), children: "Verify" }), _jsx(Button, { size: "sm", variant: "destructive", className: "h-8 text-[10px]", onClick: () => handleStatusUpdate(item.document.id, 'rejected', 'Document quality poor'), children: "Reject" })] })), item.status === 'verified' && (_jsx(Badge, { className: "bg-emerald-500/20 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/20 text-[10px] h-7", children: "Verified" }))] })) })] }, item.checklistId))) })] }, stage));
                                 }) })) }), _jsxs(DialogFooter, { className: "shrink-0 p-6 bg-muted/10 border-t", children: [_jsxs(Button, { variant: "outline", size: "sm", className: "gap-2", disabled: mergeableDocuments.length < 2, onClick: openExportDialog, children: [_jsx(Download, { className: "h-3.5 w-3.5" }), "Export Documents"] }), _jsx(Button, { variant: "outline", size: "sm", onClick: () => onOpenChange(false), children: "Close" })] })] }) }), exportDialog, _jsx(Dialog, { open: !!uploadingItem, onOpenChange: (o) => !o && !submitting && setUploadingItem(null), children: _jsxs(DialogContent, { className: "max-w-sm", children: [_jsxs(DialogHeader, { children: [_jsxs(DialogTitle, { className: "text-sm font-bold", children: ["Upload ", uploadingItem === null || uploadingItem === void 0 ? void 0 : uploadingItem.name] }), _jsx(DialogDescription, { className: "text-xs", children: "Select a file to upload for this requirement" })] }), _jsxs("div", { className: "space-y-4 py-4", children: [_jsx("input", { type: "file", id: "file-upload-input-real", className: "hidden", onChange: (e) => {
                                         var _a;
                                         if ((_a = e.target.files) === null || _a === void 0 ? void 0 : _a[0]) {

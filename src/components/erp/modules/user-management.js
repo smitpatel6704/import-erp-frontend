@@ -49,6 +49,17 @@ const modules = [
   ["notifications", "Notifications"],
   ["reports", "Reports"],
 ];
+const actionPermissions = [
+  ["create", "Create/Add"],
+  ["update", "Edit/Save"],
+  ["delete", "Delete"],
+  ["upload", "Upload"],
+  ["import", "Import"],
+  ["export", "Export/Download"],
+  ["verify", "Verify/Reject"],
+];
+const fullActions = () =>
+  Object.fromEntries(actionPermissions.map(([action]) => [action, true]));
 const rolePresets = {
   admin: [],
   manager: modules.map(([module]) => ({
@@ -56,13 +67,16 @@ const rolePresets = {
     access: ["dashboard", "notifications", "reports"].includes(module)
       ? "view"
       : "edit",
+    actions: ["dashboard", "notifications", "reports"].includes(module)
+      ? undefined
+      : fullActions(),
   })),
   employee: [
     { module: "dashboard", access: "view" },
-    { module: "shipments", access: "edit" },
+    { module: "shipments", access: "edit", actions: fullActions() },
     { module: "containers", access: "view" },
     { module: "companies", access: "view" },
-    { module: "documents", access: "edit" },
+    { module: "documents", access: "edit", actions: fullActions() },
     { module: "notifications", access: "view" },
   ],
   viewer: modules.map(([module]) => ({ module, access: "view" })),
@@ -80,8 +94,30 @@ const accessFor = (permissions, module) =>
   permissions.find((item) => item.module === module)?.access || "none";
 const setAccess = (permissions, module, access) => {
   const remaining = permissions.filter((item) => item.module !== module);
-  return access === "none" ? remaining : [...remaining, { module, access }];
+  return access === "none"
+    ? remaining
+    : [...remaining, { module, access, ...(access === "edit" ? { actions: fullActions() } : {}) }];
 };
+const permissionForModule = (permissions, module) =>
+  permissions.find((item) => item.module === module) || null;
+const actionFor = (permissions, module, action) => {
+  const permission = permissionForModule(permissions, module);
+  if (!permission || permission.access !== "edit") return false;
+  if (!permission.actions) return true;
+  return permission.actions[action] !== false;
+};
+const setAction = (permissions, module, action, checked) =>
+  permissions.map((item) => {
+    if (item.module !== module) return item;
+    return {
+      ...item,
+      actions: {
+        ...fullActions(),
+        ...(item.actions || {}),
+        [action]: checked,
+      },
+    };
+  });
 
 export default function UserManagement() {
   const currentUser = useERPStore((state) => state.user);
@@ -470,53 +506,96 @@ export default function UserManagement() {
                     ],
                   }),
                   _jsx("div", {
-                    className: "grid grid-cols-1 sm:grid-cols-2 gap-2",
+                    className: "grid grid-cols-1 gap-2",
                     children: modules.map(([module, label]) =>
                       _jsxs(
                         "div",
                         {
                           className:
-                            "flex items-center justify-between rounded-md border p-2",
+                            "rounded-md border p-3",
                           children: [
-                            _jsx("span", {
-                              className: "text-sm",
-                              children: label,
-                            }),
-                            _jsxs(Select, {
-                              value: accessFor(form.permissions, module),
-                              onValueChange: (access) =>
-                                setForm(
-                                  Object.assign(Object.assign({}, form), {
-                                    permissions: setAccess(
-                                      form.permissions,
-                                      module,
-                                      access,
-                                    ),
-                                  }),
-                                ),
+                            _jsxs("div", {
+                              className:
+                                "flex items-center justify-between gap-3",
                               children: [
-                                _jsx(SelectTrigger, {
-                                  className: "h-8 w-28 text-xs",
-                                  children: _jsx(SelectValue, {}),
+                                _jsx("span", {
+                                  className: "text-sm font-medium",
+                                  children: label,
                                 }),
-                                _jsxs(SelectContent, {
+                                _jsxs(Select, {
+                                  value: accessFor(form.permissions, module),
+                                  onValueChange: (access) =>
+                                    setForm(
+                                      Object.assign(Object.assign({}, form), {
+                                        permissions: setAccess(
+                                          form.permissions,
+                                          module,
+                                          access,
+                                        ),
+                                      }),
+                                    ),
                                   children: [
-                                    _jsx(SelectItem, {
-                                      value: "none",
-                                      children: "No Access",
+                                    _jsx(SelectTrigger, {
+                                      className: "h-8 w-32 text-xs",
+                                      children: _jsx(SelectValue, {}),
                                     }),
-                                    _jsx(SelectItem, {
-                                      value: "view",
-                                      children: "View",
-                                    }),
-                                    _jsx(SelectItem, {
-                                      value: "edit",
-                                      children: "View & Edit",
+                                    _jsxs(SelectContent, {
+                                      children: [
+                                        _jsx(SelectItem, {
+                                          value: "none",
+                                          children: "No Access",
+                                        }),
+                                        _jsx(SelectItem, {
+                                          value: "view",
+                                          children: "View",
+                                        }),
+                                        _jsx(SelectItem, {
+                                          value: "edit",
+                                          children: "View & Edit",
+                                        }),
+                                      ],
                                     }),
                                   ],
                                 }),
                               ],
                             }),
+                            accessFor(form.permissions, module) === "edit" &&
+                              _jsx("div", {
+                                className:
+                                  "mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3",
+                                children: actionPermissions.map(
+                                  ([action, label]) =>
+                                    _jsxs(
+                                      "label",
+                                      {
+                                        className:
+                                          "flex items-center gap-2 rounded-md border bg-muted/20 px-2 py-1.5 text-xs",
+                                        children: [
+                                          _jsx("input", {
+                                            type: "checkbox",
+                                            checked: actionFor(
+                                              form.permissions,
+                                              module,
+                                              action,
+                                            ),
+                                            onChange: (event) =>
+                                              setForm({
+                                                ...form,
+                                                permissions: setAction(
+                                                  form.permissions,
+                                                  module,
+                                                  action,
+                                                  event.target.checked,
+                                                ),
+                                              }),
+                                          }),
+                                          _jsx("span", { children: label }),
+                                        ],
+                                      },
+                                      action,
+                                    ),
+                                ),
+                              }),
                           ],
                         },
                         module,

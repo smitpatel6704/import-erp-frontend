@@ -160,6 +160,57 @@
   }
   body {
     @apply bg-background text-foreground;
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at 15% 12%, oklch(0.86 0.11 185 / 0.42), transparent 28rem),
+      radial-gradient(circle at 84% 8%, oklch(0.83 0.13 78 / 0.34), transparent 26rem),
+      linear-gradient(135deg, oklch(0.985 0.006 245) 0%, oklch(0.955 0.018 210) 46%, oklch(0.975 0.014 155) 100%);
+    background-attachment: fixed;
+  }
+
+  .dark body {
+    background:
+      radial-gradient(circle at 10% 0%, oklch(0.5 0.11 185 / 0.2), transparent 32rem),
+      radial-gradient(circle at 88% 4%, oklch(0.66 0.14 78 / 0.16), transparent 28rem),
+      linear-gradient(135deg, oklch(0.1 0.018 250) 0%, oklch(0.14 0.026 225) 52%, oklch(0.1 0.018 165) 100%);
+    background-attachment: fixed;
+  }
+}
+
+@layer components {
+  [data-slot="card"] {
+    background:
+      linear-gradient(180deg, oklch(1 0 0 / 0.84), oklch(0.985 0.006 230 / 0.72));
+    border-color: oklch(1 0 0 / 0.72);
+    box-shadow:
+      0 18px 45px oklch(0.22 0.04 245 / 0.08),
+      inset 0 1px 0 oklch(1 0 0 / 0.8);
+    backdrop-filter: blur(22px) saturate(170%);
+    -webkit-backdrop-filter: blur(22px) saturate(170%);
+    transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+  }
+
+  [data-slot="card"]:hover {
+    border-color: oklch(0.68 0.1 182 / 0.42);
+    box-shadow:
+      0 24px 60px oklch(0.22 0.04 245 / 0.12),
+      inset 0 1px 0 oklch(1 0 0 / 0.9);
+  }
+
+  .dark [data-slot="card"] {
+    background:
+      linear-gradient(180deg, oklch(0.2 0.026 248 / 0.88), oklch(0.14 0.022 250 / 0.78));
+    border-color: oklch(1 0 0 / 0.09);
+    box-shadow:
+      0 24px 70px oklch(0 0 0 / 0.38),
+      inset 0 1px 0 oklch(1 0 0 / 0.06);
+  }
+
+  .dark [data-slot="card"]:hover {
+    border-color: oklch(0.68 0.1 182 / 0.26);
+    box-shadow:
+      0 28px 78px oklch(0 0 0 / 0.46),
+      inset 0 1px 0 oklch(1 0 0 / 0.08);
   }
 }
 
@@ -417,12 +468,49 @@
 
 /* Enterprise sidebar gradient */
 .sidebar-gradient {
-  background: linear-gradient(
-    180deg,
-    oklch(0.17 0.03 260) 0%,
-    oklch(0.12 0.04 265) 50%,
-    oklch(0.09 0.03 260) 100%
-  );
+  background:
+    radial-gradient(circle at 20% 0%, oklch(0.6 0.12 180 / 0.24), transparent 16rem),
+    radial-gradient(circle at 80% 20%, oklch(0.8 0.14 85 / 0.13), transparent 13rem),
+    linear-gradient(180deg, oklch(0.17 0.03 260) 0%, oklch(0.11 0.035 265) 54%, oklch(0.075 0.025 255) 100%);
+}
+
+.erp-shell {
+  position: relative;
+  isolation: isolate;
+}
+
+.erp-shell::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background-image:
+    linear-gradient(oklch(0.18 0.03 245 / 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, oklch(0.18 0.03 245 / 0.045) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: linear-gradient(to bottom, black, transparent 72%);
+}
+
+.dark .erp-shell::before {
+  background-image:
+    linear-gradient(oklch(1 0 0 / 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, oklch(1 0 0 / 0.045) 1px, transparent 1px);
+}
+
+.aurora-strip {
+  background: linear-gradient(90deg, var(--teal), var(--amber), oklch(0.62 0.12 235), var(--teal));
+  background-size: 240% 100%;
+  animation: auroraMove 8s ease-in-out infinite;
+}
+
+@keyframes auroraMove {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
 }
 
 /* Premium focus ring */

@@ -81,6 +81,19 @@ export const useERPStore = create((set, get) => ({
     },
     canView: (module) => Boolean(get().permissionFor(module)),
     canEdit: (module) => get().permissionFor(module) === "edit",
+    canAction: (module, action) => {
+        const user = get().user;
+        if (!user)
+            return false;
+        if (user.role === "admin" || user.role === "super_admin")
+            return true;
+        const permission = (user.permissions || []).find((item) => item.module === module);
+        if (!permission || permission.access !== "edit")
+            return false;
+        if (!permission.actions)
+            return true;
+        return permission.actions[action] !== false;
+    },
     // Navigation
     activeModule: "dashboard",
     setActiveModule: (module) => set({ activeModule: module }),

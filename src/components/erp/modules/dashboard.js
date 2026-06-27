@@ -27,6 +27,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn, readJsonResponse } from '@/lib/utils';
 import { useERPStore } from '@/lib/store';
+import { toast } from '@/hooks/use-toast';
 
 const emptyData = {
   shipments: {
@@ -109,6 +110,11 @@ export default function DashboardModule() {
         setError('');
       } catch (requestError) {
         setError(requestError.message);
+        toast({
+          title: 'Dashboard could not load',
+          description: requestError.message || 'Please refresh and try again.',
+          variant: 'destructive',
+        });
       } finally {
         setLoading(false);
       }
@@ -139,13 +145,13 @@ export default function DashboardModule() {
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {kpis.map((item, index) => (
           <motion.div key={item.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.04 }}>
-            <Card className="shadow-sm h-full">
+            <Card className="hover-lift h-full overflow-hidden">
               <CardContent className="p-4 flex items-start justify-between">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{item.label}</p>
                   <p className="text-2xl font-bold mt-1">{loading ? '-' : item.value}</p>
                 </div>
-                <div className={cn('rounded-xl p-2.5', item.tone.split(' ')[1])}>
+                <div className={cn('rounded-2xl p-2.5 ring-1 ring-current/10 shadow-sm', item.tone.split(' ')[1])}>
                   <item.icon className={cn('h-5 w-5', item.tone.split(' ')[0])} />
                 </div>
               </CardContent>
@@ -191,7 +197,7 @@ export default function DashboardModule() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <Card className="xl:col-span-2 shadow-sm">
+        <Card className="xl:col-span-2 overflow-hidden">
           <CardHeader>
             <CardTitle className="text-base">Recent Shipments</CardTitle>
             <CardDescription>Latest shipment records and current stage</CardDescription>
@@ -200,7 +206,7 @@ export default function DashboardModule() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-y bg-muted/30 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+                  <tr className="border-y bg-muted/40 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
                     <th className="px-5 py-2.5">Shipment</th>
                     <th className="px-5 py-2.5">Route</th>
                     <th className="px-5 py-2.5">Status</th>
@@ -209,7 +215,7 @@ export default function DashboardModule() {
                 </thead>
                 <tbody>
                   {data.recentShipments.map((shipment) => (
-                    <tr key={shipment.id} className="border-b">
+                    <tr key={shipment.id} className="border-b transition-colors hover:bg-muted/35">
                       <td className="px-5 py-3 font-medium">{shipment.shipmentNumber}</td>
                       <td className="px-5 py-3 text-muted-foreground">{shipment.originPort || '-'} to {shipment.destinationPort || '-'}</td>
                       <td className="px-5 py-3"><Badge variant="outline">{statusLabels[shipment.status] || shipment.status}</Badge></td>
@@ -225,7 +231,7 @@ export default function DashboardModule() {
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm">
+        <Card className="overflow-hidden">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -237,7 +243,7 @@ export default function DashboardModule() {
           </CardHeader>
           <CardContent className="space-y-3">
             {highPriority.map((notification) => (
-              <div key={notification.id} className="rounded-lg border border-red-500/15 bg-red-500/[0.03] p-3">
+              <div key={notification.id} className="rounded-xl border border-red-500/15 bg-red-500/[0.04] p-3 shadow-sm">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-semibold">{notification.title}</p>
                   <Badge variant="destructive" className="text-[9px]">{notification.priority || 'high'}</Badge>
@@ -260,7 +266,7 @@ export default function DashboardModule() {
 
 function ChartCard({ title, description, children }) {
   return (
-    <Card className="shadow-sm">
+    <Card className="overflow-hidden">
       <CardHeader>
         <CardTitle className="text-base">{title}</CardTitle>
         <CardDescription>{description}</CardDescription>
@@ -274,7 +280,7 @@ function RankingCard({ title, rows, labelKey }) {
   const topRows = (rows || []).slice(0, 6);
   const maximum = Math.max(...topRows.map((row) => Number(row.count || 0)), 1);
   return (
-    <Card className="shadow-sm">
+    <Card className="overflow-hidden">
       <CardHeader>
         <CardTitle className="text-base">{title}</CardTitle>
         <CardDescription>Shipment count and value</CardDescription>

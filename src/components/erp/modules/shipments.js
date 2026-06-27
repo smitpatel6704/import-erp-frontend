@@ -25,6 +25,7 @@ import {
   Keyboard,
   CheckCircle2,
   AlertCircle,
+  Trash2,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -58,6 +59,8 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { useERPStore } from "@/lib/store";
+import { toast } from "@/hooks/use-toast";
 // ─── Constants ────────────────────────────────────────────────────────────────
 const STATUSES = [
   { value: "all", label: "All Statuses" },
@@ -183,6 +186,9 @@ const carrierSupported = (shippingLine) => {
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function ShipmentsModule() {
   var _a, _b, _c, _d, _e;
+  const canCreateShipments = useERPStore((state) => state.canAction("shipments", "create"));
+  const canUpdateShipments = useERPStore((state) => state.canAction("shipments", "update"));
+  const canDeleteShipments = useERPStore((state) => state.canAction("shipments", "delete"));
   const [shippingLines, setShippingLines] = useState([]);
   const [containerSizes, setContainerSizes] = useState([]);
   const [containerTypes, setContainerTypes] = useState([]);
@@ -193,6 +199,7 @@ export default function ShipmentsModule() {
   const [notificationUsers, setNotificationUsers] = useState([]);
   const [shipments, setShipments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState(null);
   const [viewMode, setViewMode] = useState("table");
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
@@ -330,9 +337,20 @@ export default function ShipmentsModule() {
           ? `Fetched successfully. Latest: ${details.lastEvent}`
           : "Shipment details fetched successfully.",
       );
+      toast({
+        title: "Tracking updated",
+        description: details.lastEvent
+          ? `Latest carrier event: ${details.lastEvent}`
+          : "Shipment details were fetched from the carrier.",
+      });
     } catch (error) {
       setTrackingFetchState("error");
       setTrackingFetchMessage(String(error.message || error));
+      toast({
+        title: "Tracking lookup failed",
+        description: String(error.message || error),
+        variant: "destructive",
+      });
     }
   }, []);
   useEffect(() => {
@@ -386,6 +404,11 @@ export default function ShipmentsModule() {
       );
     } catch (e) {
       console.error(e);
+      toast({
+        title: "Shipments could not load",
+        description: e.message || "Please refresh and try again.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -402,6 +425,11 @@ export default function ShipmentsModule() {
       setSelectedShipment(json.data);
     } catch (e) {
       console.error(e);
+      toast({
+        title: "Shipment details could not load",
+        description: e.message || "Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setDetailLoading(false);
     }
@@ -428,9 +456,21 @@ export default function ShipmentsModule() {
         await openDetail(selectedShipment.id);
         setUploadDocOpen(false);
         setNewDocForm({ name: "", documentType: "" });
+        toast({
+          title: "Document added",
+          description: "Document was linked to this shipment.",
+        });
+      } else {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.error || "Failed to add document");
       }
     } catch (e) {
       console.error(e);
+      toast({
+        title: "Document could not be added",
+        description: e.message || "Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setDocUploading(false);
     }
@@ -488,7 +528,7 @@ export default function ShipmentsModule() {
         ? `/api/shipments/${editingId}`
         : `/api/shipments`;
       const method = editingId ? "PUT" : "POST";
-      await fetch(url, {
+      const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(
@@ -511,6 +551,8 @@ export default function ShipmentsModule() {
           }),
         ),
       });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || "Failed to save shipment");
       setNewShipmentOpen(false);
       setEditingId(null);
       setEntryMode("automatic");
@@ -542,8 +584,62 @@ export default function ShipmentsModule() {
         containers: [],
       });
       fetchShipments();
+      toast({
+        title: editingId ? "Shipment updated" : "Shipment created",
+        description: json.data?.shipmentNumber
+          ? `${json.data.shipmentNumber} saved successfully.`
+          : "Shipment saved successfully.",
+      });
     } catch (e) {
       console.error(e);
+      toast({
+        title: "Shipment could not be saved",
+        description: e.message || "Please check the details and try again.",
+        variant: "destructive",
+      });
+    }
+  };
+  const deleteShipment = async (shipment) => {
+    if (!shipment || deletingId) return;
+    if (!canDeleteShipments) {
+      toast({
+        title: "Permission denied",
+        description: "You do not have delete permission for shipments.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const confirmed = window.confirm(
+      `Delete shipment ${shipment.shipmentNumber}? This will remove it from active shipment lists.`,
+    );
+    if (!confirmed) return;
+    setDeletingId(shipment.id);
+    try {
+      const res = await fetch(`/api/shipments/${shipment.id}`, {
+        method: "DELETE",
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || "Failed to delete shipment");
+      setShipments((current) => current.filter((item) => item.id !== shipment.id));
+      setTotalCount((current) => Math.max(0, current - 1));
+      if (selectedShipment?.id === shipment.id) {
+        setDetailOpen(false);
+        setSelectedShipment(null);
+      }
+      await fetchShipments();
+      toast({
+        title: "Shipment deleted",
+        description: `${shipment.shipmentNumber} was removed from active lists.`,
+      });
+    } catch (error) {
+      console.error("Shipment delete error:", error);
+      toast({
+        title: "Shipment could not be deleted",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingId(null);
     }
   };
   // Status counts for stats bar
@@ -673,48 +769,49 @@ export default function ShipmentsModule() {
                       }),
                     ],
                   }),
-                  _jsxs(Button, {
-                    size: "sm",
-                    className: "h-9 text-xs ml-auto",
-                    onClick: () => {
-                      setEditingId(null);
-                      setEntryMode("automatic");
-                      setTrackingFetchState("idle");
-                      setTrackingFetchMessage("");
-                      lastAutomaticLookup.current = "";
-                      setNewForm({
-                        blNumber: "",
-                        shippingLine: "",
-                        freightForwarder: "",
-                        vesselName: "",
-                        voyageNumber: "",
-                        etd: "",
-                        eta: "",
-                        originCountry: "",
-                        originPort: "",
-                        destinationPort: "",
-                        priority: "normal",
-                        status: "draft",
-                        shipmentValue: "",
-                        currency: "USD",
-                        companyId: "",
-                        exporterCompanyId: "",
-                        goodsDescription: "",
-                        notes: "",
-                        internalNotes: "",
-                        requiredDocumentIds: documentChecklist
-                          .filter((item) => item.isRequired)
-                          .map((item) => item.id),
-                        notificationUserIds: [],
-                        containers: [],
-                      });
-                      setNewShipmentOpen(true);
-                    },
-                    children: [
-                      _jsx(Plus, { className: "h-3.5 w-3.5 mr-1" }),
-                      " New Shipment",
-                    ],
-                  }),
+                  canCreateShipments &&
+                    _jsxs(Button, {
+                      size: "sm",
+                      className: "h-9 text-xs ml-auto",
+                      onClick: () => {
+                        setEditingId(null);
+                        setEntryMode("automatic");
+                        setTrackingFetchState("idle");
+                        setTrackingFetchMessage("");
+                        lastAutomaticLookup.current = "";
+                        setNewForm({
+                          blNumber: "",
+                          shippingLine: "",
+                          freightForwarder: "",
+                          vesselName: "",
+                          voyageNumber: "",
+                          etd: "",
+                          eta: "",
+                          originCountry: "",
+                          originPort: "",
+                          destinationPort: "",
+                          priority: "normal",
+                          status: "draft",
+                          shipmentValue: "",
+                          currency: "USD",
+                          companyId: "",
+                          exporterCompanyId: "",
+                          goodsDescription: "",
+                          notes: "",
+                          internalNotes: "",
+                          requiredDocumentIds: documentChecklist
+                            .filter((item) => item.isRequired)
+                            .map((item) => item.id),
+                          notificationUserIds: [],
+                          containers: [],
+                        });
+                        setNewShipmentOpen(true);
+                      },
+                      children: [
+                        _jsx(Plus, { className: "h-3.5 w-3.5 mr-1" }),
+                        " New Shipment",
+                      ],
+                    }),
                 ],
               }),
             ],
@@ -1001,14 +1098,47 @@ export default function ShipmentsModule() {
                                               : "—",
                                         }),
                                         _jsx(TableCell, {
-                                          children: _jsx(Button, {
-                                            variant: "ghost",
-                                            size: "icon",
+                                          children: _jsxs("div", {
                                             className:
-                                              "h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity",
-                                            children: _jsx(Eye, {
-                                              className: "h-3.5 w-3.5",
-                                            }),
+                                              "flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100",
+                                            children: [
+                                              _jsx(Button, {
+                                                variant: "ghost",
+                                                size: "icon",
+                                                className: "h-7 w-7",
+                                                onClick: (event) => {
+                                                  event.stopPropagation();
+                                                  openDetail(s.id);
+                                                },
+                                                title: "View shipment",
+                                                children: _jsx(Eye, {
+                                                  className: "h-3.5 w-3.5",
+                                                }),
+                                              }),
+                                              canDeleteShipments &&
+                                                _jsx(Button, {
+                                                  variant: "ghost",
+                                                  size: "icon",
+                                                  className:
+                                                    "h-7 w-7 text-red-600 hover:bg-red-500/10 hover:text-red-700",
+                                                  disabled: deletingId === s.id,
+                                                  onClick: (event) => {
+                                                    event.stopPropagation();
+                                                    deleteShipment(s);
+                                                  },
+                                                  title: "Delete shipment",
+                                                  children:
+                                                    deletingId === s.id
+                                                      ? _jsx(Loader2, {
+                                                          className:
+                                                            "h-3.5 w-3.5 animate-spin",
+                                                        })
+                                                      : _jsx(Trash2, {
+                                                          className:
+                                                            "h-3.5 w-3.5",
+                                                        }),
+                                                }),
+                                            ],
                                           }),
                                         }),
                                       ],
@@ -1126,13 +1256,45 @@ export default function ShipmentsModule() {
                                               className: "text-sm font-medium",
                                               children: s.shipmentNumber,
                                             }),
-                                            _jsx(Badge, {
-                                              variant: "outline",
-                                              className: cn(
-                                                "text-[9px] font-semibold shrink-0",
-                                                priorityColorMap[s.priority],
-                                              ),
-                                              children: s.priority,
+                                            _jsxs("div", {
+                                              className:
+                                                "flex shrink-0 items-center gap-1",
+                                              children: [
+                                                _jsx(Badge, {
+                                                  variant: "outline",
+                                                  className: cn(
+                                                    "text-[9px] font-semibold",
+                                                    priorityColorMap[
+                                                      s.priority
+                                                    ],
+                                                  ),
+                                                  children: s.priority,
+                                                }),
+                                                canDeleteShipments &&
+                                                  _jsx(Button, {
+                                                    variant: "ghost",
+                                                    size: "icon",
+                                                    className:
+                                                      "h-6 w-6 text-red-600 hover:bg-red-500/10 hover:text-red-700",
+                                                    disabled:
+                                                      deletingId === s.id,
+                                                    onClick: (event) => {
+                                                      event.stopPropagation();
+                                                      deleteShipment(s);
+                                                    },
+                                                    title: "Delete shipment",
+                                                    children:
+                                                      deletingId === s.id
+                                                        ? _jsx(Loader2, {
+                                                            className:
+                                                              "h-3 w-3 animate-spin",
+                                                          })
+                                                        : _jsx(Trash2, {
+                                                            className:
+                                                              "h-3 w-3",
+                                                          }),
+                                                  }),
+                                              ],
                                             }),
                                           ],
                                         }),
@@ -1282,16 +1444,36 @@ export default function ShipmentsModule() {
                           ),
                           children: statusLabelMap[selectedShipment.status],
                         }),
-                        _jsxs(Button, {
-                          variant: "outline",
-                          size: "sm",
-                          onClick: () => openEdit(selectedShipment),
-                          className: "h-7 px-2 text-xs",
-                          children: [
-                            _jsx(Pencil, { className: "w-3 h-3 mr-1" }),
-                            " Edit",
-                          ],
-                        }),
+                        canUpdateShipments &&
+                          _jsxs(Button, {
+                            variant: "outline",
+                            size: "sm",
+                            onClick: () => openEdit(selectedShipment),
+                            className: "h-7 px-2 text-xs",
+                            children: [
+                              _jsx(Pencil, { className: "w-3 h-3 mr-1" }),
+                              " Edit",
+                            ],
+                          }),
+                        canDeleteShipments &&
+                          _jsxs(Button, {
+                            variant: "outline",
+                            size: "sm",
+                            onClick: () => deleteShipment(selectedShipment),
+                            disabled: deletingId === selectedShipment.id,
+                            className:
+                              "h-7 px-2 text-xs border-red-500/30 text-red-600 hover:bg-red-500/10 hover:text-red-700",
+                            children: [
+                              deletingId === selectedShipment.id
+                                ? _jsx(Loader2, {
+                                    className: "w-3 h-3 mr-1 animate-spin",
+                                  })
+                                : _jsx(Trash2, {
+                                    className: "w-3 h-3 mr-1",
+                                  }),
+                              " Delete",
+                            ],
+                          }),
                       ],
                     }),
                 ],
