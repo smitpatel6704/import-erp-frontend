@@ -1,8 +1,11 @@
 'use client';
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { FolderOpen, Search, FileText, Eye, Clock, CheckCircle2, AlertTriangle, Upload, Ship, Building2, Loader2, ChevronLeft, ChevronRight, Settings2, Plus, Save, } from 'lucide-react';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { FolderOpen, Search, FileText, Eye, Clock, CheckCircle2, AlertTriangle, Upload, Ship, Building2, Loader2, ChevronLeft, ChevronRight, Settings2, Plus, Save, Download, Merge, GripVertical, } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -11,6 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { API_BASE_URL, cn } from '@/lib/utils';
@@ -102,6 +106,29 @@ export function DocumentsModule() {
                     fetchShipments();
                 } })] }));
 }
+function SortableMergeDocument({ item, index, selected, onSelectedChange }) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.document.id });
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        zIndex: isDragging ? 20 : undefined,
+    };
+    return (
+        <div ref={setNodeRef} style={style} className={cn("flex items-center gap-3 rounded-lg border bg-background p-3 shadow-sm transition-colors", isDragging && "border-teal-500 bg-teal-50 shadow-lg")}>
+            <button type="button" className="flex h-8 w-8 shrink-0 cursor-grab items-center justify-center rounded-md text-muted-foreground hover:bg-muted active:cursor-grabbing" aria-label={`Move ${item.name}`} {...attributes} {...listeners}>
+                <GripVertical className="h-4 w-4" />
+            </button>
+            <Checkbox checked={selected} onCheckedChange={(checked) => onSelectedChange(checked === true)} />
+            <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium truncate">{item.name}</span>
+                    <Badge variant="outline" className="h-5 text-[10px]">#{index + 1}</Badge>
+                </div>
+                <p className="text-[10px] text-muted-foreground truncate">{item.document.fileUrl}</p>
+            </div>
+        </div>
+    );
+}
 function ManageChecklistTypesDialog({ open, onOpenChange, onSaved }) {
     const [items, setItems] = useState([]);
     const [draft, setDraft] = useState(emptyChecklistType);
@@ -133,10 +160,11 @@ function ManageChecklistTypesDialog({ open, onOpenChange, onSaved }) {
         }
     }, []);
     useEffect(() => {
-        // Existing data loaders in this app call async fetchers from effects.
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        if (open)
+        if (open) {
+            // Existing data loaders in this app call async fetchers from effects.
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             fetchTypes();
+        }
     }, [open, fetchTypes]);
     const saveItem = async (item) => {
         const name = item.name.trim();
@@ -183,6 +211,11 @@ function ShipmentChecklistModal({ shipment, shipments, open, onOpenChange, onNav
     const [submitting, setSubmitting] = useState(false);
     const [uploadRemarks, setUploadRemarks] = useState('');
     const [selectedFile, setSelectedFile] = useState(null);
+    const [exportOpen, setExportOpen] = useState(false);
+    const [selectedMergeIds, setSelectedMergeIds] = useState([]);
+    const [mergeOrderIds, setMergeOrderIds] = useState([]);
+    const [merging, setMerging] = useState(false);
+    const mergeSensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
     const fetchChecklist = useCallback(async () => {
         if (!shipment)
             return;
@@ -201,10 +234,11 @@ function ShipmentChecklistModal({ shipment, shipments, open, onOpenChange, onNav
         }
     }, [shipment]);
     useEffect(() => {
-        // Existing data loaders in this app call async fetchers from effects.
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        if (open)
+        if (open) {
+            // Existing data loaders in this app call async fetchers from effects.
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             fetchChecklist();
+        }
     }, [open, fetchChecklist]);
     const handleStatusUpdate = async (docId, status, rejectedReason) => {
         try {
@@ -249,9 +283,134 @@ function ShipmentChecklistModal({ shipment, shipments, open, onOpenChange, onNav
             setSubmitting(false);
         }
     };
+    const openDocumentUrl = (fileUrl) => {
+        if (!fileUrl) {
+            alert('Document preview not available');
+            return;
+        }
+        let url = fileUrl;
+        if (url.startsWith('/uploads/')) {
+            url = `${API_BASE_URL}${url}`;
+        }
+        else if (url.startsWith('/documents/')) {
+            url = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
+        }
+        window.open(url, '_blank');
+    };
+    const mergeableDocuments = checklist.filter(item => {
+        var _a, _b;
+        const fileUrl = ((_a = item.document) === null || _a === void 0 ? void 0 : _a.fileUrl) || '';
+        const fileType = ((_b = item.document) === null || _b === void 0 ? void 0 : _b.fileType) || '';
+        return item.document && (fileType === 'application/pdf' || fileUrl.toLowerCase().endsWith('.pdf'));
+    });
+    const orderedMergeDocuments = useMemo(() => {
+        const byId = new Map(mergeableDocuments.map(item => [item.document.id, item]));
+        const ordered = mergeOrderIds.map(id => byId.get(id)).filter(Boolean);
+        const remaining = mergeableDocuments.filter(item => !mergeOrderIds.includes(item.document.id));
+        return [...ordered, ...remaining];
+    }, [mergeOrderIds, mergeableDocuments]);
+    const openExportDialog = () => {
+        const documentIds = mergeableDocuments.map(item => item.document.id);
+        setSelectedMergeIds(documentIds);
+        setMergeOrderIds(documentIds);
+        setExportOpen(true);
+    };
+    const toggleMergeDocument = (documentId, checked) => {
+        setSelectedMergeIds(current => checked
+            ? [...current, documentId]
+            : current.filter(id => id !== documentId));
+    };
+    const handleMergeDragEnd = ({ active, over }) => {
+        if (!over || active.id === over.id)
+            return;
+        setMergeOrderIds(current => {
+            const activeIndex = current.indexOf(active.id);
+            const overIndex = current.indexOf(over.id);
+            if (activeIndex < 0 || overIndex < 0)
+                return current;
+            return arrayMove(current, activeIndex, overIndex);
+        });
+    };
+    const handleMergeDocuments = async () => {
+        if (!shipment || selectedMergeIds.length < 2 || merging)
+            return;
+        setMerging(true);
+        try {
+            const orderedDocumentIds = orderedMergeDocuments
+                .map(item => item.document.id)
+                .filter(id => selectedMergeIds.includes(id));
+            const res = await fetch(`/api/shipment-documents/shipment/${shipment.id}/merge`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    documentIds: orderedDocumentIds,
+                    name: `${shipment.shipmentNumber} export documents`,
+                }),
+            });
+            const json = await res.json().catch(() => ({}));
+            if (!res.ok)
+                throw new Error(json.error || 'Failed to merge documents');
+            setExportOpen(false);
+            openDocumentUrl(json.data?.fileUrl);
+        }
+        catch (error) {
+            console.error('Document merge error:', error);
+            alert(error.message || 'Failed to merge documents. Please try again.');
+        }
+        finally {
+            setMerging(false);
+        }
+    };
+    const exportDialog = (
+        <Dialog open={exportOpen} onOpenChange={(o) => !o && !merging && setExportOpen(false)}>
+            <DialogContent className="max-w-md">
+                <DialogHeader>
+                    <DialogTitle className="text-sm font-bold flex items-center gap-2">
+                        <Merge className="h-4 w-4 text-teal-600" />
+                        Export Documents
+                    </DialogTitle>
+                    <DialogDescription className="text-xs">
+                        Select PDFs and set the merge sequence.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-2 py-3">
+                    {mergeableDocuments.length === 0 ? (
+                        <div className="rounded-lg border border-dashed p-5 text-center text-xs text-muted-foreground">
+                            No uploaded PDF documents available.
+                        </div>
+                    ) : (
+                        <DndContext sensors={mergeSensors} collisionDetection={closestCenter} onDragEnd={handleMergeDragEnd}>
+                            <SortableContext items={orderedMergeDocuments.map(item => item.document.id)} strategy={verticalListSortingStrategy}>
+                                <div className="space-y-2">
+                                    {orderedMergeDocuments.map((item, index) => (
+                                        <SortableMergeDocument
+                                            key={item.document.id}
+                                            item={item}
+                                            index={index}
+                                            selected={selectedMergeIds.includes(item.document.id)}
+                                            onSelectedChange={(checked) => toggleMergeDocument(item.document.id, checked)}
+                                        />
+                                    ))}
+                                </div>
+                            </SortableContext>
+                        </DndContext>
+                    )}
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" size="sm" onClick={() => setExportOpen(false)} disabled={merging}>
+                        Cancel
+                    </Button>
+                    <Button size="sm" className="bg-teal-600 hover:bg-teal-700" disabled={merging || selectedMergeIds.length < 2} onClick={handleMergeDocuments}>
+                        {merging ? <Loader2 className="h-3 w-3 mr-2 animate-spin" /> : <Merge className="h-3 w-3 mr-2" />}
+                        Merge PDF
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
     if (!shipment)
         return null;
-    return (_jsxs(_Fragment, { children: [_jsx(Dialog, { open: open, onOpenChange: onOpenChange, children: _jsxs(DialogContent, { className: "max-w-2xl max-h-[90vh] flex flex-col p-0 overflow-hidden", children: [_jsx(DialogHeader, { className: "p-6 pb-2 border-b bg-muted/20", children: _jsxs("div", { className: "flex items-center justify-between", children: [_jsxs("div", { className: "flex items-center gap-3", children: [_jsxs("div", { className: "flex items-center gap-1", children: [_jsx(Button, { variant: "ghost", size: "sm", className: "h-8 w-8 p-0", disabled: !hasPrev, onClick: () => prevShipment && onNavigate(prevShipment), title: prevShipment ? `Previous: ${prevShipment.shipmentNumber}` : 'No previous shipment', children: _jsx(ChevronLeft, { className: "h-4 w-4" }) }), _jsx(Button, { variant: "ghost", size: "sm", className: "h-8 w-8 p-0", disabled: !hasNext, onClick: () => nextShipment && onNavigate(nextShipment), title: nextShipment ? `Next: ${nextShipment.shipmentNumber}` : 'No next shipment', children: _jsx(ChevronRight, { className: "h-4 w-4" }) })] }), _jsxs("div", { children: [_jsxs(DialogTitle, { className: "text-xl flex items-center gap-2", children: [_jsx(Ship, { className: "h-5 w-5 text-teal-600" }), shipment.shipmentNumber] }), _jsxs(DialogDescription, { className: "text-xs mt-1", children: ["Document Checklist Tracking \u2022 ", (_a = shipment.company) === null || _a === void 0 ? void 0 : _a.name] })] })] }), _jsxs("div", { className: "text-right", children: [_jsxs(Badge, { variant: "outline", className: "text-[10px] font-mono mb-1", children: [checklist.filter(c => c.status === 'verified').length, " / ", checklist.filter(c => c.isRequired).length, " Verified"] }), _jsx("p", { className: "text-[10px] text-muted-foreground uppercase tracking-tighter", children: "Required Docs" })] })] }) }), _jsx(ScrollArea, { className: "flex-1 p-6", children: loading ? (_jsx("div", { className: "flex items-center justify-center py-20", children: _jsx(Loader2, { className: "h-8 w-8 animate-spin text-teal-600" }) })) : (_jsx("div", { className: "space-y-4", children: ['booking', 'arrival', 'clearance', 'delivery'].map((stage) => {
+    return (_jsxs(_Fragment, { children: [_jsx(Dialog, { open: open, onOpenChange: onOpenChange, children: _jsxs(DialogContent, { className: "max-w-2xl h-[85vh] max-h-[760px] flex flex-col p-0 overflow-hidden", children: [_jsx(DialogHeader, { className: "shrink-0 p-6 pb-2 border-b bg-muted/20", children: _jsxs("div", { className: "flex items-center justify-between", children: [_jsxs("div", { className: "flex items-center gap-3", children: [_jsxs("div", { className: "flex items-center gap-1", children: [_jsx(Button, { variant: "ghost", size: "sm", className: "h-8 w-8 p-0", disabled: !hasPrev, onClick: () => prevShipment && onNavigate(prevShipment), title: prevShipment ? `Previous: ${prevShipment.shipmentNumber}` : 'No previous shipment', children: _jsx(ChevronLeft, { className: "h-4 w-4" }) }), _jsx(Button, { variant: "ghost", size: "sm", className: "h-8 w-8 p-0", disabled: !hasNext, onClick: () => nextShipment && onNavigate(nextShipment), title: nextShipment ? `Next: ${nextShipment.shipmentNumber}` : 'No next shipment', children: _jsx(ChevronRight, { className: "h-4 w-4" }) })] }), _jsxs("div", { children: [_jsxs(DialogTitle, { className: "text-xl flex items-center gap-2", children: [_jsx(Ship, { className: "h-5 w-5 text-teal-600" }), shipment.shipmentNumber] }), _jsxs(DialogDescription, { className: "text-xs mt-1", children: ["Document Checklist Tracking \u2022 ", (_a = shipment.company) === null || _a === void 0 ? void 0 : _a.name] })] })] }), _jsxs("div", { className: "text-right", children: [_jsxs(Badge, { variant: "outline", className: "text-[10px] font-mono mb-1", children: [checklist.filter(c => c.status === 'verified').length, " / ", checklist.filter(c => c.isRequired).length, " Verified"] }), _jsx("p", { className: "text-[10px] text-muted-foreground uppercase tracking-tighter", children: "Required Docs" })] })] }) }), _jsx(ScrollArea, { className: "flex-1 min-h-0 p-6", children: loading ? (_jsx("div", { className: "flex items-center justify-center py-20", children: _jsx(Loader2, { className: "h-8 w-8 animate-spin text-teal-600" }) })) : (_jsx("div", { className: "space-y-4", children: ['booking', 'arrival', 'clearance', 'delivery'].map((stage) => {
                                     const stageItems = checklist.filter(c => c.shipmentStage === stage);
                                     if (stageItems.length === 0)
                                         return null;
@@ -265,22 +424,13 @@ function ShipmentChecklistModal({ shipment, shipments, open, onOpenChange, onNav
                                                                                 _jsx(FileText, { className: "h-4 w-4" }) }), _jsxs("div", { children: [_jsxs("div", { className: "flex items-center gap-2", children: [_jsx("span", { className: "text-sm font-medium", children: item.name }), item.isRequired && (_jsx(Badge, { variant: "outline", className: "text-[8px] h-3.5 px-1 bg-red-50 text-red-600 border-red-100 uppercase font-bold", children: "Required" }))] }), _jsx("p", { className: "text-[10px] text-muted-foreground", children: item.document ? `Uploaded ${format(new Date(item.document.uploadedAt), 'MMM dd, HH:mm')}` : 'Not uploaded yet' })] })] }), _jsx("div", { className: "flex items-center gap-2", children: item.status === 'pending' || item.status === 'rejected' ? (_jsxs(Button, { size: "sm", variant: "outline", className: "h-8 text-[10px] gap-1.5", onClick: () => setUploadingItem(item), children: [_jsx(Upload, { className: "h-3 w-3" }), item.status === 'rejected' ? 'Re-upload' : 'Upload'] })) : (_jsxs("div", { className: "flex items-center gap-1", children: [_jsx(Button, { size: "sm", variant: "ghost", className: "h-8 w-8 p-0", title: "View Document", onClick: () => {
                                                                             var _a;
                                                                             if ((_a = item.document) === null || _a === void 0 ? void 0 : _a.fileUrl) {
-                                                                                let url = item.document.fileUrl;
-                                                                                // Prepend backend URL for local uploads
-                                                                                if (url.startsWith('/uploads/')) {
-                                                                                    url = `${API_BASE_URL}${url}`;
-                                                                                }
-                                                                                else if (url.startsWith('/documents/')) {
-                                                                                    // Fallback for old mock data
-                                                                                    url = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
-                                                                                }
-                                                                                window.open(url, '_blank');
+                                                                                openDocumentUrl(item.document.fileUrl);
                                                                             }
                                                                             else {
                                                                                 alert('Document preview not available');
                                                                             }
                                                                         }, children: _jsx(Eye, { className: "h-3.5 w-3.5" }) }), item.status === 'uploaded' && (_jsxs(_Fragment, { children: [_jsx(Button, { size: "sm", className: "h-8 text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white", onClick: () => handleStatusUpdate(item.document.id, 'verified'), children: "Verify" }), _jsx(Button, { size: "sm", variant: "destructive", className: "h-8 text-[10px]", onClick: () => handleStatusUpdate(item.document.id, 'rejected', 'Document quality poor'), children: "Reject" })] })), item.status === 'verified' && (_jsx(Badge, { className: "bg-emerald-500/20 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/20 text-[10px] h-7", children: "Verified" }))] })) })] }, item.checklistId))) })] }, stage));
-                                }) })) }), _jsx(DialogFooter, { className: "p-6 bg-muted/10 border-t", children: _jsx(Button, { variant: "outline", size: "sm", onClick: () => onOpenChange(false), children: "Close" }) })] }) }), _jsx(Dialog, { open: !!uploadingItem, onOpenChange: (o) => !o && !submitting && setUploadingItem(null), children: _jsxs(DialogContent, { className: "max-w-sm", children: [_jsxs(DialogHeader, { children: [_jsxs(DialogTitle, { className: "text-sm font-bold", children: ["Upload ", uploadingItem === null || uploadingItem === void 0 ? void 0 : uploadingItem.name] }), _jsx(DialogDescription, { className: "text-xs", children: "Select a file to upload for this requirement" })] }), _jsxs("div", { className: "space-y-4 py-4", children: [_jsx("input", { type: "file", id: "file-upload-input-real", className: "hidden", onChange: (e) => {
+                                }) })) }), _jsxs(DialogFooter, { className: "shrink-0 p-6 bg-muted/10 border-t", children: [_jsxs(Button, { variant: "outline", size: "sm", className: "gap-2", disabled: mergeableDocuments.length < 2, onClick: openExportDialog, children: [_jsx(Download, { className: "h-3.5 w-3.5" }), "Export Documents"] }), _jsx(Button, { variant: "outline", size: "sm", onClick: () => onOpenChange(false), children: "Close" })] })] }) }), exportDialog, _jsx(Dialog, { open: !!uploadingItem, onOpenChange: (o) => !o && !submitting && setUploadingItem(null), children: _jsxs(DialogContent, { className: "max-w-sm", children: [_jsxs(DialogHeader, { children: [_jsxs(DialogTitle, { className: "text-sm font-bold", children: ["Upload ", uploadingItem === null || uploadingItem === void 0 ? void 0 : uploadingItem.name] }), _jsx(DialogDescription, { className: "text-xs", children: "Select a file to upload for this requirement" })] }), _jsxs("div", { className: "space-y-4 py-4", children: [_jsx("input", { type: "file", id: "file-upload-input-real", className: "hidden", onChange: (e) => {
                                         var _a;
                                         if ((_a = e.target.files) === null || _a === void 0 ? void 0 : _a[0]) {
                                             setSelectedFile(e.target.files[0]);

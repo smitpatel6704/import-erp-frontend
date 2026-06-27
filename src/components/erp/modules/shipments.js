@@ -333,7 +333,6 @@ export default function ShipmentsModule() {
     } catch (error) {
       setTrackingFetchState("error");
       setTrackingFetchMessage(String(error.message || error));
-      setEntryMode("manual");
     }
   }, []);
   useEffect(() => {
