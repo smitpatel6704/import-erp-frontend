@@ -98,7 +98,7 @@ export function AuthGate({ children }) {
                 refreshSessionUser();
         };
         refreshSessionUser();
-        const interval = window.setInterval(refreshSessionUser, 3000);
+        const interval = window.setInterval(refreshSessionUser, 5 * 60 * 1000);
         window.addEventListener("focus", refreshSessionUser);
         document.addEventListener("visibilitychange", refreshWhenVisible);
         return () => {
