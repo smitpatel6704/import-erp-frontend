@@ -13,6 +13,7 @@ const AuthShell = ({ title, description, children }) => (_jsx("div", { className
 
 export function LoginPage() {
     const router = useRouter();
+    const params = useSearchParams();
     const setAuth = useERPStore((state) => state.setAuth);
     const [needsBootstrap, setNeedsBootstrap] = useState(false);
     const [form, setForm] = useState({ name: "", email: "", password: "" });
@@ -23,6 +24,11 @@ export function LoginPage() {
     useEffect(() => {
         fetch("/api/auth/status").then((res) => res.json()).then((json) => setNeedsBootstrap(Boolean(json.data?.needsBootstrap))).catch(() => setError("Unable to reach the server"));
     }, []);
+    useEffect(() => {
+        const email = params.get("email") || "";
+        if (email)
+            setForm((current) => (Object.assign(Object.assign({}, current), { email })));
+    }, [params]);
     const submit = async (event) => {
         event.preventDefault();
         setLoading(true);
@@ -74,7 +80,7 @@ export function LoginPage() {
             setLoading(false);
         }
     };
-    const passwordForm = _jsxs("form", { onSubmit: submit, className: "space-y-4", children: [needsBootstrap && _jsxs("div", { children: [_jsx(Label, { children: "Full Name" }), _jsx(Input, { value: form.name, onChange: (e) => setForm(Object.assign(Object.assign({}, form), { name: e.target.value })), required: true, className: "mt-1" })] }), _jsxs("div", { children: [_jsx(Label, { children: "Email" }), _jsx(Input, { type: "email", value: form.email, onChange: (e) => setForm(Object.assign(Object.assign({}, form), { email: e.target.value })), required: true, className: "mt-1" })] }), _jsxs("div", { children: [_jsx(Label, { children: "Password" }), _jsx(Input, { type: "password", minLength: 8, value: form.password, onChange: (e) => setForm(Object.assign(Object.assign({}, form), { password: e.target.value })), required: true, className: "mt-1" })] }), error && _jsx("p", { className: "text-sm text-destructive", children: error }), _jsxs(Button, { type: "submit", className: "w-full", disabled: loading, children: [_jsx(LogIn, { className: "mr-2 h-4 w-4" }), loading ? "Please wait..." : needsBootstrap ? "Create Admin" : "Sign In"] })] });
+    const passwordForm = _jsxs("form", { onSubmit: submit, className: "space-y-4", children: [params.get("passwordCreated") === "1" && _jsx("div", { className: "rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-700 dark:text-emerald-300", children: "Password created. Sign in with your password and email OTP to continue." }), needsBootstrap && _jsxs("div", { children: [_jsx(Label, { children: "Full Name" }), _jsx(Input, { value: form.name, onChange: (e) => setForm(Object.assign(Object.assign({}, form), { name: e.target.value })), required: true, className: "mt-1" })] }), _jsxs("div", { children: [_jsx(Label, { children: "Email" }), _jsx(Input, { type: "email", value: form.email, onChange: (e) => setForm(Object.assign(Object.assign({}, form), { email: e.target.value })), required: true, className: "mt-1" })] }), _jsxs("div", { children: [_jsx(Label, { children: "Password" }), _jsx(Input, { type: "password", minLength: 8, value: form.password, onChange: (e) => setForm(Object.assign(Object.assign({}, form), { password: e.target.value })), required: true, className: "mt-1" })] }), error && _jsx("p", { className: "text-sm text-destructive", children: error }), _jsxs(Button, { type: "submit", className: "w-full", disabled: loading, children: [_jsx(LogIn, { className: "mr-2 h-4 w-4" }), loading ? "Please wait..." : needsBootstrap ? "Create Admin" : "Sign In"] })] });
     const otpLoginForm = _jsxs("form", { onSubmit: verifyOtp, className: "space-y-4", children: [_jsxs("div", { className: "rounded-lg border border-border/60 bg-muted/30 p-3 text-sm", children: [_jsx("p", { className: "font-medium", children: "Password verified" }), _jsxs("p", { className: "mt-1 text-xs text-muted-foreground", children: ["Enter the 6 digit OTP sent to ", otpChallenge?.maskedEmail || "your email", "."] })] }), _jsxs("div", { children: [_jsx(Label, { children: "Email OTP" }), _jsx(Input, { inputMode: "numeric", pattern: "[0-9]{6}", maxLength: 6, value: otpForm.code, onChange: (e) => setOtpForm({ code: e.target.value.replace(/\\D/g, "").slice(0, 6) }), required: true, className: "mt-1", autoFocus: true })] }), error && _jsx("p", { className: "text-sm text-destructive", children: error }), _jsxs(Button, { type: "submit", className: "w-full", disabled: loading, children: [_jsx(LogIn, { className: "mr-2 h-4 w-4" }), loading ? "Please wait..." : "Verify OTP & Login"] }), _jsx(Button, { type: "button", variant: "ghost", className: "w-full", onClick: () => {
                     setOtpChallenge(null);
                     setOtpForm({ code: "" });
@@ -86,7 +92,7 @@ export function LoginPage() {
 export function SetupPasswordPage() {
     const params = useSearchParams();
     const router = useRouter();
-    const setAuth = useERPStore((state) => state.setAuth);
+    const logout = useERPStore((state) => state.logout);
     const token = params.get("token") || "";
     const [invitation, setInvitation] = useState(null);
     const [password, setPassword] = useState("");
@@ -112,8 +118,9 @@ export function SetupPasswordPage() {
         const json = await res.json();
         if (!res.ok)
             return setError(json.error || "Unable to create password");
-        setAuth(json.data.user, json.data.token);
-        router.replace("/dashboard");
+        logout();
+        const email = encodeURIComponent(json.data?.user?.email || invitation?.email || "");
+        router.replace(`/login?passwordCreated=1&email=${email}`);
     };
     return _jsx(AuthShell, { title: "Create Your Password", description: invitation ? `${invitation.name} · ${invitation.email}` : "Validate your invitation link", children: _jsxs("form", { onSubmit: submit, className: "space-y-4", children: [_jsxs("div", { children: [_jsx(Label, { children: "New Password" }), _jsx(Input, { type: "password", minLength: 8, value: password, onChange: (e) => setPassword(e.target.value), required: true, disabled: !invitation, className: "mt-1" })] }), _jsxs("div", { children: [_jsx(Label, { children: "Confirm Password" }), _jsx(Input, { type: "password", minLength: 8, value: confirm, onChange: (e) => setConfirm(e.target.value), required: true, disabled: !invitation, className: "mt-1" })] }), error && _jsx("p", { className: "text-sm text-destructive", children: error }), _jsxs(Button, { type: "submit", className: "w-full", disabled: !invitation, children: [_jsx(KeyRound, { className: "mr-2 h-4 w-4" }), "Create Password"] })] }) });
 }

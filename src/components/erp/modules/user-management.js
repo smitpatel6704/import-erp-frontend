@@ -37,6 +37,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { toast } from "@/hooks/use-toast";
 import { useERPStore } from "@/lib/store";
 import { readJsonResponse } from "@/lib/utils";
 
@@ -184,13 +185,23 @@ export default function UserManagement() {
         setOpen(false);
       } else {
         const delivery = json.data;
-        setMessage(
-          delivery.emailSent
-            ? "Invitation email sent."
-            : `User created. Email was not sent. Password link: ${delivery.inviteUrl}`,
-        );
         await fetchUsers();
         setForm(emptyForm);
+        setOpen(false);
+        if (delivery.emailSent) {
+          toast({
+            title: "Invitation sent",
+            description: `Email sent to ${form.email}.`,
+          });
+        } else {
+          setMessage(
+            `User created. Email was not sent. Password link: ${delivery.inviteUrl}`,
+          );
+          toast({
+            title: "User created",
+            description: "Email was not sent. Use the password link shown below.",
+          });
+        }
       }
     } catch (error) {
       setMessage(error.message);

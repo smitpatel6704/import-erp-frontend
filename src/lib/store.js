@@ -151,6 +151,26 @@ export const useERPStore = create((set, get) => ({
     })),
     clearNotifications: () => set({ notifications: [] }),
     unreadCount: () => get().notifications.filter((n) => !n.read).length,
+    notificationUnreadCount: 0,
+    setNotificationUnreadCount: (count) => set({ notificationUnreadCount: Number(count) || 0 }),
+    refreshNotificationUnreadCount: async () => {
+        if (typeof window === "undefined")
+            return 0;
+        try {
+            const response = await window.fetch("/api/notifications?isRead=false&limit=1", {
+                cache: "no-store",
+            });
+            if (!response.ok)
+                return get().notificationUnreadCount;
+            const json = await response.json();
+            const count = Number(json.pagination?.total ?? json.data?.length ?? 0);
+            set({ notificationUnreadCount: count });
+            return count;
+        }
+        catch (_a) {
+            return get().notificationUnreadCount;
+        }
+    },
     // Module Filters
     shipmentFilter: defaultShipmentFilter,
     setShipmentFilter: (filter) => set((state) => ({

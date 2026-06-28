@@ -94,14 +94,44 @@ const formatAuditEntity = (entity) => String(entity || '-').replace(/_/g, ' ').r
 const formatAuditDetails = (details) => {
     if (!details)
         return '-';
-    if (typeof details === 'string')
-        return details;
+    if (typeof details === 'string') {
+        const cleaned = details
+            .replace(/\s+via\s+\/api\/[^\s]+/g, '')
+            .replace(/^Created User\s+(.+)$/i, 'Invited user $1')
+            .replace(/^Created User$/i, 'Invited user')
+            .replace(/^Updated User\s+(.+)$/i, 'Updated user access for $1')
+            .replace(/^Logged in without email OTP as\s+/i, 'Signed in as ')
+            .replace(/^Logged in with email OTP as\s+/i, 'Signed in with email OTP as ')
+            .replace(/^Password setup completed for\s+/i, 'Created password for ');
+        return cleaned;
+    }
     try {
         return JSON.stringify(details);
     }
     catch (_a) {
         return String(details);
     }
+};
+const parseAuditDate = (value) => {
+    if (!value)
+        return null;
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime()))
+        return null;
+    const now = Date.now();
+    if (parsed.getTime() - now > 60 * 1000 && typeof value === 'string') {
+        const localValue = value.replace(/Z$/, '').replace(/([+-]\d{2}:?\d{2})$/, '');
+        const localParsed = new Date(localValue);
+        if (!Number.isNaN(localParsed.getTime()) && localParsed.getTime() <= now + 60 * 1000)
+            return localParsed;
+    }
+    return parsed;
+};
+const formatAuditTimestamp = (value) => {
+    const date = parseAuditDate(value);
+    if (!date)
+        return '-';
+    return formatDistanceToNow(date, { addSuffix: true });
 };
 function AuditLogTab() {
     const [activities, setActivities] = useState([]);
@@ -135,7 +165,7 @@ function AuditLogTab() {
                                             var _a, _b;
                                             return (_jsxs(TableRow, { className: "hover:bg-accent/30 transition-colors", children: [_jsx(TableCell, { children: _jsxs("div", { className: "flex items-center gap-2", children: [_jsx("div", { className: "flex h-6 w-6 items-center justify-center rounded-full bg-teal/10 text-teal text-[9px] font-semibold", children: ((_a = activity.user) === null || _a === void 0 ? void 0 : _a.name)
                                                                         ? activity.user.name.split(' ').map((n) => n[0]).join('')
-                                                                        : '?' }), _jsx("span", { className: "text-xs font-medium", children: ((_b = activity.user) === null || _b === void 0 ? void 0 : _b.name) || 'System' })] }) }), _jsx(TableCell, { children: _jsx(Badge, { variant: "outline", className: cn('text-[10px]', actionColors[activity.action] || ''), children: activity.action === 'update' ? 'Edit' : activity.action.charAt(0).toUpperCase() + activity.action.slice(1) }) }), _jsx(TableCell, { children: _jsx(Badge, { variant: "secondary", className: "text-[10px]", children: formatAuditEntity(activity.entity) }) }), _jsx(TableCell, { className: "text-xs text-muted-foreground max-w-[280px] truncate", children: formatAuditDetails(activity.details) }), _jsx(TableCell, { className: "text-xs text-muted-foreground", children: formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true }) })] }, activity.id));
+                                                                        : '?' }), _jsx("span", { className: "text-xs font-medium", children: ((_b = activity.user) === null || _b === void 0 ? void 0 : _b.name) || 'System' })] }) }), _jsx(TableCell, { children: _jsx(Badge, { variant: "outline", className: cn('text-[10px]', actionColors[activity.action] || ''), children: activity.action === 'update' ? 'Edit' : activity.action.charAt(0).toUpperCase() + activity.action.slice(1) }) }), _jsx(TableCell, { children: _jsx(Badge, { variant: "secondary", className: "text-[10px]", children: formatAuditEntity(activity.entity) }) }), _jsx(TableCell, { className: "text-xs text-muted-foreground max-w-[360px] truncate", title: formatAuditDetails(activity.details), children: formatAuditDetails(activity.details) }), _jsx(TableCell, { className: "text-xs text-muted-foreground whitespace-nowrap", title: parseAuditDate(activity.createdAt) ? format(parseAuditDate(activity.createdAt), 'MMM dd, yyyy h:mm a') : '', children: formatAuditTimestamp(activity.createdAt) })] }, activity.id));
                                         })) })] }) }) })] }) }) }));
 }
 function ConfigurationTab() {

@@ -19,14 +19,14 @@ import { cn } from "@/lib/utils";
 const ToastProvider = ToastPrimitives.Provider;
 const ToastViewport = React.forwardRef((_a, ref) => {
     var { className } = _a, props = __rest(_a, ["className"]);
-    return (_jsx(ToastPrimitives.Viewport, Object.assign({ ref: ref, className: cn("fixed top-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-[420px]", className) }, props)));
+    return (_jsx(ToastPrimitives.Viewport, Object.assign({ ref: ref, className: cn("fixed right-0 top-4 z-[99999] flex max-h-screen w-full flex-col gap-3 px-3 sm:right-4 sm:w-[420px] sm:px-0", className) }, props)));
 });
 ToastViewport.displayName = ToastPrimitives.Viewport.displayName;
-const toastVariants = cva("group pointer-events-auto relative flex w-full items-center justify-between space-x-3 overflow-hidden rounded-2xl border p-4 pr-8 shadow-enterprise-lg backdrop-blur-xl transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full", {
+const toastVariants = cva("group pointer-events-auto relative flex min-h-0 w-full overflow-hidden rounded-xl border p-0 pr-8 shadow-[0_8px_24px_rgba(0,0,0,0.15)] transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full", {
     variants: {
         variant: {
-            default: "border-white/60 bg-white/90 text-foreground dark:border-white/[0.08] dark:bg-slate-950/90",
-            destructive: "destructive group border-red-500/30 bg-red-600 text-white",
+            default: "border-gray-300 bg-white text-gray-950 dark:border-white/[0.08] dark:bg-gray-800 dark:text-gray-50 dark:shadow-[0_2px_12px_rgba(0,0,0,0.35),0_0_0_1px_rgba(255,255,255,0.06)]",
+            destructive: "destructive group border-gray-300 bg-white text-gray-950 dark:border-white/[0.08] dark:bg-gray-800 dark:text-gray-50 dark:shadow-[0_2px_12px_rgba(0,0,0,0.35),0_0_0_1px_rgba(255,255,255,0.06)]",
         },
     },
     defaultVariants: {
@@ -45,17 +45,17 @@ const ToastAction = React.forwardRef((_a, ref) => {
 ToastAction.displayName = ToastPrimitives.Action.displayName;
 const ToastClose = React.forwardRef((_a, ref) => {
     var { className } = _a, props = __rest(_a, ["className"]);
-    return (_jsx(ToastPrimitives.Close, Object.assign({ ref: ref, className: cn("absolute right-1 top-1 rounded-md p-1 text-foreground/50 opacity-0 transition-opacity hover:text-foreground focus:opacity-100 focus:outline-none focus:ring-1 group-hover:opacity-100 group-[.destructive]:text-red-300 group-[.destructive]:hover:text-red-50 group-[.destructive]:focus:ring-red-400 group-[.destructive]:focus:ring-offset-red-600", className), "toast-close": "" }, props, { children: _jsx(X, { className: "h-4 w-4" }) })));
+    return (_jsx(ToastPrimitives.Close, Object.assign({ ref: ref, className: cn("absolute right-3 top-2.5 rounded-md p-1 text-gray-700 opacity-40 transition-opacity hover:opacity-80 focus:opacity-80 focus:outline-none focus:ring-1 focus:ring-ring dark:text-gray-400", className), "toast-close": "" }, props, { children: _jsx(X, { className: "h-3.5 w-3.5" }) })));
 });
 ToastClose.displayName = ToastPrimitives.Close.displayName;
 const ToastTitle = React.forwardRef((_a, ref) => {
     var { className } = _a, props = __rest(_a, ["className"]);
-    return (_jsx(ToastPrimitives.Title, Object.assign({ ref: ref, className: cn("text-sm font-semibold [&+div]:text-xs", className) }, props)));
+    return (_jsx(ToastPrimitives.Title, Object.assign({ ref: ref, className: cn("pb-0.5 text-sm font-semibold leading-tight text-gray-950 dark:text-gray-50", className) }, props)));
 });
 ToastTitle.displayName = ToastPrimitives.Title.displayName;
 const ToastDescription = React.forwardRef((_a, ref) => {
     var { className } = _a, props = __rest(_a, ["className"]);
-    return (_jsx(ToastPrimitives.Description, Object.assign({ ref: ref, className: cn("text-sm opacity-90", className) }, props)));
+    return (_jsx(ToastPrimitives.Description, Object.assign({ ref: ref, className: cn("text-[13px] font-medium leading-tight text-gray-500 dark:text-gray-400", className) }, props)));
 });
 ToastDescription.displayName = ToastPrimitives.Description.displayName;
 export { ToastProvider, ToastViewport, Toast, ToastTitle, ToastDescription, ToastClose, ToastAction, };

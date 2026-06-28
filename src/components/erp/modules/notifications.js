@@ -30,6 +30,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { useERPStore } from '@/lib/store';
 
 const typeColors = {
   info: { bg: 'bg-teal/10', text: 'text-teal', icon: Info },
@@ -58,6 +59,7 @@ export function NotificationsModule() {
   const [emailConfig, setEmailConfig] = useState({ configured: false });
   const [busyAction, setBusyAction] = useState('');
   const [message, setMessage] = useState('');
+  const refreshNotificationUnreadCount = useERPStore((state) => state.refreshNotificationUnreadCount);
 
   const fetchNotifications = useCallback(async () => {
     try {
@@ -69,12 +71,13 @@ export function NotificationsModule() {
       const json = await response.json();
       if (!response.ok) throw new Error(json.error || 'Failed to load notifications');
       setNotifications(json.data || []);
+      await refreshNotificationUnreadCount();
     } catch (error) {
       setMessage(error.message);
     } finally {
       setLoading(false);
     }
-  }, [filterCategory, filterType]);
+  }, [filterCategory, filterType, refreshNotificationUnreadCount]);
 
   const fetchEmailStatus = useCallback(async () => {
     try {
@@ -100,6 +103,7 @@ export function NotificationsModule() {
       body: JSON.stringify({ isRead: true }),
     });
     setNotifications((items) => items.map((item) => item.id === id ? { ...item, isRead: true } : item));
+    await refreshNotificationUnreadCount();
   };
 
   const handleMarkAllRead = async () => {
@@ -109,11 +113,13 @@ export function NotificationsModule() {
       body: JSON.stringify({ markAllRead: true }),
     });
     setNotifications((items) => items.map((item) => ({ ...item, isRead: true })));
+    await refreshNotificationUnreadCount();
   };
 
   const handleDismiss = async (id) => {
     await fetch(`/api/notifications/${id}`, { method: 'DELETE' });
     setNotifications((items) => items.filter((item) => item.id !== id));
+    await refreshNotificationUnreadCount();
   };
 
   const testEmailConnection = async () => {
