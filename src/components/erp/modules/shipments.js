@@ -318,16 +318,18 @@ export default function ShipmentsModule() {
         etd: dateInputValue(details.etd) || current.etd,
         eta: dateInputValue(details.eta) || current.eta,
         originCountry: details.originCountry || current.originCountry,
-        originPort: details.origin || current.originPort,
-        destinationPort: details.destination || current.destinationPort,
+        originPort: details.originPort || details.origin || current.originPort,
+        destinationPort:
+          details.destinationPort || details.destination || current.destinationPort,
         status: shipmentStatusFromCarrier(details.status),
         containers:
           details.containers?.length > 0
             ? details.containers.map((container) => ({
                 containerNumber: container.containerNumber || "",
-                size: container.containerSize || "20FT",
-                type: container.containerType || "Dry Container",
-                goodsDescription: "",
+                size: container.containerSize || container.size || "20FT",
+                type: container.containerType || container.type || "Dry Container",
+                goodsDescription:
+                  container.goodsDescription || container.containerGoods || "",
               }))
             : current.containers,
       }));
