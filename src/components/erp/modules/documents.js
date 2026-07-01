@@ -407,7 +407,6 @@ function ShipmentChecklistModal({ shipment, shipments, open, onOpenChange, onNav
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     documentIds: orderedDocumentIds,
-                    name: `${shipment.shipmentNumber} export documents`,
                 }),
             });
             const json = await res.json().catch(() => ({}));

@@ -4,6 +4,9 @@ import { useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useERPStore } from "@/lib/store";
 
+const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
+const ACTIVITY_EVENTS = ["click", "keydown", "mousemove", "pointerdown", "scroll", "touchstart"];
+
 export function AuthGate({ children }) {
     const router = useRouter();
     const params = useParams();
@@ -74,6 +77,44 @@ export function AuthGate({ children }) {
             patched.current = false;
         };
     }, [initializeAuth, router]);
+    useEffect(() => {
+        if (!authReady || !token)
+            return;
+        let lastActivityAt = Date.now();
+        let timeoutId;
+        const logoutForIdle = () => {
+            useERPStore.getState().logout();
+            router.replace("/login");
+        };
+        const scheduleIdleLogout = () => {
+            window.clearTimeout(timeoutId);
+            const remainingMs = Math.max(IDLE_TIMEOUT_MS - (Date.now() - lastActivityAt), 0);
+            timeoutId = window.setTimeout(() => {
+                if (Date.now() - lastActivityAt >= IDLE_TIMEOUT_MS)
+                    logoutForIdle();
+                else
+                    scheduleIdleLogout();
+            }, remainingMs);
+        };
+        const markActivity = () => {
+            lastActivityAt = Date.now();
+            scheduleIdleLogout();
+        };
+        const checkIdleWhenVisible = () => {
+            if (document.visibilityState === "visible" && Date.now() - lastActivityAt >= IDLE_TIMEOUT_MS)
+                logoutForIdle();
+        };
+        ACTIVITY_EVENTS.forEach((event) => window.addEventListener(event, markActivity, { passive: true }));
+        window.addEventListener("focus", checkIdleWhenVisible);
+        document.addEventListener("visibilitychange", checkIdleWhenVisible);
+        scheduleIdleLogout();
+        return () => {
+            window.clearTimeout(timeoutId);
+            ACTIVITY_EVENTS.forEach((event) => window.removeEventListener(event, markActivity));
+            window.removeEventListener("focus", checkIdleWhenVisible);
+            document.removeEventListener("visibilitychange", checkIdleWhenVisible);
+        };
+    }, [authReady, token, router]);
     useEffect(() => {
         if (!authReady || !token)
             return;

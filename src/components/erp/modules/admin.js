@@ -131,7 +131,7 @@ const formatAuditTimestamp = (value) => {
     const date = parseAuditDate(value);
     if (!date)
         return '-';
-    return formatDistanceToNow(date, { addSuffix: true });
+    return format(date, 'dd:MM:yyyy HH:mm:ss');
 };
 function AuditLogTab() {
     const [activities, setActivities] = useState([]);
@@ -163,9 +163,9 @@ function AuditLogTab() {
     }, [fetchActivities]);
     return (_jsx("div", { className: "space-y-4", children: _jsx(motion.div, { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 }, children: _jsxs(Card, { className: "shadow-sm", children: [_jsx(CardHeader, { className: "pb-3", children: _jsxs("div", { className: "flex flex-col sm:flex-row sm:items-center justify-between gap-3", children: [_jsx(CardTitle, { className: "text-base font-semibold", children: "Audit Log" }), _jsxs("div", { className: "flex items-center gap-2", children: [_jsxs(Select, { value: filterAction, onValueChange: setFilterAction, children: [_jsx(SelectTrigger, { className: "h-8 w-32 text-xs", children: _jsx(SelectValue, { placeholder: "Action" }) }), _jsxs(SelectContent, { children: [_jsx(SelectItem, { value: "all", children: "All Actions" }), _jsx(SelectItem, { value: "create", children: "Create" }), _jsx(SelectItem, { value: "update", children: "Update/Edit" }), _jsx(SelectItem, { value: "delete", children: "Delete" }), _jsx(SelectItem, { value: "login", children: "Login" }), _jsx(SelectItem, { value: "view", children: "View" }), _jsx(SelectItem, { value: "export", children: "Export" })] })] }), _jsxs(Select, { value: filterEntity, onValueChange: setFilterEntity, children: [_jsx(SelectTrigger, { className: "h-8 w-40 text-xs", children: _jsx(SelectValue, { placeholder: "Entity" }) }), _jsxs(SelectContent, { children: [_jsx(SelectItem, { value: "all", children: "All Entities" }), _jsx(SelectItem, { value: "shipment", children: "Shipment" }), _jsx(SelectItem, { value: "shipment_item", children: "Shipment Item" }), _jsx(SelectItem, { value: "shipment_document", children: "Shipment Document" }), _jsx(SelectItem, { value: "container", children: "Container" }), _jsx(SelectItem, { value: "company", children: "Company" }), _jsx(SelectItem, { value: "exporter_company", children: "Exporter Company" }), _jsx(SelectItem, { value: "product", children: "Product" }), _jsx(SelectItem, { value: "invoice", children: "Invoice" }), _jsx(SelectItem, { value: "expense", children: "Expense" }), _jsx(SelectItem, { value: "document", children: "Document" }), _jsx(SelectItem, { value: "document_checklist", children: "Document Checklist" }), _jsx(SelectItem, { value: "document_bundle", children: "Document Bundle" }), _jsx(SelectItem, { value: "setting_option", children: "Setting Option" }), _jsx(SelectItem, { value: "user", children: "User" }), _jsx(SelectItem, { value: "user_invitation", children: "User Invitation" })] })] })] })] }) }), _jsx(CardContent, { className: "p-0", children: _jsx("div", { className: "overflow-x-auto max-h-[600px] overflow-y-auto", children: _jsxs(Table, { children: [_jsx(TableHeader, { children: _jsxs(TableRow, { children: [_jsx(TableHead, { className: "text-xs", children: "User" }), _jsx(TableHead, { className: "text-xs", children: "Action" }), _jsx(TableHead, { className: "text-xs", children: "Entity" }), _jsx(TableHead, { className: "text-xs", children: "Details" }), _jsx(TableHead, { className: "text-xs", children: "Timestamp" })] }) }), _jsx(TableBody, { children: loading ? (Array.from({ length: 8 }).map((_, i) => (_jsx(TableRow, { children: Array.from({ length: 5 }).map((_, j) => (_jsx(TableCell, { children: _jsx("div", { className: "h-4 w-24 bg-muted animate-pulse rounded" }) }, j))) }, i)))) : activities.length === 0 ? (_jsx(TableRow, { children: _jsx(TableCell, { colSpan: 5, className: "text-center py-8 text-muted-foreground text-sm", children: "No activity logs found" }) })) : (activities.map((activity) => {
                                             var _a, _b;
-                                            return (_jsxs(TableRow, { className: "hover:bg-accent/30 transition-colors", children: [_jsx(TableCell, { children: _jsxs("div", { className: "flex items-center gap-2", children: [_jsx("div", { className: "flex h-6 w-6 items-center justify-center rounded-full bg-teal/10 text-teal text-[9px] font-semibold", children: ((_a = activity.user) === null || _a === void 0 ? void 0 : _a.name)
+                                            return (_jsxs(TableRow, { className: "hover:bg-accent/30 transition-colors align-top", children: [_jsx(TableCell, { children: _jsxs("div", { className: "flex items-center gap-2", children: [_jsx("div", { className: "flex h-6 w-6 items-center justify-center rounded-full bg-teal/10 text-teal text-[9px] font-semibold", children: ((_a = activity.user) === null || _a === void 0 ? void 0 : _a.name)
                                                                         ? activity.user.name.split(' ').map((n) => n[0]).join('')
-                                                                        : '?' }), _jsx("span", { className: "text-xs font-medium", children: ((_b = activity.user) === null || _b === void 0 ? void 0 : _b.name) || 'System' })] }) }), _jsx(TableCell, { children: _jsx(Badge, { variant: "outline", className: cn('text-[10px]', actionColors[activity.action] || ''), children: activity.action === 'update' ? 'Edit' : activity.action.charAt(0).toUpperCase() + activity.action.slice(1) }) }), _jsx(TableCell, { children: _jsx(Badge, { variant: "secondary", className: "text-[10px]", children: formatAuditEntity(activity.entity) }) }), _jsx(TableCell, { className: "text-xs text-muted-foreground max-w-[360px] truncate", title: formatAuditDetails(activity.details), children: formatAuditDetails(activity.details) }), _jsx(TableCell, { className: "text-xs text-muted-foreground whitespace-nowrap", title: parseAuditDate(activity.createdAt) ? format(parseAuditDate(activity.createdAt), 'MMM dd, yyyy h:mm a') : '', children: formatAuditTimestamp(activity.createdAt) })] }, activity.id));
+                                                                        : '?' }), _jsx("span", { className: "text-xs font-medium", children: ((_b = activity.user) === null || _b === void 0 ? void 0 : _b.name) || 'System' })] }) }), _jsx(TableCell, { children: _jsx(Badge, { variant: "outline", className: cn('text-[10px]', actionColors[activity.action] || ''), children: activity.action === 'update' ? 'Edit' : activity.action.charAt(0).toUpperCase() + activity.action.slice(1) }) }), _jsx(TableCell, { children: _jsx(Badge, { variant: "secondary", className: "text-[10px]", children: formatAuditEntity(activity.entity) }) }), _jsx(TableCell, { className: "min-w-[420px] max-w-[560px]", children: _jsxs("div", { className: "space-y-1 text-xs", children: [_jsx("p", { className: "font-medium text-foreground whitespace-normal break-words", children: formatAuditDetails(activity.details) }), _jsxs("div", { className: "flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-muted-foreground", children: [activity.entityId && _jsxs("span", { children: ["Entity ID: ", activity.entityId] }), activity.ipAddress && _jsxs("span", { children: ["IP: ", activity.ipAddress] })] })] }) }), _jsx(TableCell, { className: "text-xs text-muted-foreground whitespace-nowrap", title: formatAuditTimestamp(activity.createdAt), children: formatAuditTimestamp(activity.createdAt) })] }, activity.id));
                                         })) })] }) }) })] }) }) }));
 }
 function ConfigurationTab() {
@@ -248,8 +248,67 @@ function ConfigurableList({ category, title, icon: Icon }) {
     };
     return (_jsx(motion.div, { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 }, children: _jsxs(Card, { className: "shadow-sm h-full", children: [_jsxs(CardHeader, { className: "pb-3", children: [_jsxs(CardTitle, { className: "text-base font-semibold flex items-center gap-2", children: [_jsx(Icon, { className: "h-4 w-4 text-teal" }), title] }), _jsx(CardDescription, { className: "text-xs", children: "Manage dropdown options" })] }), _jsxs(CardContent, { children: [_jsxs("div", { className: "flex gap-2 mb-4", children: [_jsx(Input, { value: newValue, onChange: (e) => setNewValue(e.target.value), placeholder: `Add new...`, className: "h-8 text-xs", onKeyDown: (e) => e.key === 'Enter' && handleAdd() }), _jsxs(Button, { onClick: handleAdd, size: "sm", className: "h-8 text-xs shrink-0", children: [_jsx(Plus, { className: "h-3.5 w-3.5 mr-1" }), " Add"] })] }), _jsx("div", { className: "space-y-2 max-h-[250px] overflow-y-auto custom-scrollbar pr-2", children: options.length === 0 ? (_jsx("p", { className: "text-xs text-muted-foreground text-center py-4", children: "No options found." })) : (options.map((opt) => (_jsxs("div", { className: "flex items-center justify-between p-2 border border-border/50 rounded-md text-xs bg-muted/20", children: [_jsx("span", { className: "font-medium", children: opt.label }), _jsx(Button, { variant: "ghost", size: "sm", className: "h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10", onClick: () => handleDelete(opt.id), children: _jsx(Trash2, { className: "h-3.5 w-3.5" }) })] }, opt.id)))) })] })] }) }));
 }
+function ContainerSizeTypeSettings() {
+    const [sizes, setSizes] = useState([]);
+    const [types, setTypes] = useState([]);
+    const [form, setForm] = useState({ size: '', type: '' });
+    const fetchOptions = useCallback(async () => {
+        try {
+            const [sizeRes, typeRes] = await Promise.all([
+                fetch('/api/settings/options?category=container_size').then((r) => r.json()),
+                fetch('/api/settings/options?category=container_type').then((r) => r.json()),
+            ]);
+            setSizes(sizeRes.data || []);
+            setTypes(typeRes.data || []);
+        }
+        catch (error) {
+            console.error(error);
+        }
+    }, []);
+    useEffect(() => {
+        fetchOptions();
+    }, [fetchOptions]);
+    const addOption = async (category, value, existing) => {
+        const trimmed = value.trim();
+        if (!trimmed || existing.some((item) => item.label.toLowerCase() === trimmed.toLowerCase()))
+            return;
+        await fetch('/api/settings/options', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ category, value: trimmed, label: trimmed }),
+        });
+    };
+    const handleAdd = async () => {
+        if (!form.size.trim() && !form.type.trim())
+            return;
+        try {
+            await Promise.all([
+                addOption('container_size', form.size, sizes),
+                addOption('container_type', form.type, types),
+            ]);
+            setForm({ size: '', type: '' });
+            fetchOptions();
+        }
+        catch (error) {
+            console.error(error);
+        }
+    };
+    const handleDelete = async (id) => {
+        try {
+            await fetch(`/api/settings/options/${id}`, { method: 'DELETE' });
+            fetchOptions();
+        }
+        catch (error) {
+            console.error(error);
+        }
+    };
+    const renderOptions = (items, emptyText) => items.length === 0
+        ? _jsx("p", { className: "text-xs text-muted-foreground py-4", children: emptyText })
+        : items.map((opt) => (_jsxs("div", { className: "flex items-center justify-between p-2 border border-border/50 rounded-md text-xs bg-muted/20", children: [_jsx("span", { className: "font-medium", children: opt.label }), _jsx(Button, { variant: "ghost", size: "sm", className: "h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10", onClick: () => handleDelete(opt.id), children: _jsx(Trash2, { className: "h-3.5 w-3.5" }) })] }, opt.id)));
+    return (_jsx(motion.div, { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 }, children: _jsxs(Card, { className: "shadow-sm h-full", children: [_jsxs(CardHeader, { className: "pb-3", children: [_jsxs(CardTitle, { className: "text-base font-semibold flex items-center gap-2", children: [_jsx(Box, { className: "h-4 w-4 text-teal" }), "Container Size / Type"] }), _jsx(CardDescription, { className: "text-xs", children: "Create and manage container dropdown values together" })] }), _jsxs(CardContent, { children: [_jsxs("div", { className: "grid grid-cols-1 sm:grid-cols-[1fr_1.4fr_auto] gap-2 mb-4", children: [_jsx(Input, { value: form.size, onChange: (e) => setForm(Object.assign(Object.assign({}, form), { size: e.target.value })), placeholder: "Size, e.g. 20FT", className: "h-8 text-xs", onKeyDown: (e) => e.key === 'Enter' && handleAdd() }), _jsx(Input, { value: form.type, onChange: (e) => setForm(Object.assign(Object.assign({}, form), { type: e.target.value })), placeholder: "Type, e.g. Dry Container", className: "h-8 text-xs", onKeyDown: (e) => e.key === 'Enter' && handleAdd() }), _jsxs(Button, { onClick: handleAdd, size: "sm", className: "h-8 text-xs shrink-0", children: [_jsx(Plus, { className: "h-3.5 w-3.5 mr-1" }), " Add"] })] }), _jsxs("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-3", children: [_jsxs("div", { children: [_jsx("p", { className: "mb-2 text-[11px] font-semibold text-muted-foreground", children: "Sizes" }), _jsx("div", { className: "space-y-2 max-h-[250px] overflow-y-auto custom-scrollbar pr-2", children: renderOptions(sizes, "No sizes found.") })] }), _jsxs("div", { children: [_jsx("p", { className: "mb-2 text-[11px] font-semibold text-muted-foreground", children: "Types" }), _jsx("div", { className: "space-y-2 max-h-[250px] overflow-y-auto custom-scrollbar pr-2", children: renderOptions(types, "No types found.") })] })] })] })] }) }));
+}
 function ShipmentSettingsTab() {
-    return (_jsxs("div", { className: "space-y-6", children: [_jsxs("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-6", children: [_jsx(ConfigurableList, { category: "shipping_line", title: "Shipping Lines", icon: Ship }), _jsx(ConfigurableList, { category: "container_size", title: "Container Sizes", icon: Box }), _jsx(ConfigurableList, { category: "container_type", title: "Container Types", icon: Box })] }), _jsx("div", { className: "grid grid-cols-1 md:grid-cols-1 gap-6", children: _jsx(ShipmentDocumentChecklistManagement, {}) }), _jsx("div", { className: "grid grid-cols-1 md:grid-cols-1 gap-6", children: _jsx(ImporterCompanyManagement, {}) }), _jsx(motion.div, { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 }, transition: { delay: 0.2 }, children: _jsxs(Card, { className: "shadow-sm", children: [_jsxs(CardHeader, { className: "pb-3", children: [_jsxs(CardTitle, { className: "text-base font-semibold flex items-center gap-2", children: [_jsx(ToggleLeft, { className: "h-4 w-4 text-orange-500" }), "Workflow Automations"] }), _jsx(CardDescription, { className: "text-xs", children: "Manage rules for shipment processing" })] }), _jsx(CardContent, { children: _jsx("div", { className: "space-y-4", children: [
+    return (_jsxs("div", { className: "space-y-6", children: [_jsxs("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6", children: [_jsx(ConfigurableList, { category: "shipping_line", title: "Shipping Lines", icon: Ship }), _jsx(ContainerSizeTypeSettings, {})] }), _jsx("div", { className: "grid grid-cols-1 md:grid-cols-1 gap-6", children: _jsx(ShipmentDocumentChecklistManagement, {}) }), _jsx("div", { className: "grid grid-cols-1 md:grid-cols-1 gap-6", children: _jsx(ImporterCompanyManagement, {}) }), _jsx(motion.div, { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 }, transition: { delay: 0.2 }, children: _jsxs(Card, { className: "shadow-sm", children: [_jsxs(CardHeader, { className: "pb-3", children: [_jsxs(CardTitle, { className: "text-base font-semibold flex items-center gap-2", children: [_jsx(ToggleLeft, { className: "h-4 w-4 text-orange-500" }), "Workflow Automations"] }), _jsx(CardDescription, { className: "text-xs", children: "Manage rules for shipment processing" })] }), _jsx(CardContent, { children: _jsx("div", { className: "space-y-4", children: [
                                     { key: 'autoAssignTracking', label: 'Auto-Assign Tracking Numbers', desc: 'Automatically generate tracking IDs for new shipments' },
                                     { key: 'requireDocumentsForClearance', label: 'Require Documents for Customs', desc: 'Block customs clearance status until all documents are uploaded' },
                                     { key: 'notifyOnStatusChange', label: 'Status Change Notifications', desc: 'Notify assigned users when a shipment changes status' },

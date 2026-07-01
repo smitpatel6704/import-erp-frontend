@@ -27,14 +27,16 @@ export const useERPStore = create((set, get) => ({
     authReady: false,
     setAuth: (user, token) => {
         if (typeof window !== "undefined") {
-            localStorage.setItem("nexport_token", token);
-            localStorage.setItem("nexport_user", JSON.stringify(user));
+            sessionStorage.setItem("nexport_token", token);
+            sessionStorage.setItem("nexport_user", JSON.stringify(user));
+            localStorage.removeItem("nexport_token");
+            localStorage.removeItem("nexport_user");
         }
         set({ user, token, authReady: true });
     },
     setCurrentUser: (user) => {
         if (typeof window !== "undefined")
-            localStorage.setItem("nexport_user", JSON.stringify(user));
+            sessionStorage.setItem("nexport_user", JSON.stringify(user));
         set({ user });
     },
     refreshCurrentUser: async () => {
@@ -53,8 +55,10 @@ export const useERPStore = create((set, get) => ({
     initializeAuth: () => {
         if (typeof window === "undefined")
             return;
-        const token = localStorage.getItem("nexport_token");
-        const storedUser = localStorage.getItem("nexport_user");
+        const token = sessionStorage.getItem("nexport_token");
+        const storedUser = sessionStorage.getItem("nexport_user");
+        localStorage.removeItem("nexport_token");
+        localStorage.removeItem("nexport_user");
         let user = null;
         try {
             user = storedUser ? JSON.parse(storedUser) : null;
@@ -66,6 +70,8 @@ export const useERPStore = create((set, get) => ({
     },
     logout: () => {
         if (typeof window !== "undefined") {
+            sessionStorage.removeItem("nexport_token");
+            sessionStorage.removeItem("nexport_user");
             localStorage.removeItem("nexport_token");
             localStorage.removeItem("nexport_user");
         }

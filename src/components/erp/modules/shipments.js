@@ -183,6 +183,11 @@ const carrierSupported = (shippingLine) => {
     value.includes("shipmentlink")
   );
 };
+const containerOptionValue = (size, type) => `${size || ""}|||${type || ""}`;
+const parseContainerOptionValue = (value) => {
+  const [size = "", type = ""] = String(value || "").split("|||");
+  return { size, type };
+};
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function ShipmentsModule() {
   var _a, _b, _c, _d, _e;
@@ -215,6 +220,7 @@ export default function ShipmentsModule() {
   const [editingId, setEditingId] = useState(null);
   const [newForm, setNewForm] = useState({
     blNumber: "",
+    invoiceNumber: "",
     shippingLine: "",
     freightForwarder: "",
     vesselName: "",
@@ -328,6 +334,8 @@ export default function ShipmentsModule() {
                 containerNumber: container.containerNumber || "",
                 size: container.containerSize || container.size || "20FT",
                 type: container.containerType || container.type || "Dry Container",
+                currentWeight:
+                  container.currentWeight || container.weight || container.grossWeight || "",
                 goodsDescription:
                   container.goodsDescription || container.containerGoods || "",
               }))
@@ -479,9 +487,16 @@ export default function ShipmentsModule() {
   };
   const openEdit = (shipment) => {
     var _a, _b;
+    const defaultDocumentIds = documentChecklist
+      .filter((item) => item.isRequired)
+      .map((item) => item.id);
     setEditingId(shipment.id);
     setNewForm({
       blNumber: shipment.blNumber || "",
+      invoiceNumber:
+        shipment.invoiceNumber ||
+        (Array.isArray(shipment.invoices) ? shipment.invoices[0]?.invoiceNumber : "") ||
+        "",
       shippingLine: shipment.shippingLine || "",
       freightForwarder: shipment.freightForwarder || "",
       vesselName: shipment.vesselName || "",
@@ -511,7 +526,7 @@ export default function ShipmentsModule() {
       internalNotes: shipment.internalNotes || "",
       goodsDescription: shipment.goodsDescription || "",
       notes: shipment.notes || "",
-      requiredDocumentIds: [],
+      requiredDocumentIds: defaultDocumentIds,
       notificationUserIds: Array.isArray(shipment.notificationUserIds)
         ? shipment.notificationUserIds
         : [],
@@ -523,6 +538,27 @@ export default function ShipmentsModule() {
     lastAutomaticLookup.current = "";
     setNewShipmentOpen(true);
     setDetailOpen(false);
+    fetch(`/api/shipment-documents/shipment/${shipment.id}/checklist`)
+      .then((res) => res.json())
+      .then((json) => {
+        if (!Array.isArray(json.data))
+          return;
+        const selectedIds = json.data
+          .filter((item) => item.document)
+          .map((item) => item.checklistId);
+        setNewForm((current) => ({
+          ...current,
+          requiredDocumentIds: selectedIds,
+        }));
+      })
+      .catch((error) => {
+        console.error(error);
+        toast({
+          title: "Document checklist could not be loaded",
+          description: "You can still save shipment details.",
+          variant: "destructive",
+        });
+      });
   };
   const saveShipment = async () => {
     try {
@@ -536,10 +572,11 @@ export default function ShipmentsModule() {
         body: JSON.stringify(
           Object.assign(Object.assign({}, newForm), {
             shipmentValue: parseFloat(newForm.shipmentValue) || 0,
+            invoiceNumber: newForm.invoiceNumber?.trim() || null,
             etd: newForm.etd || null,
             eta: newForm.eta || null,
             requiredDocumentIds: editingId
-              ? undefined
+              ? newForm.requiredDocumentIds
               : newForm.requiredDocumentIds.length
                 ? newForm.requiredDocumentIds
                 : documentChecklist
@@ -549,6 +586,7 @@ export default function ShipmentsModule() {
               ...container,
               containerSize: container.containerSize || container.size,
               containerType: container.containerType || container.type,
+              currentWeight: parseFloat(container.currentWeight) || 0,
             })),
           }),
         ),
@@ -563,6 +601,7 @@ export default function ShipmentsModule() {
       lastAutomaticLookup.current = "";
       setNewForm({
         blNumber: "",
+        invoiceNumber: "",
         shippingLine: "",
         freightForwarder: "",
         vesselName: "",
@@ -783,6 +822,7 @@ export default function ShipmentsModule() {
                         lastAutomaticLookup.current = "";
                         setNewForm({
                           blNumber: "",
+                          invoiceNumber: "",
                           shippingLine: "",
                           freightForwarder: "",
                           vesselName: "",
@@ -1570,6 +1610,12 @@ export default function ShipmentsModule() {
                                     value: selectedShipment.blNumber,
                                   },
                                   {
+                                    label: "Invoice Number",
+                                    value:
+                                      selectedShipment.invoiceNumber ||
+                                      selectedShipment.invoices?.[0]?.invoiceNumber,
+                                  },
+                                  {
                                     label: "Shipping Line",
                                     value: selectedShipment.shippingLine,
                                   },
@@ -1810,6 +1856,9 @@ export default function ShipmentsModule() {
                                                       c.containerSize,
                                                       " \u00B7 ",
                                                       c.containerType,
+                                                      Number(c.currentWeight) > 0
+                                                        ? ` \u00B7 ${Number(c.currentWeight).toLocaleString()} kg`
+                                                        : "",
                                                     ],
                                                   }),
                                                 ],
@@ -2216,8 +2265,7 @@ export default function ShipmentsModule() {
               children: _jsxs("div", {
                 className: "space-y-4 pt-4",
                 children: [
-                  !editingId &&
-                    _jsxs("div", {
+                  _jsxs("div", {
                       className: "rounded-lg border bg-muted/20 p-3 space-y-3",
                       children: [
                         _jsxs("div", {
@@ -2401,6 +2449,25 @@ export default function ShipmentsModule() {
                         children: [
                           _jsx(Label, {
                             className: "text-xs",
+                            children: "Invoice Number",
+                          }),
+                          _jsx(Input, {
+                            value: newForm.invoiceNumber,
+                            onChange: (e) =>
+                              setNewForm(
+                                Object.assign(Object.assign({}, newForm), {
+                                  invoiceNumber: e.target.value,
+                                }),
+                              ),
+                            className: "h-8 text-sm mt-1",
+                            placeholder: "INV-2026-001",
+                          }),
+                        ],
+                      }),
+                      _jsxs("div", {
+                        children: [
+                          _jsx(Label, {
+                            className: "text-xs",
                             children: "Shipping Line",
                           }),
                           _jsxs(Select, {
@@ -2428,6 +2495,26 @@ export default function ShipmentsModule() {
                                 ),
                               }),
                             ],
+                          }),
+                        ],
+                      }),
+                      _jsxs("div", {
+                        children: [
+                          _jsx(Label, {
+                            className: "text-xs",
+                            children: "Shipment Value",
+                          }),
+                          _jsx(Input, {
+                            type: "number",
+                            value: newForm.shipmentValue,
+                            onChange: (e) =>
+                              setNewForm(
+                                Object.assign(Object.assign({}, newForm), {
+                                  shipmentValue: e.target.value,
+                                }),
+                              ),
+                            className: "h-8 text-sm mt-1",
+                            placeholder: "0",
                           }),
                         ],
                       }),
@@ -2624,49 +2711,6 @@ export default function ShipmentsModule() {
                         children: [
                           _jsx(Label, {
                             className: "text-xs",
-                            children: "Priority",
-                          }),
-                          _jsxs(Select, {
-                            value: newForm.priority,
-                            onValueChange: (v) =>
-                              setNewForm(
-                                Object.assign(Object.assign({}, newForm), {
-                                  priority: v,
-                                }),
-                              ),
-                            children: [
-                              _jsx(SelectTrigger, {
-                                className: "h-8 text-sm mt-1",
-                                children: _jsx(SelectValue, {}),
-                              }),
-                              _jsxs(SelectContent, {
-                                children: [
-                                  _jsx(SelectItem, {
-                                    value: "urgent",
-                                    children: "Urgent",
-                                  }),
-                                  _jsx(SelectItem, {
-                                    value: "high",
-                                    children: "High",
-                                  }),
-                                  _jsx(SelectItem, {
-                                    value: "normal",
-                                    children: "Normal",
-                                  }),
-                                  _jsx(SelectItem, {
-                                    value: "low",
-                                    children: "Low",
-                                  }),
-                                ],
-                              }),
-                            ],
-                          }),
-                        ],
-                      }),
-                      _jsxs("div", {
-                        children: [
-                          _jsx(Label, {
-                            className: "text-xs",
                             children: "Status",
                           }),
                           _jsxs(Select, {
@@ -2694,26 +2738,6 @@ export default function ShipmentsModule() {
                                 ),
                               }),
                             ],
-                          }),
-                        ],
-                      }),
-                      _jsxs("div", {
-                        children: [
-                          _jsx(Label, {
-                            className: "text-xs",
-                            children: "Shipment Value",
-                          }),
-                          _jsx(Input, {
-                            type: "number",
-                            value: newForm.shipmentValue,
-                            onChange: (e) =>
-                              setNewForm(
-                                Object.assign(Object.assign({}, newForm), {
-                                  shipmentValue: e.target.value,
-                                }),
-                              ),
-                            className: "h-8 text-sm mt-1",
-                            placeholder: "0",
                           }),
                         ],
                       }),
@@ -2859,8 +2883,7 @@ export default function ShipmentsModule() {
                           }),
                     ],
                   }),
-                  !editingId &&
-                    _jsxs("div", {
+                  _jsxs("div", {
                       className: "border rounded-lg p-3 space-y-2",
                       children: [
                         _jsx(Label, {
@@ -2942,6 +2965,7 @@ export default function ShipmentsModule() {
                                       containerNumber: "",
                                       size: "20FT",
                                       type: "Dry Container",
+                                      currentWeight: "",
                                       goodsDescription: "",
                                     },
                                   ],
@@ -2968,7 +2992,7 @@ export default function ShipmentsModule() {
                                 "div",
                                 {
                                   className:
-                                    "grid grid-cols-1 sm:grid-cols-[1fr_90px_140px_auto] gap-2 items-end rounded-lg border p-3",
+                                    "grid grid-cols-1 sm:grid-cols-[1fr_190px_100px_auto] gap-2 items-end rounded-lg border p-3",
                                   children: [
                                     _jsxs("div", {
                                       className: "flex-1",
@@ -2998,19 +3022,27 @@ export default function ShipmentsModule() {
                                       ],
                                     }),
                                     _jsxs("div", {
-                                      className: "w-24",
+                                      className: "w-full",
                                       children: [
                                         _jsx(Label, {
                                           className: "text-xs",
-                                          children: "Size",
+                                          children: "Size / Type",
                                         }),
                                         _jsxs(Select, {
-                                          value: container.size,
+                                          value: containerOptionValue(
+                                            container.size,
+                                            container.type,
+                                          ),
                                           onValueChange: (v) => {
+                                            const option =
+                                              parseContainerOptionValue(v);
                                             const newContainers = [
                                               ...newForm.containers,
                                             ];
-                                            newContainers[idx].size = v;
+                                            newContainers[idx].size =
+                                              option.size;
+                                            newContainers[idx].type =
+                                              option.type;
                                             setNewForm(
                                               Object.assign(
                                                 Object.assign({}, newForm),
@@ -3024,15 +3056,24 @@ export default function ShipmentsModule() {
                                               children: _jsx(SelectValue, {}),
                                             }),
                                             _jsx(SelectContent, {
-                                              children: containerSizes.map(
+                                              children: containerSizes.flatMap(
                                                 (size) =>
-                                                  _jsx(
-                                                    SelectItem,
-                                                    {
-                                                      value: size,
-                                                      children: size,
-                                                    },
-                                                    size,
+                                                  containerTypes.map((type) =>
+                                                    _jsx(
+                                                      SelectItem,
+                                                      {
+                                                        value:
+                                                          containerOptionValue(
+                                                            size,
+                                                            type,
+                                                          ),
+                                                        children: `${size} / ${type}`,
+                                                      },
+                                                      containerOptionValue(
+                                                        size,
+                                                        type,
+                                                      ),
+                                                    ),
                                                   ),
                                               ),
                                             }),
@@ -3041,19 +3082,23 @@ export default function ShipmentsModule() {
                                       ],
                                     }),
                                     _jsxs("div", {
-                                      className: "w-36",
+                                      className: "w-full",
                                       children: [
                                         _jsx(Label, {
                                           className: "text-xs",
-                                          children: "Type",
+                                          children: "Weight",
                                         }),
-                                        _jsxs(Select, {
-                                          value: container.type,
-                                          onValueChange: (v) => {
+                                        _jsx(Input, {
+                                          type: "number",
+                                          min: "0",
+                                          step: "0.01",
+                                          value: container.currentWeight || "",
+                                          onChange: (e) => {
                                             const newContainers = [
                                               ...newForm.containers,
                                             ];
-                                            newContainers[idx].type = v;
+                                            newContainers[idx].currentWeight =
+                                              e.target.value;
                                             setNewForm(
                                               Object.assign(
                                                 Object.assign({}, newForm),
@@ -3061,25 +3106,8 @@ export default function ShipmentsModule() {
                                               ),
                                             );
                                           },
-                                          children: [
-                                            _jsx(SelectTrigger, {
-                                              className: "h-7 text-xs mt-1",
-                                              children: _jsx(SelectValue, {}),
-                                            }),
-                                            _jsx(SelectContent, {
-                                              children: containerTypes.map(
-                                                (type) =>
-                                                  _jsx(
-                                                    SelectItem,
-                                                    {
-                                                      value: type,
-                                                      children: type,
-                                                    },
-                                                    type,
-                                                  ),
-                                              ),
-                                            }),
-                                          ],
+                                          className: "h-7 text-xs mt-1",
+                                          placeholder: "kg",
                                         }),
                                       ],
                                     }),
