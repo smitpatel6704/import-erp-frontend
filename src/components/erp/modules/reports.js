@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, } from '@/components/ui/table';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import { ShippingLoader } from '@/components/erp/shipping-loader';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend, } from 'recharts';
 const CHART_COLORS = ['#0d9488', '#f59e0b', '#10b981', '#f97316', '#6b7280', '#14b8a6', '#ef4444', '#8b5cf6'];
 const emptyReportData = {
@@ -142,7 +143,7 @@ export function ReportsModule() {
     return (_jsx("div", { className: "space-y-6", children: _jsx(motion.div, { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.3 }, children: _jsxs(Tabs, { value: activeTab, onValueChange: setActiveTab, children: [_jsxs(TabsList, { className: "h-9", children: [_jsxs(TabsTrigger, { value: "operational", className: "text-xs px-4", children: [_jsx(Ship, { className: "h-3.5 w-3.5 mr-1.5" }), " Operational"] }), _jsxs(TabsTrigger, { value: "analytics", className: "text-xs px-4", children: [_jsx(BarChart3, { className: "h-3.5 w-3.5 mr-1.5" }), " Analytics"] })] }), _jsx(TabsContent, { value: "operational", className: "mt-4", children: _jsx(OperationalReports, { data: data, loading: loading }) }), _jsx(TabsContent, { value: "analytics", className: "mt-4", children: _jsx(AnalyticsReports, { data: data, loading: loading }) })] }) }) }));
 }
 function ReportLoading() {
-    return (_jsx("div", { className: "h-[250px] flex items-center justify-center", children: _jsx("div", { className: "animate-spin h-6 w-6 border-2 border-teal border-t-transparent rounded-full" }) }));
+    return _jsx(ShippingLoader, { className: "h-[250px]", compact: true, label: "Loading report cargo" });
 }
 function EmptyReport({ label = 'No live data available' }) {
     return _jsx("div", { className: "h-[250px] flex items-center justify-center text-sm text-muted-foreground", children: label });

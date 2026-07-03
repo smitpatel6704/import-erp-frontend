@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ImporterCompanyManagement } from './companies';
 import UserManagement from './user-management';
+import { ThemeCustomizer } from '@/components/erp/theme-customizer';
 const roleColors = {
     admin: 'bg-red-500/10 text-red-500 border-red-500/20',
     manager: 'bg-amber/10 text-amber border-amber/20',
@@ -54,10 +55,81 @@ const mockUsers = [
     { id: '5', email: 'tom@importerp.com', name: 'Tom Viewer', role: 'viewer', department: 'Management', isActive: false, lastLoginAt: new Date(Date.now() - 604800000).toISOString(), createdAt: '2024-03-15T00:00:00Z' },
 ];
 export function AdminModule() {
-    const [mainTab, setMainTab] = useState('admin');
-    const [adminTab, setAdminTab] = useState('users');
-    const [addUserOpen, setAddUserOpen] = useState(false);
-    return (_jsxs("div", { className: "space-y-6", children: [_jsx(motion.div, { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.3 }, children: _jsxs(Tabs, { value: mainTab, onValueChange: setMainTab, children: [_jsxs(TabsList, { className: "h-10 mb-4 bg-transparent border-b border-border/50 rounded-none w-full justify-start space-x-2", children: [_jsxs(TabsTrigger, { value: "admin", className: "text-sm px-4 data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-teal rounded-none data-[state=active]:shadow-none", children: [_jsx(Shield, { className: "h-4 w-4 mr-2" }), " Admin Settings"] }), _jsxs(TabsTrigger, { value: "shipment", className: "text-sm px-4 data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-teal rounded-none data-[state=active]:shadow-none", children: [_jsx(Ship, { className: "h-4 w-4 mr-2" }), " Shipment Settings"] })] }), _jsx(TabsContent, { value: "admin", className: "mt-0", children: _jsxs(Tabs, { value: adminTab, onValueChange: setAdminTab, children: [_jsxs(TabsList, { className: "h-9", children: [_jsxs(TabsTrigger, { value: "users", className: "text-xs px-4", children: [_jsx(Users, { className: "h-3.5 w-3.5 mr-1.5" }), " Users"] }), _jsxs(TabsTrigger, { value: "system", className: "text-xs px-4", children: [_jsx(Server, { className: "h-3.5 w-3.5 mr-1.5" }), " System"] }), _jsxs(TabsTrigger, { value: "audit", className: "text-xs px-4", children: [_jsx(Activity, { className: "h-3.5 w-3.5 mr-1.5" }), " Audit Log"] }), _jsxs(TabsTrigger, { value: "config", className: "text-xs px-4", children: [_jsx(Settings, { className: "h-3.5 w-3.5 mr-1.5" }), " Configuration"] })] }), _jsx(TabsContent, { value: "users", className: "mt-4", children: _jsx(UserManagement, {}) }), _jsx(TabsContent, { value: "system", className: "mt-4", children: _jsx(SystemTab, {}) }), _jsx(TabsContent, { value: "audit", className: "mt-4", children: _jsx(AuditLogTab, {}) }), _jsx(TabsContent, { value: "config", className: "mt-4", children: _jsx(ConfigurationTab, {}) })] }) }), _jsx(TabsContent, { value: "shipment", className: "mt-0", children: _jsx(ShipmentSettingsTab, {}) })] }) })] }));
+    const [activeTab, setActiveTab] = useState('users');
+
+    const navigation = [
+        {
+            title: 'Account & Security',
+            items: [
+                { id: 'users', label: 'Users & Roles', icon: Users },
+                { id: 'audit', label: 'Audit Log', icon: Activity },
+            ],
+        },
+        {
+            title: 'System & Preferences',
+            items: [
+                { id: 'config', label: 'General Configuration', icon: Settings },
+                { id: 'system', label: 'System Health', icon: Server },
+            ],
+        },
+        {
+            title: 'Shipment & Operations',
+            items: [
+                { id: 'shipping_lines', label: 'Shipping Lines', icon: Ship },
+                { id: 'containers', label: 'Container Size/Type', icon: Box },
+                { id: 'documents', label: 'Document Checklist', icon: FileText },
+                { id: 'exporters', label: 'Exporter Companies', icon: Building2 },
+                { id: 'automations', label: 'Workflow Automations', icon: ToggleLeft },
+            ],
+        },
+    ];
+
+    const renderContent = () => {
+        switch (activeTab) {
+            case 'users': return _jsx(UserManagement, {});
+            case 'system': return _jsx(SystemTab, {});
+            case 'audit': return _jsx(AuditLogTab, {});
+            case 'config': return _jsx(ConfigurationTab, {});
+            case 'shipping_lines': return _jsx(ConfigurableList, { category: "shipping_line", title: "Shipping Lines", icon: Ship });
+            case 'containers': return _jsx(ContainerSizeTypeSettings, {});
+            case 'documents': return _jsx(ShipmentDocumentChecklistManagement, {});
+            case 'exporters': return _jsx(ExporterCompanyManagement, {});
+            case 'automations': return _jsx(WorkflowAutomationsTab, {});
+            default: return null;
+        }
+    };
+
+    return (_jsxs("div", { className: "flex flex-col lg:flex-row gap-8", children: [
+        _jsx(motion.div, { 
+            initial: { opacity: 0, x: -20 }, 
+            animate: { opacity: 1, x: 0 }, 
+            transition: { duration: 0.3 }, 
+            className: "w-full lg:w-64 shrink-0 space-y-8 bg-card/84 backdrop-blur-xl dark:bg-card/70 border border-border/60 rounded-xl p-5 shadow-sm", 
+            children: navigation.map((section, idx) => (_jsxs("div", { children: [
+                _jsx("h4", { className: "mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground px-2", children: section.title }), 
+                _jsx("div", { className: "space-y-1", children: section.items.map((item) => {
+                    const isActive = activeTab === item.id;
+                    return (_jsxs("button", { 
+                        key: item.id, 
+                        onClick: () => setActiveTab(item.id), 
+                        className: cn("flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all", isActive ? "bg-teal/10 text-teal shadow-sm" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"), 
+                        children: [
+                            _jsx(item.icon, { className: cn("h-4 w-4 shrink-0", isActive ? "text-teal" : "text-muted-foreground") }), 
+                            item.label
+                        ] 
+                    }));
+                }) })
+            ] }, idx))) 
+        }), 
+        _jsx(motion.div, { 
+            key: activeTab, 
+            initial: { opacity: 0, y: 10 }, 
+            animate: { opacity: 1, y: 0 }, 
+            transition: { duration: 0.3 }, 
+            className: "flex-1 min-w-0", 
+            children: renderContent() 
+        })
+    ] }));
 }
 function UsersTab({ onAddUser }) {
     const [search, setSearch] = useState('');
@@ -183,7 +255,7 @@ function ConfigurationTab() {
         enableDarkMode: true,
         enableApiAccess: true,
     });
-    return (_jsxs("div", { className: "space-y-6", children: [_jsx(motion.div, { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 }, transition: { delay: 0.1 }, children: _jsxs(Card, { className: "shadow-sm", children: [_jsxs(CardHeader, { className: "pb-3", children: [_jsxs(CardTitle, { className: "text-base font-semibold flex items-center gap-2", children: [_jsx(Building2, { className: "h-4 w-4 text-teal" }), "Company Settings"] }), _jsx(CardDescription, { className: "text-xs", children: "General company and regional settings" })] }), _jsx(CardContent, { className: "space-y-4", children: _jsxs("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-4", children: [_jsxs("div", { children: [_jsx(Label, { className: "text-xs", children: "Company Name" }), _jsx(Input, { value: config.companyName, onChange: (e) => setConfig(Object.assign(Object.assign({}, config), { companyName: e.target.value })), className: "h-8 text-xs mt-1" })] }), _jsxs("div", { children: [_jsx(Label, { className: "text-xs", children: "Default Currency" }), _jsxs(Select, { value: config.defaultCurrency, onValueChange: (v) => setConfig(Object.assign(Object.assign({}, config), { defaultCurrency: v })), children: [_jsx(SelectTrigger, { className: "h-8 text-xs mt-1", children: _jsx(SelectValue, {}) }), _jsxs(SelectContent, { children: [_jsx(SelectItem, { value: "USD", children: "USD - US Dollar" }), _jsx(SelectItem, { value: "EUR", children: "EUR - Euro" }), _jsx(SelectItem, { value: "GBP", children: "GBP - British Pound" }), _jsx(SelectItem, { value: "INR", children: "INR - Indian Rupee" }), _jsx(SelectItem, { value: "CNY", children: "CNY - Chinese Yuan" })] })] })] }), _jsxs("div", { children: [_jsx(Label, { className: "text-xs", children: "Timezone" }), _jsxs(Select, { value: config.timezone, onValueChange: (v) => setConfig(Object.assign(Object.assign({}, config), { timezone: v })), children: [_jsx(SelectTrigger, { className: "h-8 text-xs mt-1", children: _jsx(SelectValue, {}) }), _jsxs(SelectContent, { children: [_jsx(SelectItem, { value: "America/New_York", children: "Eastern Time (ET)" }), _jsx(SelectItem, { value: "America/Chicago", children: "Central Time (CT)" }), _jsx(SelectItem, { value: "America/Los_Angeles", children: "Pacific Time (PT)" }), _jsx(SelectItem, { value: "Europe/London", children: "Greenwich Mean Time (GMT)" }), _jsx(SelectItem, { value: "Asia/Shanghai", children: "China Standard Time (CST)" }), _jsx(SelectItem, { value: "Asia/Kolkata", children: "India Standard Time (IST)" })] })] })] }), _jsxs("div", { children: [_jsx(Label, { className: "text-xs", children: "Language" }), _jsx(Input, { value: "English (US)", disabled: true, className: "h-8 text-xs mt-1" })] })] }) })] }) }), _jsx(motion.div, { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 }, transition: { delay: 0.2 }, children: _jsxs(Card, { className: "shadow-sm", children: [_jsxs(CardHeader, { className: "pb-3", children: [_jsxs(CardTitle, { className: "text-base font-semibold flex items-center gap-2", children: [_jsx(Mail, { className: "h-4 w-4 text-amber" }), "Email Settings"] }), _jsx(CardDescription, { className: "text-xs", children: "Configure email notifications and SMTP" })] }), _jsx(CardContent, { className: "space-y-4", children: _jsxs("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-4", children: [_jsxs("div", { children: [_jsx(Label, { className: "text-xs", children: "From Email" }), _jsx(Input, { value: config.emailFrom, onChange: (e) => setConfig(Object.assign(Object.assign({}, config), { emailFrom: e.target.value })), className: "h-8 text-xs mt-1" })] }), _jsxs("div", { children: [_jsx(Label, { className: "text-xs", children: "SMTP Server" }), _jsx(Input, { value: config.emailSmtp, onChange: (e) => setConfig(Object.assign(Object.assign({}, config), { emailSmtp: e.target.value })), className: "h-8 text-xs mt-1" })] }), _jsxs("div", { children: [_jsx(Label, { className: "text-xs", children: "SMTP Port" }), _jsx(Input, { value: config.emailPort, onChange: (e) => setConfig(Object.assign(Object.assign({}, config), { emailPort: e.target.value })), className: "h-8 text-xs mt-1" })] })] }) })] }) }), _jsx(motion.div, { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 }, transition: { delay: 0.3 }, children: _jsxs(Card, { className: "shadow-sm", children: [_jsxs(CardHeader, { className: "pb-3", children: [_jsxs(CardTitle, { className: "text-base font-semibold flex items-center gap-2", children: [_jsx(ToggleLeft, { className: "h-4 w-4 text-orange-500" }), "Feature Toggles"] }), _jsx(CardDescription, { className: "text-xs", children: "Enable or disable system features" })] }), _jsx(CardContent, { children: _jsx("div", { className: "space-y-4", children: [
+    return (_jsxs("div", { className: "space-y-6", children: [_jsx(ThemeCustomizer, {}), _jsx(motion.div, { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 }, transition: { delay: 0.1 }, children: _jsxs(Card, { className: "shadow-sm", children: [_jsxs(CardHeader, { className: "pb-3", children: [_jsxs(CardTitle, { className: "text-base font-semibold flex items-center gap-2", children: [_jsx(Building2, { className: "h-4 w-4 text-teal" }), "Company Settings"] }), _jsx(CardDescription, { className: "text-xs", children: "General company and regional settings" })] }), _jsx(CardContent, { className: "space-y-4", children: _jsxs("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-4", children: [_jsxs("div", { children: [_jsx(Label, { className: "text-xs", children: "Company Name" }), _jsx(Input, { value: config.companyName, onChange: (e) => setConfig(Object.assign(Object.assign({}, config), { companyName: e.target.value })), className: "h-8 text-xs mt-1" })] }), _jsxs("div", { children: [_jsx(Label, { className: "text-xs", children: "Default Currency" }), _jsxs(Select, { value: config.defaultCurrency, onValueChange: (v) => setConfig(Object.assign(Object.assign({}, config), { defaultCurrency: v })), children: [_jsx(SelectTrigger, { className: "h-8 text-xs mt-1", children: _jsx(SelectValue, {}) }), _jsxs(SelectContent, { children: [_jsx(SelectItem, { value: "USD", children: "USD - US Dollar" }), _jsx(SelectItem, { value: "EUR", children: "EUR - Euro" }), _jsx(SelectItem, { value: "GBP", children: "GBP - British Pound" }), _jsx(SelectItem, { value: "INR", children: "INR - Indian Rupee" }), _jsx(SelectItem, { value: "CNY", children: "CNY - Chinese Yuan" })] })] })] }), _jsxs("div", { children: [_jsx(Label, { className: "text-xs", children: "Timezone" }), _jsxs(Select, { value: config.timezone, onValueChange: (v) => setConfig(Object.assign(Object.assign({}, config), { timezone: v })), children: [_jsx(SelectTrigger, { className: "h-8 text-xs mt-1", children: _jsx(SelectValue, {}) }), _jsxs(SelectContent, { children: [_jsx(SelectItem, { value: "America/New_York", children: "Eastern Time (ET)" }), _jsx(SelectItem, { value: "America/Chicago", children: "Central Time (CT)" }), _jsx(SelectItem, { value: "America/Los_Angeles", children: "Pacific Time (PT)" }), _jsx(SelectItem, { value: "Europe/London", children: "Greenwich Mean Time (GMT)" }), _jsx(SelectItem, { value: "Asia/Shanghai", children: "China Standard Time (CST)" }), _jsx(SelectItem, { value: "Asia/Kolkata", children: "India Standard Time (IST)" })] })] })] }), _jsxs("div", { children: [_jsx(Label, { className: "text-xs", children: "Language" }), _jsx(Input, { value: "English (US)", disabled: true, className: "h-8 text-xs mt-1" })] })] }) })] }) }), _jsx(motion.div, { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 }, transition: { delay: 0.2 }, children: _jsxs(Card, { className: "shadow-sm", children: [_jsxs(CardHeader, { className: "pb-3", children: [_jsxs(CardTitle, { className: "text-base font-semibold flex items-center gap-2", children: [_jsx(Mail, { className: "h-4 w-4 text-amber" }), "Email Settings"] }), _jsx(CardDescription, { className: "text-xs", children: "Configure email notifications and SMTP" })] }), _jsx(CardContent, { className: "space-y-4", children: _jsxs("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-4", children: [_jsxs("div", { children: [_jsx(Label, { className: "text-xs", children: "From Email" }), _jsx(Input, { value: config.emailFrom, onChange: (e) => setConfig(Object.assign(Object.assign({}, config), { emailFrom: e.target.value })), className: "h-8 text-xs mt-1" })] }), _jsxs("div", { children: [_jsx(Label, { className: "text-xs", children: "SMTP Server" }), _jsx(Input, { value: config.emailSmtp, onChange: (e) => setConfig(Object.assign(Object.assign({}, config), { emailSmtp: e.target.value })), className: "h-8 text-xs mt-1" })] }), _jsxs("div", { children: [_jsx(Label, { className: "text-xs", children: "SMTP Port" }), _jsx(Input, { value: config.emailPort, onChange: (e) => setConfig(Object.assign(Object.assign({}, config), { emailPort: e.target.value })), className: "h-8 text-xs mt-1" })] })] }) })] }) }), _jsx(motion.div, { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 }, transition: { delay: 0.3 }, children: _jsxs(Card, { className: "shadow-sm", children: [_jsxs(CardHeader, { className: "pb-3", children: [_jsxs(CardTitle, { className: "text-base font-semibold flex items-center gap-2", children: [_jsx(ToggleLeft, { className: "h-4 w-4 text-orange-500" }), "Feature Toggles"] }), _jsx(CardDescription, { className: "text-xs", children: "Enable or disable system features" })] }), _jsx(CardContent, { children: _jsx("div", { className: "space-y-4", children: [
                                     { key: 'enableNotifications', label: 'Email Notifications', desc: 'Send email alerts for important events' },
                                     { key: 'enableAutoBackup', label: 'Auto Backup', desc: 'Automatically backup database daily' },
                                     { key: 'enableTwoFactor', label: 'Two-Factor Authentication', desc: 'Require 2FA for all users' },
@@ -307,13 +379,15 @@ function ContainerSizeTypeSettings() {
         : items.map((opt) => (_jsxs("div", { className: "flex items-center justify-between p-2 border border-border/50 rounded-md text-xs bg-muted/20", children: [_jsx("span", { className: "font-medium", children: opt.label }), _jsx(Button, { variant: "ghost", size: "sm", className: "h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10", onClick: () => handleDelete(opt.id), children: _jsx(Trash2, { className: "h-3.5 w-3.5" }) })] }, opt.id)));
     return (_jsx(motion.div, { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 }, children: _jsxs(Card, { className: "shadow-sm h-full", children: [_jsxs(CardHeader, { className: "pb-3", children: [_jsxs(CardTitle, { className: "text-base font-semibold flex items-center gap-2", children: [_jsx(Box, { className: "h-4 w-4 text-teal" }), "Container Size / Type"] }), _jsx(CardDescription, { className: "text-xs", children: "Create and manage container dropdown values together" })] }), _jsxs(CardContent, { children: [_jsxs("div", { className: "grid grid-cols-1 sm:grid-cols-[1fr_1.4fr_auto] gap-2 mb-4", children: [_jsx(Input, { value: form.size, onChange: (e) => setForm(Object.assign(Object.assign({}, form), { size: e.target.value })), placeholder: "Size, e.g. 20FT", className: "h-8 text-xs", onKeyDown: (e) => e.key === 'Enter' && handleAdd() }), _jsx(Input, { value: form.type, onChange: (e) => setForm(Object.assign(Object.assign({}, form), { type: e.target.value })), placeholder: "Type, e.g. Dry Container", className: "h-8 text-xs", onKeyDown: (e) => e.key === 'Enter' && handleAdd() }), _jsxs(Button, { onClick: handleAdd, size: "sm", className: "h-8 text-xs shrink-0", children: [_jsx(Plus, { className: "h-3.5 w-3.5 mr-1" }), " Add"] })] }), _jsxs("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-3", children: [_jsxs("div", { children: [_jsx("p", { className: "mb-2 text-[11px] font-semibold text-muted-foreground", children: "Sizes" }), _jsx("div", { className: "space-y-2 max-h-[250px] overflow-y-auto custom-scrollbar pr-2", children: renderOptions(sizes, "No sizes found.") })] }), _jsxs("div", { children: [_jsx("p", { className: "mb-2 text-[11px] font-semibold text-muted-foreground", children: "Types" }), _jsx("div", { className: "space-y-2 max-h-[250px] overflow-y-auto custom-scrollbar pr-2", children: renderOptions(types, "No types found.") })] })] })] })] }) }));
 }
-function ShipmentSettingsTab() {
-    return (_jsxs("div", { className: "space-y-6", children: [_jsxs("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6", children: [_jsx(ConfigurableList, { category: "shipping_line", title: "Shipping Lines", icon: Ship }), _jsx(ContainerSizeTypeSettings, {})] }), _jsx("div", { className: "grid grid-cols-1 md:grid-cols-1 gap-6", children: _jsx(ShipmentDocumentChecklistManagement, {}) }), _jsx("div", { className: "grid grid-cols-1 md:grid-cols-1 gap-6", children: _jsx(ImporterCompanyManagement, {}) }), _jsx(motion.div, { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 }, transition: { delay: 0.2 }, children: _jsxs(Card, { className: "shadow-sm", children: [_jsxs(CardHeader, { className: "pb-3", children: [_jsxs(CardTitle, { className: "text-base font-semibold flex items-center gap-2", children: [_jsx(ToggleLeft, { className: "h-4 w-4 text-orange-500" }), "Workflow Automations"] }), _jsx(CardDescription, { className: "text-xs", children: "Manage rules for shipment processing" })] }), _jsx(CardContent, { children: _jsx("div", { className: "space-y-4", children: [
-                                    { key: 'autoAssignTracking', label: 'Auto-Assign Tracking Numbers', desc: 'Automatically generate tracking IDs for new shipments' },
-                                    { key: 'requireDocumentsForClearance', label: 'Require Documents for Customs', desc: 'Block customs clearance status until all documents are uploaded' },
-                                    { key: 'notifyOnStatusChange', label: 'Status Change Notifications', desc: 'Notify assigned users when a shipment changes status' },
-                                    { key: 'notifyOnDelay', label: 'Delay Alerts', desc: 'Send alerts when a shipment misses its ETA' },
-                                ].map((feature) => (_jsxs("div", { className: "flex items-center justify-between py-2 border-b border-border/50 last:border-0", children: [_jsxs("div", { children: [_jsx("p", { className: "text-sm font-medium", children: feature.label }), _jsx("p", { className: "text-xs text-muted-foreground", children: feature.desc })] }), _jsx(Switch, { defaultChecked: true })] }, feature.key))) }) })] }) })] }));
+function WorkflowAutomationsTab() {
+    return (_jsxs("div", { className: "space-y-6", children: [
+        _jsx(motion.div, { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 }, transition: { delay: 0.1 }, children: _jsxs(Card, { className: "shadow-sm", children: [_jsxs(CardHeader, { className: "pb-3", children: [_jsxs(CardTitle, { className: "text-base font-semibold flex items-center gap-2", children: [_jsx(ToggleLeft, { className: "h-4 w-4 text-orange-500" }), "Workflow Automations"] }), _jsx(CardDescription, { className: "text-xs", children: "Manage rules for shipment processing" })] }), _jsx(CardContent, { children: _jsx("div", { className: "space-y-4", children: [
+            { key: 'autoAssignTracking', label: 'Auto-Assign Tracking Numbers', desc: 'Automatically generate tracking IDs for new shipments' },
+            { key: 'requireDocumentsForClearance', label: 'Require Documents for Customs', desc: 'Block customs clearance status until all documents are uploaded' },
+            { key: 'notifyOnStatusChange', label: 'Status Change Notifications', desc: 'Notify assigned users when a shipment changes status' },
+            { key: 'notifyOnDelay', label: 'Delay Alerts', desc: 'Send alerts when a shipment misses its ETA' },
+        ].map((feature) => (_jsxs("div", { className: "flex items-center justify-between py-2 border-b border-border/50 last:border-0", children: [_jsxs("div", { children: [_jsx("p", { className: "text-sm font-medium", children: feature.label }), _jsx("p", { className: "text-xs text-muted-foreground", children: feature.desc })] }), _jsx(Switch, { defaultChecked: true })] }, feature.key))) }) })] }) })
+    ] }));
 }
 function ExporterCompanyManagement() {
     const [companies, setCompanies] = useState([]);

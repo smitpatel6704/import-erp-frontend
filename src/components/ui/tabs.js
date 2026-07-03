@@ -1,32 +1,57 @@
 "use client";
-var __rest = (this && this.__rest) || function (s, e) {
-    var t = {};
-    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
-        t[p] = s[p];
-    if (s != null && typeof Object.getOwnPropertySymbols === "function")
-        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
-            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
-                t[p[i]] = s[p[i]];
-        }
-    return t;
-};
-import { jsx as _jsx } from "react/jsx-runtime";
 import * as TabsPrimitive from "@radix-ui/react-tabs";
 import { cn } from "@/lib/utils";
-function Tabs(_a) {
-    var { className } = _a, props = __rest(_a, ["className"]);
-    return (_jsx(TabsPrimitive.Root, Object.assign({ "data-slot": "tabs", className: cn("flex flex-col gap-2", className) }, props)));
+
+function Tabs({ className, ...props }) {
+  return (
+    <TabsPrimitive.Root
+      data-slot="tabs"
+      className={cn("flex flex-col gap-3", className)}
+      {...props}
+    />
+  );
 }
-function TabsList(_a) {
-    var { className } = _a, props = __rest(_a, ["className"]);
-    return (_jsx(TabsPrimitive.List, Object.assign({ "data-slot": "tabs-list", className: cn("bg-muted text-muted-foreground inline-flex h-9 w-fit items-center justify-center rounded-lg p-[3px]", className) }, props)));
+
+function TabsList({ className, ...props }) {
+  return (
+    <TabsPrimitive.List
+      data-slot="tabs-list"
+      className={cn(
+        "inline-flex h-10 w-fit items-center justify-center rounded-xl border border-border/60 bg-muted/50 backdrop-blur-sm p-1 text-muted-foreground shadow-sm",
+        className
+      )}
+      {...props}
+    />
+  );
 }
-function TabsTrigger(_a) {
-    var { className } = _a, props = __rest(_a, ["className"]);
-    return (_jsx(TabsPrimitive.Trigger, Object.assign({ "data-slot": "tabs-trigger", className: cn("data-[state=active]:bg-background dark:data-[state=active]:text-foreground focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:outline-ring dark:data-[state=active]:border-input dark:data-[state=active]:bg-input/30 text-foreground dark:text-muted-foreground inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-md border border-transparent px-2 py-1 text-sm font-medium whitespace-nowrap transition-[color,box-shadow] focus-visible:ring-[3px] focus-visible:outline-1 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:shadow-sm [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4", className) }, props)));
+
+function TabsTrigger({ className, ...props }) {
+  return (
+    <TabsPrimitive.Trigger
+      data-slot="tabs-trigger"
+      className={cn(
+        "inline-flex h-full flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1 text-sm font-medium whitespace-nowrap",
+        "transition-all duration-200",
+        "text-muted-foreground hover:text-foreground",
+        "data-[state=active]:bg-white dark:data-[state=active]:bg-white/[0.08] data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:ring-1 data-[state=active]:ring-border/60",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal/40",
+        "disabled:pointer-events-none disabled:opacity-50",
+        "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        className
+      )}
+      {...props}
+    />
+  );
 }
-function TabsContent(_a) {
-    var { className } = _a, props = __rest(_a, ["className"]);
-    return (_jsx(TabsPrimitive.Content, Object.assign({ "data-slot": "tabs-content", className: cn("flex-1 outline-none", className) }, props)));
+
+function TabsContent({ className, ...props }) {
+  return (
+    <TabsPrimitive.Content
+      data-slot="tabs-content"
+      className={cn("flex-1 outline-none", className)}
+      {...props}
+    />
+  );
 }
+
 export { Tabs, TabsList, TabsTrigger, TabsContent };

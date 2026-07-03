@@ -26,6 +26,10 @@ import {
   CheckCircle2,
   AlertCircle,
   Trash2,
+  Truck,
+  PackageCheck,
+  Anchor,
+  Inbox,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -56,6 +60,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -706,14 +718,110 @@ export default function ShipmentsModule() {
     "delivered",
     "closed",
   ];
+  const kpiTiles = [
+    {
+      label: "Total",
+      value: totalCount || 0,
+      icon: Ship,
+      iconColor: "text-teal",
+      iconBg: "bg-teal/12",
+      ring: "ring-teal/25",
+    },
+    {
+      label: "Active",
+      value:
+        (statusCounts.booking_confirmed || 0) +
+        (statusCounts.at_pol || 0) +
+        (statusCounts.vessel_departed || 0) +
+        (statusCounts.in_transit || 0) +
+        (statusCounts.at_pod || 0) +
+        (statusCounts.customs_clearance || 0) +
+        (statusCounts.duty_paid || 0) +
+        (statusCounts.in_transport || 0) +
+        (statusCounts.offloaded || 0),
+      icon: Truck,
+      iconColor: "text-sky-600 dark:text-sky-400",
+      iconBg: "bg-sky-500/12",
+      ring: "ring-sky-500/25",
+    },
+    {
+      label: "In Transit",
+      value: statusCounts.in_transit || 0,
+      icon: Anchor,
+      iconColor: "text-cyan-600 dark:text-cyan-400",
+      iconBg: "bg-cyan-500/12",
+      ring: "ring-cyan-500/25",
+    },
+    {
+      label: "Delivered",
+      value: statusCounts.delivered || 0,
+      icon: PackageCheck,
+      iconColor: "text-emerald-600 dark:text-emerald-400",
+      iconBg: "bg-emerald-500/12",
+      ring: "ring-emerald-500/25",
+    },
+  ];
   return _jsxs(motion.div, {
     initial: { opacity: 0, y: 8 },
     animate: { opacity: 1, y: 0 },
     transition: { duration: 0.3 },
     className: "space-y-4",
     children: [
+      _jsx("div", {
+        className:
+          "grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-4 gap-3",
+        children: kpiTiles.map((tile, i) =>
+          _jsx(
+            motion.div,
+            {
+              initial: { opacity: 0, y: 8 },
+              animate: { opacity: 1, y: 0 },
+              transition: {
+                delay: i * 0.05,
+                duration: 0.32,
+                ease: [0.4, 0, 0.2, 1],
+              },
+              children: _jsx(Card, {
+                className: "hover-lift overflow-hidden",
+                children: _jsxs(CardContent, {
+                  className:
+                    "p-3.5 flex items-center justify-between gap-3",
+                  children: [
+                    _jsxs("div", {
+                      className: "min-w-0",
+                      children: [
+                        _jsx("p", {
+                          className:
+                            "text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground",
+                          children: tile.label,
+                        }),
+                        _jsx("p", {
+                          className:
+                            "text-xl font-bold mt-0.5 tracking-tight tabular-nums",
+                          children: loading ? "-" : tile.value,
+                        }),
+                      ],
+                    }),
+                    _jsx("div", {
+                      className: cn(
+                        "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ring-1 shadow-sm",
+                        tile.iconBg,
+                        tile.ring,
+                      ),
+                      children: _jsx(tile.icon, {
+                        className: cn("h-4 w-4", tile.iconColor),
+                      }),
+                    }),
+                  ],
+                }),
+              }),
+            },
+            tile.label,
+          ),
+        ),
+      }),
       _jsx(Card, {
-        className: "glass border-0 shadow-enterprise",
+        className: "border-0 shadow-enterprise-md",
         children: _jsx(CardContent, {
           className: "p-4",
           children: _jsxs("div", {
@@ -861,34 +969,66 @@ export default function ShipmentsModule() {
         }),
       }),
       _jsx("div", {
-        className: "flex gap-2 overflow-x-auto pb-1 custom-scrollbar",
-        children: kanbanColumns.map((status) => {
+        className:
+          "flex gap-2 overflow-x-auto pb-1 custom-scrollbar [mask-image:linear-gradient(to_right,transparent,black_1%,black_99%,transparent)]",
+        children: kanbanColumns.map((status, chipIdx) => {
           const count = statusCounts[status] || 0;
           if (statusFilter !== "all" && statusFilter !== status) return null;
+          const isActive = statusFilter === status;
           return _jsxs(
-            "button",
+            motion.button,
             {
+              layout: true,
+              initial: { opacity: 0, y: 6 },
+              animate: { opacity: 1, y: 0 },
+              transition: {
+                delay: chipIdx * 0.025,
+                duration: 0.22,
+                ease: [0.4, 0, 0.2, 1],
+              },
+              whileHover: { scale: 1.03 },
+              whileTap: { scale: 0.97 },
               onClick: () => {
-                setStatusFilter(statusFilter === status ? "all" : status);
+                setStatusFilter(isActive ? "all" : status);
                 setPage(1);
               },
               className: cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors border",
-                statusFilter === status
-                  ? statusColorMap[status] + " ring-1 ring-current/20"
-                  : "bg-card border-border/50 text-muted-foreground hover:bg-accent/50",
+                "relative flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap border backdrop-blur-sm transition-colors",
+                isActive
+                  ? statusColorMap[status] +
+                      " shadow-sm"
+                  : "bg-white/50 dark:bg-white/[0.04] border-border/60 text-muted-foreground hover:bg-white/80 dark:hover:bg-white/[0.08] hover:text-foreground",
               ),
               children: [
+                isActive &&
+                  _jsx(motion.span, {
+                    layoutId: "activeChip",
+                    className:
+                      "absolute inset-0 rounded-lg ring-2 ring-current/40 pointer-events-none",
+                    transition: {
+                      type: "spring",
+                      stiffness: 340,
+                      damping: 30,
+                    },
+                  }),
                 _jsx("span", {
                   className: cn(
-                    "h-1.5 w-1.5 rounded-full",
+                    "relative h-1.5 w-1.5 rounded-full",
                     statusDotMap[status],
+                    isActive && "shadow-[0_0_6px_currentColor]",
                   ),
                 }),
-                statusLabelMap[status],
-                _jsx(Badge, {
-                  variant: "secondary",
-                  className: "h-4 min-w-[18px] px-1 text-[10px] ml-0.5",
+                _jsx("span", {
+                  className: "relative",
+                  children: statusLabelMap[status],
+                }),
+                _jsx("span", {
+                  className: cn(
+                    "relative inline-flex h-4 min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold tabular-nums",
+                    isActive
+                      ? "bg-current/15 text-current"
+                      : "bg-muted/70 text-muted-foreground",
+                  ),
                   children: count,
                 }),
               ],
@@ -974,33 +1114,75 @@ export default function ShipmentsModule() {
                               ? _jsx(TableRow, {
                                   children: _jsx(TableCell, {
                                     colSpan: 9,
-                                    className:
-                                      "text-center py-12 text-muted-foreground",
-                                    children: "No shipments found",
+                                    className: "py-16",
+                                    children: _jsxs("div", {
+                                      className:
+                                        "flex flex-col items-center gap-3 text-center text-muted-foreground",
+                                      children: [
+                                        _jsx("div", {
+                                          className:
+                                            "flex h-14 w-14 items-center justify-center rounded-2xl bg-teal/8 ring-1 ring-teal/15",
+                                          children: _jsx(Inbox, {
+                                            className: "h-7 w-7 text-teal/60",
+                                          }),
+                                        }),
+                                        _jsxs("div", {
+                                          children: [
+                                            _jsx("p", {
+                                              className:
+                                                "text-sm font-semibold text-foreground",
+                                              children: "No shipments found",
+                                            }),
+                                            _jsx("p", {
+                                              className: "text-xs mt-0.5",
+                                              children:
+                                                "Try adjusting your search or filters, or create a new shipment.",
+                                            }),
+                                          ],
+                                        }),
+                                      ],
+                                    }),
                                   }),
                                 })
-                              : shipments.map((s, i) =>
-                                  _jsxs(
+                              : shipments.map((s, i) => {
+                                  const priorityAccent =
+                                    s.priority === "urgent"
+                                      ? "before:bg-danger"
+                                      : s.priority === "high"
+                                        ? "before:bg-amber"
+                                        : s.priority === "low"
+                                          ? "before:bg-muted-foreground/30"
+                                          : "before:bg-transparent";
+                                  return _jsxs(
                                     motion.tr,
                                     {
-                                      initial: { opacity: 0, y: 8 },
+                                      initial: { opacity: 0, y: 6 },
                                       animate: { opacity: 1, y: 0 },
                                       transition: {
-                                        delay: i * 0.03,
-                                        duration: 0.2,
+                                        delay: i * 0.035,
+                                        duration: 0.24,
+                                        ease: [0.4, 0, 0.2, 1],
                                       },
-                                      className:
-                                        "group cursor-pointer hover:bg-accent/30 transition-colors",
+                                      className: cn(
+                                        "group cursor-pointer border-b border-border/60 transition-all",
+                                        "hover:bg-teal/[0.04] hover:shadow-[inset_0_0_0_1px_var(--teal)]/5",
+                                      ),
                                       onClick: () => openDetail(s.id),
                                       children: [
                                         _jsx(TableCell, {
+                                          className: cn(
+                                            "relative",
+                                            "before:absolute before:left-0 before:top-2 before:bottom-2 before:w-[3px] before:rounded-r-full before:transition-all",
+                                            priorityAccent,
+                                            "group-hover:before:w-1"
+                                          ),
                                           children: _jsxs("div", {
                                             className:
                                               "flex items-center gap-2.5",
                                             children: [
                                               _jsx("div", {
                                                 className:
-                                                  "flex h-8 w-8 items-center justify-center rounded-lg bg-teal/10 shrink-0",
+                                                  "flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-teal/20 to-teal/5 ring-1 ring-teal/20 text-teal shrink-0 shadow-sm group-hover:from-teal/25 group-hover:ring-teal/30 transition-colors",
                                                 children: _jsx(Ship, {
                                                   className:
                                                     "h-4 w-4 text-teal",
@@ -1105,26 +1287,37 @@ export default function ShipmentsModule() {
                                           ],
                                         }),
                                         _jsx(TableCell, {
-                                          children: _jsx(Badge, {
-                                            variant: "outline",
+                                          children: _jsxs("span", {
                                             className: cn(
-                                              "text-[10px] font-semibold",
+                                              "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap",
                                               statusColorMap[s.status] || "",
                                             ),
-                                            children:
-                                              statusLabelMap[s.status] ||
-                                              s.status,
+                                            children: [
+                                              _jsx("span", {
+                                                className: cn(
+                                                  "h-1.5 w-1.5 rounded-full",
+                                                  statusDotMap[s.status],
+                                                ),
+                                              }),
+                                              _jsx("span", {
+                                                children:
+                                                  statusLabelMap[s.status] ||
+                                                  s.status,
+                                              }),
+                                            ],
                                           }),
                                         }),
                                         _jsx(TableCell, {
                                           className: "hidden md:table-cell",
                                           children: _jsx(Badge, {
-                                            variant: "outline",
-                                            className: cn(
-                                              "text-[10px] font-semibold",
-                                              priorityColorMap[s.priority] ||
-                                                "",
-                                            ),
+                                            variant:
+                                              s.priority === "urgent"
+                                                ? "destructive"
+                                                : s.priority === "high"
+                                                  ? "warning"
+                                                  : s.priority === "low"
+                                                    ? "outline"
+                                                    : "secondary",
                                             children: s.priority,
                                           }),
                                         }),
@@ -1142,12 +1335,13 @@ export default function ShipmentsModule() {
                                         _jsx(TableCell, {
                                           children: _jsxs("div", {
                                             className:
-                                              "flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100",
+                                              "flex items-center justify-end gap-1 opacity-0 translate-x-2 transition-all duration-200 group-hover:opacity-100 group-hover:translate-x-0",
                                             children: [
                                               _jsx(Button, {
                                                 variant: "ghost",
                                                 size: "icon",
-                                                className: "h-7 w-7",
+                                                className:
+                                                  "h-7 w-7 rounded-lg hover:bg-teal/10 hover:text-teal",
                                                 onClick: (event) => {
                                                   event.stopPropagation();
                                                   openDetail(s.id);
@@ -1162,7 +1356,7 @@ export default function ShipmentsModule() {
                                                   variant: "ghost",
                                                   size: "icon",
                                                   className:
-                                                    "h-7 w-7 text-red-600 hover:bg-red-500/10 hover:text-red-700",
+                                                    "h-7 w-7 rounded-lg text-destructive hover:bg-destructive/10 hover:text-destructive",
                                                   disabled: deletingId === s.id,
                                                   onClick: (event) => {
                                                     event.stopPropagation();
@@ -1186,8 +1380,8 @@ export default function ShipmentsModule() {
                                       ],
                                     },
                                     s.id,
-                                  ),
-                                ),
+                                  );
+                                }),
                         }),
                       ],
                     }),
@@ -1195,37 +1389,66 @@ export default function ShipmentsModule() {
                   totalCount > 20 &&
                     _jsxs("div", {
                       className:
-                        "flex items-center justify-between px-4 py-3 border-t",
+                        "flex items-center justify-between px-4 py-3 border-t border-border/60",
                       children: [
                         _jsxs("p", {
-                          className: "text-xs text-muted-foreground",
+                          className:
+                            "text-xs text-muted-foreground tabular-nums",
                           children: [
                             "Showing ",
-                            (page - 1) * 20 + 1,
+                            _jsx("span", {
+                              className: "font-semibold text-foreground",
+                              children: (page - 1) * 20 + 1,
+                            }),
                             "-",
-                            Math.min(page * 20, totalCount),
+                            _jsx("span", {
+                              className: "font-semibold text-foreground",
+                              children: Math.min(page * 20, totalCount),
+                            }),
                             " of ",
-                            totalCount,
+                            _jsx("span", {
+                              className: "font-semibold text-foreground",
+                              children: totalCount,
+                            }),
                           ],
                         }),
                         _jsxs("div", {
-                          className: "flex gap-1",
+                          className: "flex items-center gap-1",
                           children: [
-                            _jsx(Button, {
+                            _jsxs(Button, {
                               variant: "outline",
                               size: "sm",
                               disabled: page === 1,
                               onClick: () => setPage(page - 1),
-                              className: "h-7 text-xs",
-                              children: "Prev",
+                              className: "h-8 text-xs gap-1 rounded-lg",
+                              children: [
+                                _jsx(ArrowRight, {
+                                  className: "h-3.5 w-3.5 rotate-180",
+                                }),
+                                "Prev",
+                              ],
                             }),
-                            _jsx(Button, {
+                            _jsxs("div", {
+                              className:
+                                "px-2 text-xs font-semibold text-muted-foreground tabular-nums",
+                              children: [
+                                page,
+                                " / ",
+                                Math.max(1, Math.ceil(totalCount / 20)),
+                              ],
+                            }),
+                            _jsxs(Button, {
                               variant: "outline",
                               size: "sm",
                               disabled: page * 20 >= totalCount,
                               onClick: () => setPage(page + 1),
-                              className: "h-7 text-xs",
-                              children: "Next",
+                              className: "h-8 text-xs gap-1 rounded-lg",
+                              children: [
+                                "Next",
+                                _jsx(ArrowRight, {
+                                  className: "h-3.5 w-3.5",
+                                }),
+                              ],
                             }),
                           ],
                         }),
@@ -2020,7 +2243,7 @@ export default function ShipmentsModule() {
                                           children: _jsx(Button, {
                                             size: "sm",
                                             className:
-                                              "h-8 text-xs bg-teal hover:bg-teal-dark",
+                                              "h-8 text-xs bg-primary hover:bg-primary/90",
                                             disabled:
                                               docUploading ||
                                               !newDocForm.name ||

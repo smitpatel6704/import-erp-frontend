@@ -1,34 +1,67 @@
-import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Space_Grotesk, Inter, IBM_Plex_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
+import { ThemeRuntime } from "@/components/erp/theme-runtime";
 import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
-const geistSans = Geist({
-    variable: "--font-geist-sans",
-    subsets: ["latin"],
+
+// Freight Terminal type system:
+// Space Grotesk — display / headings (mechanical, technical character)
+// Inter — body / UI text
+// IBM Plex Mono — figures, codes, manifest references
+const displayFont = Space_Grotesk({
+  variable: "--font-display",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
-const geistMono = Geist_Mono({
-    variable: "--font-geist-mono",
-    subsets: ["latin"],
+
+const bodyFont = Inter({
+  variable: "--font-sans",
+  subsets: ["latin"],
 });
+
+const monoFont = IBM_Plex_Mono({
+  variable: "--font-mono",
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+});
+
 export const metadata = {
-    title: "Nexport ERP - Enterprise Import Management",
-    description: "Comprehensive enterprise resource planning system for import management. Track shipments, containers, documents, and financial operations in one unified platform.",
-    keywords: [
-        "ERP",
-        "Import Management",
-        "Supply Chain",
-        "Customs",
-        "Shipment Tracking",
-        "Enterprise",
-    ],
-    authors: [{ name: "Nexport ERP Team" }],
-    openGraph: {
-        title: "Nexport ERP - Enterprise Import Management",
-        description: "Comprehensive ERP system for import management",
-        type: "website",
-    },
+  title: "Nexport ERP — Import Operations Terminal",
+  description:
+    "Import operations terminal for tracking shipments, containers, documents, and customs in one live control surface.",
+  keywords: [
+    "ERP",
+    "Import Management",
+    "Supply Chain",
+    "Customs",
+    "Shipment Tracking",
+    "Enterprise",
+  ],
+  authors: [{ name: "Nexport ERP Team" }],
+  openGraph: {
+    title: "Nexport ERP — Enterprise Import Management",
+    description: "Comprehensive ERP system for import management",
+    type: "website",
+  },
 };
-export default function RootLayout({ children, }) {
-    return (_jsx("html", { lang: "en", suppressHydrationWarning: true, children: _jsx("body", { className: `${geistSans.variable} ${geistMono.variable} antialiased`, children: _jsxs(ThemeProvider, { attribute: "class", defaultTheme: "system", enableSystem: true, disableTransitionOnChange: true, children: [children, _jsx(Toaster, {})] }) }) }));
+
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body
+        className={`${bodyFont.variable} ${displayFont.variable} ${monoFont.variable} antialiased`}
+      >
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          enableSystem
+        >
+          <ThemeRuntime />
+          <div className="blueprint-grid" aria-hidden="true" />
+          {children}
+          <Toaster />
+        </ThemeProvider>
+      </body>
+    </html>
+  );
 }

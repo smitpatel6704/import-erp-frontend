@@ -3,6 +3,7 @@ import { jsx as _jsx } from "react/jsx-runtime";
 import { useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useERPStore } from "@/lib/store";
+import { ShippingLoader } from "@/components/erp/shipping-loader";
 
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
 const ACTIVITY_EVENTS = ["click", "keydown", "mousemove", "pointerdown", "scroll", "touchstart"];
@@ -159,6 +160,6 @@ export function AuthGate({ children }) {
             router.replace("/dashboard");
     }, [authReady, token, routeModule, router]);
     if (!authReady)
-        return _jsx("div", { className: "flex h-screen items-center justify-center text-sm text-muted-foreground", children: "Loading..." });
+        return _jsx(ShippingLoader, { className: "h-screen", label: "Securing shipment access" });
     return children;
 }

@@ -1,0 +1,46 @@
+/* ─── Custom User-Selectable Themes ──────────────────────────────── */
+
+/* Theme: Ocean Navy (Default) */
+[data-theme-color="ocean"] {
+  --primary: oklch(0.35 0.05 250); /* Ocean Navy */
+  --accent: oklch(0.65 0.15 180);  /* Sea Teal */
+  --ring: var(--primary);
+}
+.dark[data-theme-color="ocean"] {
+  --primary: oklch(0.65 0.15 180);
+  --accent: oklch(0.85 0.15 180);
+}
+
+/* Theme: Midnight Logistics */
+[data-theme-color="midnight"] {
+  --primary: oklch(0.5 0.15 250); /* Electric Blue */
+  --background: oklch(0.98 0 0);
+  --navy: oklch(0.2 0.02 250);
+  --ring: var(--primary);
+}
+.dark[data-theme-color="midnight"] {
+  --primary: oklch(0.6 0.15 250);
+  --background: oklch(0.12 0.01 255); /* Slate Black */
+}
+
+/* Theme: Forest Freight */
+[data-theme-color="forest"] {
+  --primary: oklch(0.4 0.15 140); /* Deep Green */
+  --accent: oklch(0.65 0.18 150); /* Emerald */
+  --ring: var(--primary);
+}
+.dark[data-theme-color="forest"] {
+  --primary: oklch(0.6 0.18 150);
+  --background: oklch(0.12 0.01 140);
+}
+
+/* Theme: Corporate Purple */
+[data-theme-color="corporate"] {
+  --primary: oklch(0.4 0.15 300); /* Indigo */
+  --accent: oklch(0.6 0.18 300); /* Violet */
+  --ring: var(--primary);
+}
+.dark[data-theme-color="corporate"] {
+  --primary: oklch(0.6 0.18 300);
+  --background: oklch(0.12 0.01 300);
+}
