@@ -99,12 +99,12 @@ export function AdminModule() {
         }
     };
 
-    return (_jsxs("div", { className: "flex flex-col lg:flex-row gap-8", children: [
+    return (_jsxs("div", { className: "flex flex-col items-start gap-6 lg:flex-row lg:gap-8", children: [
         _jsx(motion.div, { 
             initial: { opacity: 0, x: -20 }, 
             animate: { opacity: 1, x: 0 }, 
             transition: { duration: 0.3 }, 
-            className: "w-full lg:w-64 shrink-0 space-y-8 bg-card/84 backdrop-blur-xl dark:bg-card/70 border border-border/60 rounded-xl p-5 shadow-sm", 
+            className: "w-full shrink-0 space-y-8 rounded-xl border border-border/60 bg-card/84 p-5 shadow-sm backdrop-blur-xl dark:bg-card/70 lg:sticky lg:top-6 lg:max-h-[calc(100svh-7.5rem)] lg:w-64 lg:overflow-y-auto custom-scrollbar", 
             children: navigation.map((section, idx) => (_jsxs("div", { children: [
                 _jsx("h4", { className: "mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground px-2", children: section.title }), 
                 _jsx("div", { className: "space-y-1", children: section.items.map((item) => {
