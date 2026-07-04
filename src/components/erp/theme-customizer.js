@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Check, ImagePlus, Palette, Sparkles, X } from "lucide-react";
+import { Check, ImagePlus, Palette, Save, Sparkles, X } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -23,19 +23,22 @@ import {
   getSavedBrandLogos,
   getSavedCustomThemeColor,
   getSavedThemeColor,
+  loadBrandLogosFromDatabase,
+  saveBrandLogoToDatabase,
 } from "@/components/erp/theme-runtime";
 
 const palettes = [
-  { id: "teal", label: "Ocean", swatch: "bg-teal" },
-  { id: "blue", label: "Harbor", swatch: "bg-blue-600" },
-  { id: "emerald", label: "Trade", swatch: "bg-emerald-600" },
-  { id: "violet", label: "Royal", swatch: "bg-violet-600" },
-  { id: "rose", label: "Coral", swatch: "bg-rose-600" },
-  { id: "amber", label: "Cargo", swatch: "bg-amber-500" },
+  { id: "teal", label: "Ocean", color: "#0d9488" },
+  { id: "blue", label: "Harbor", color: "#2563eb" },
+  { id: "emerald", label: "Trade", color: "#059669" },
+  { id: "violet", label: "Royal", color: "#7c3aed" },
+  { id: "rose", label: "Coral", color: "#e11d48" },
+  { id: "amber", label: "Cargo", color: "#f59e0b" },
 ];
 
 const logoCanvasWidth = 1024;
 const logoCanvasHeight = 256;
+const collapsedLogoCanvasSize = 512;
 const defaultLogoScale = 100;
 const supportedLogoTypes = ["image/png", "image/jpeg", "image/webp", "image/gif", "image/svg+xml"];
 
@@ -48,7 +51,13 @@ function fileToDataUrl(file) {
   });
 }
 
-function createSizedLogoImage(dataUrl, scalePercent = defaultLogoScale) {
+function getLogoCanvasSize(mode) {
+  return mode === "collapsed"
+    ? { width: collapsedLogoCanvasSize, height: collapsedLogoCanvasSize }
+    : { width: logoCanvasWidth, height: logoCanvasHeight };
+}
+
+function createSizedLogoImage(dataUrl, scalePercent = defaultLogoScale, mode = "light") {
   return new Promise((resolve, reject) => {
     const image = new Image();
     image.onload = () => {
@@ -56,27 +65,28 @@ function createSizedLogoImage(dataUrl, scalePercent = defaultLogoScale) {
         reject(new Error("This image could not be loaded. Please use PNG, JPG, WEBP, GIF, or SVG."));
         return;
       }
-      const canvasScale = Math.min(4, Math.max(0.25, scalePercent / 100));
+      const canvasSize = getLogoCanvasSize(mode);
+      const canvasScale = Math.min(8, Math.max(0.25, scalePercent / 100));
       const fitScale = Math.min(
-        logoCanvasWidth / image.naturalWidth,
-        logoCanvasHeight / image.naturalHeight
+        canvasSize.width / image.naturalWidth,
+        canvasSize.height / image.naturalHeight
       ) * canvasScale;
       const width = Math.max(1, Math.round(image.naturalWidth * fitScale));
       const height = Math.max(1, Math.round(image.naturalHeight * fitScale));
       const canvas = document.createElement("canvas");
-      canvas.width = logoCanvasWidth;
-      canvas.height = logoCanvasHeight;
+      canvas.width = canvasSize.width;
+      canvas.height = canvasSize.height;
       const context = canvas.getContext("2d");
       if (!context) {
         resolve(dataUrl);
         return;
       }
       try {
-        context.clearRect(0, 0, logoCanvasWidth, logoCanvasHeight);
+        context.clearRect(0, 0, canvasSize.width, canvasSize.height);
         context.drawImage(
           image,
-          Math.round((logoCanvasWidth - width) / 2),
-          Math.round((logoCanvasHeight - height) / 2),
+          Math.round((canvasSize.width - width) / 2),
+          Math.round((canvasSize.height - height) / 2),
           width,
           height
         );
@@ -92,7 +102,9 @@ function createSizedLogoImage(dataUrl, scalePercent = defaultLogoScale) {
 
 export function ThemeCustomizer() {
   const [selected, setSelected] = useState(() => getSavedThemeColor());
+  const [savedTheme, setSavedTheme] = useState(() => getSavedThemeColor());
   const [customColor, setCustomColor] = useState(() => getSavedCustomThemeColor());
+  const [savedCustomColor, setSavedCustomColor] = useState(() => getSavedCustomThemeColor());
   const [logos, setLogos] = useState(() => getSavedBrandLogos());
   const [logoError, setLogoError] = useState("");
   const [pendingLogo, setPendingLogo] = useState(null);
@@ -102,19 +114,48 @@ export function ThemeCustomizer() {
 
   const selectPalette = (id) => {
     setSelected(id);
-    applyThemeColor(id, customColor);
   };
 
   const selectCustomColor = (color) => {
     setCustomColor(color);
     setSelected("custom");
-    applyThemeColor("custom", color);
+  };
+
+  const themeHasChanges = selected !== savedTheme || (selected === "custom" && customColor !== savedCustomColor);
+
+  const saveAppearance = () => {
+    applyThemeColor(selected, customColor);
+    setSavedTheme(selected);
+    setSavedCustomColor(customColor);
+  };
+
+  const resetTheme = () => {
+    setSelected("teal");
+    setCustomColor("#8b5cf6");
+    applyThemeColor("teal", "#8b5cf6");
+    setSavedTheme("teal");
+    setSavedCustomColor("#8b5cf6");
   };
 
 
-  const updateLogo = (mode, logoDataUrl) => {
+  useEffect(() => {
+    let cancelled = false;
+    void loadBrandLogosFromDatabase()
+      .then((loadedLogos) => {
+        if (!cancelled) setLogos(loadedLogos);
+      })
+      .catch((error) => {
+        console.error("Brand logos could not be loaded:", error);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const updateLogo = async (mode, logoDataUrl) => {
     try {
       applyBrandLogo(mode, logoDataUrl);
+      await saveBrandLogoToDatabase(mode, logoDataUrl);
       const nextLogos = { ...logos, [mode]: logoDataUrl || "" };
       setLogos(nextLogos);
       setLogoError("");
@@ -132,7 +173,7 @@ export function ThemeCustomizer() {
     }
     try {
       const dataUrl = await fileToDataUrl(file);
-      await createSizedLogoImage(dataUrl, defaultLogoScale);
+      await createSizedLogoImage(dataUrl, defaultLogoScale, mode);
       setPendingLogo({ mode, dataUrl, fileName: file.name });
       setLogoScale(defaultLogoScale);
     } catch (error) {
@@ -144,8 +185,8 @@ export function ThemeCustomizer() {
     if (!pendingLogo) return;
     setLogoSaving(true);
     try {
-      const adjustedLogo = await createSizedLogoImage(pendingLogo.dataUrl, logoScale);
-      updateLogo(pendingLogo.mode, adjustedLogo);
+      const adjustedLogo = await createSizedLogoImage(pendingLogo.dataUrl, logoScale, pendingLogo.mode);
+      await updateLogo(pendingLogo.mode, adjustedLogo);
       setPendingLogo(null);
     } catch (error) {
       setLogoError(error instanceof Error ? error.message : "Logo could not be saved.");
@@ -196,7 +237,10 @@ export function ThemeCustomizer() {
                   )}
                 >
                   <span className="flex w-full items-center justify-between">
-                    <span className={cn("h-6 w-6 rounded-full shadow-sm ring-1 ring-black/10", palette.swatch)} />
+                    <span
+                      className="h-6 w-6 rounded-full shadow-sm ring-1 ring-black/10"
+                      style={{ backgroundColor: palette.color }}
+                    />
                     {active && (
                       <span className="flex h-5 w-5 items-center justify-center rounded-full bg-teal text-primary-foreground">
                         <Check className="h-3 w-3" />
@@ -256,8 +300,8 @@ export function ThemeCustomizer() {
 
           <div className="grid gap-3 lg:grid-cols-2">
             {[
-              { id: "light", label: "Light Logo", description: "Used on the light icon rail sidebar" },
-              { id: "dark", label: "Dark Logo", description: "Used on the dark panel sidebar" },
+              { id: "light", label: "Sidebar Logo", description: "Used when the sidebar is expanded" },
+              { id: "collapsed", label: "Collapsed Sidebar Logo", description: "Used in the compact icon rail" },
             ].map((item) => {
               const logo = logos[item.id];
               return (
@@ -265,12 +309,17 @@ export function ThemeCustomizer() {
                   key={item.id}
                   className="flex items-center gap-3 rounded-lg border border-border/70 bg-background/65 p-3 shadow-sm"
                 >
-                  <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border/70 bg-muted/35">
+                  <div
+                    className={cn(
+                      "flex h-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border/70 bg-muted/35",
+                      item.id === "collapsed" ? "w-14" : "w-24"
+                    )}
+                  >
                     {logo ? (
                       <img
                         src={logo}
                         alt={`${item.label} preview`}
-                        className="h-full w-full object-contain p-1.5"
+                        className={cn("h-full w-full object-contain", item.id === "collapsed" ? "p-1" : "p-1.5")}
                         onError={() => updateLogo(item.id, "")}
                       />
                     ) : (
@@ -321,12 +370,18 @@ export function ThemeCustomizer() {
             <div className="flex items-center gap-2.5">
               <Sparkles className="h-4 w-4 text-teal" />
               <p className="text-xs text-muted-foreground">
-                Animated cards, menus, and page transitions follow the selected theme color.
+                Choose a color, then save to apply it across navigation, buttons, cards, and highlights.
               </p>
             </div>
-            <Button type="button" size="sm" variant="outline" onClick={() => selectPalette("teal")}>
-              Reset
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button type="button" size="sm" variant="outline" onClick={resetTheme}>
+                Reset
+              </Button>
+              <Button type="button" size="sm" onClick={saveAppearance} disabled={!themeHasChanges}>
+                <Save className="mr-1.5 h-3.5 w-3.5" />
+                Save
+              </Button>
+            </div>
           </div>
         </CardContent>
         </Card>
@@ -343,13 +398,18 @@ export function ThemeCustomizer() {
 
           <div className="space-y-5">
             <div className="rounded-xl border border-border/70 bg-muted/25 p-5">
-              <div className="mx-auto flex aspect-[4/1] w-full max-w-sm items-center justify-center overflow-hidden rounded-xl border border-border/70 bg-card shadow-sm">
+              <div
+                className={cn(
+                  "mx-auto flex w-full items-center justify-center overflow-hidden rounded-xl border border-border/70 bg-card shadow-sm",
+                  pendingLogo?.mode === "collapsed" ? "aspect-square max-w-48" : "aspect-[4/1] max-w-sm"
+                )}
+              >
                 {pendingLogo && (
                   <img
                     src={pendingLogo.dataUrl}
                     alt="Logo preview"
-                    className="max-w-none object-contain"
-                    style={{ width: `${logoScale}%`, height: `${logoScale}%` }}
+                    className="h-full w-full object-contain transition-transform duration-150"
+                    style={{ transform: `scale(${logoScale / 100})` }}
                   />
                 )}
               </div>
@@ -368,7 +428,7 @@ export function ThemeCustomizer() {
               <Slider
                 value={[logoScale]}
                 min={50}
-                max={300}
+                max={800}
                 step={1}
                 onValueChange={(value) => setLogoScale(value[0] || defaultLogoScale)}
               />

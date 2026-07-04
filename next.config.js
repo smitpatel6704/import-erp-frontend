@@ -22,13 +22,10 @@ const backendUrl = (() => {
 })();
 const nextConfig = {
     output: "standalone",
-    env: {
-        BACKEND_URL: backendUrl,
-    },
     turbopack: {
         root: __dirname,
     },
-    reactStrictMode: false,
+    reactStrictMode: true,
     allowedDevOrigins: (process.env.ALLOWED_DEV_ORIGINS || '')
         .split(',')
         .map((origin) => origin.trim())

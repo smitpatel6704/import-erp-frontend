@@ -185,6 +185,7 @@
 @layer base {
   * {
     @apply border-border outline-ring/60;
+    min-width: 0;
   }
   html.theme-transition,
   html.theme-transition *,
@@ -206,6 +207,7 @@
     min-height: 100vh;
     font-feature-settings: "cv05", "cv08", "ss01";
     letter-spacing: -0.006em;
+    overflow-x: hidden;
   }
 
   /* Display face on headings — Space Grotesk, tight, mechanical */
@@ -224,6 +226,31 @@
     font-family: var(--font-mono), ui-monospace, monospace;
     font-variant-numeric: tabular-nums;
     letter-spacing: -0.01em;
+  }
+}
+
+@media (max-width: 640px) {
+  .grid.grid-cols-2,
+  .grid.grid-cols-3,
+  .grid.grid-cols-4 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  [data-slot="card-header"],
+  [data-slot="card-content"],
+  [data-slot="card-footer"] {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  [data-slot="button"] {
+    max-width: 100%;
+  }
+
+  [data-slot="select-trigger"],
+  [data-slot="input"],
+  textarea {
+    width: 100%;
   }
 }
 
@@ -496,6 +523,67 @@
 .press-shrink { transition: opacity 0.14s ease; }
 .press-shrink:active { opacity: 0.7; }
 
+/* ─── Theme switch view transition ──────────────────────────────── */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+html[data-theme-transition="light"]::view-transition-old(root) {
+  z-index: 2;
+  animation: theme-circle-hide 0.65s ease-in-out both;
+}
+
+html[data-theme-transition="dark"]::view-transition-new(root) {
+  z-index: 2;
+  animation: theme-circle-reveal 0.65s ease-in-out both;
+}
+
+.theme-toggle-icon {
+  view-transition-name: theme-toggle-icon;
+}
+
+html[data-theme-transition="light"] .theme-toggle-icon {
+  color: #fff !important;
+  stroke: #fff;
+}
+
+::view-transition-group(theme-toggle-icon) {
+  z-index: 3;
+  animation-duration: 0.65s;
+  animation-timing-function: ease-in-out;
+  animation-fill-mode: both;
+}
+
+html[data-theme-transition="light"]::view-transition-new(theme-toggle-icon) {
+  animation: theme-moon-spin-in 0.65s ease-in-out both;
+}
+
+html[data-theme-transition="dark"]::view-transition-new(theme-toggle-icon) {
+  animation: theme-sun-spin-in 0.65s ease-in-out both;
+}
+
+@keyframes theme-circle-reveal {
+  from { clip-path: circle(0 at var(--theme-x) var(--theme-y)); }
+  to { clip-path: circle(var(--theme-radius) at var(--theme-x) var(--theme-y)); }
+}
+
+@keyframes theme-circle-hide {
+  from { clip-path: circle(var(--theme-radius) at var(--theme-x) var(--theme-y)); }
+  to { clip-path: circle(0 at var(--theme-x) var(--theme-y)); }
+}
+
+@keyframes theme-sun-spin-in {
+  from { opacity: 0; transform: rotate(180deg) scale(0.75); }
+  to { opacity: 1; transform: rotate(0deg) scale(1); }
+}
+
+@keyframes theme-moon-spin-in {
+  from { opacity: 1; transform: rotate(-240deg) scale(0.75); }
+  to { opacity: 1; transform: rotate(0deg) scale(1); }
+}
+
 /* ─── Text accent (was gradient) — solid amber, kept for compat ─── */
 .text-gradient-teal {
   color: var(--primary);
@@ -511,5 +599,12 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
+  }
+
+  ::view-transition-old(root),
+  ::view-transition-new(root),
+  ::view-transition-old(theme-toggle-icon),
+  ::view-transition-new(theme-toggle-icon) {
+    animation: none !important;
   }
 }

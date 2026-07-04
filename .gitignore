@@ -50,5 +50,7 @@ test
 prompt
 
 server.log
+db/*.db
+.playwright-cli/
 # Skills directory
 /skills/

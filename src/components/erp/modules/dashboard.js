@@ -237,7 +237,7 @@ export default function DashboardModule() {
       {/* Quick Actions Panel */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Button asChild variant="outline" className="h-14 justify-start gap-3 bg-card hover:border-primary hover:text-primary">
-          <Link href="/shipments">
+          <Link href="/shipments?new=1">
             <div className="rounded-full bg-primary/10 p-2"><Plus className="h-4 w-4" /></div>
             New Shipment
           </Link>

@@ -20,7 +20,8 @@ import { useERPStore } from "@/lib/store";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { applyBrandLogo, getSavedBrandLogos } from "@/components/erp/theme-runtime";
+import { applyBrandLogo, getSavedBrandLogos, loadBrandLogosFromDatabase } from "@/components/erp/theme-runtime";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const navItems = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, section: "Overview" },
@@ -36,16 +37,27 @@ const navItems = [
 const sections = ["Overview", "Operations", "System"];
 
 export function ERPSidebar() {
-  const { activeModule, sidebarOpen, toggleSidebar, user, canView, logout } = useERPStore();
+  const { activeModule, sidebarOpen, setSidebarOpen, user, canView, logout } = useERPStore();
   const [brandLogos, setBrandLogos] = useState(() => getSavedBrandLogos());
-  const brandLogo = brandLogos.dark || brandLogos.light;
-  const brandLogoMode = brandLogos.dark ? "dark" : "light";
+  const isMobile = useIsMobile();
+  const isExpanded = sidebarOpen || isMobile;
+  const brandLogo = isExpanded
+    ? brandLogos.light || brandLogos.collapsed || ""
+    : brandLogos.collapsed || brandLogos.light || "";
+  const brandLogoMode = isExpanded
+    ? brandLogos.light ? "light" : "collapsed"
+    : brandLogos.collapsed ? "collapsed" : "light";
 
   useEffect(() => {
     const onLogoChange = (event) => {
       setBrandLogos(event.detail || getSavedBrandLogos());
     };
     window.addEventListener("nexport-brand-logo-change", onLogoChange);
+    void loadBrandLogosFromDatabase()
+      .then(setBrandLogos)
+      .catch((error) => {
+        console.error("Brand logos could not be loaded:", error);
+      });
     return () => {
       window.removeEventListener("nexport-brand-logo-change", onLogoChange);
     };
@@ -54,19 +66,22 @@ export function ERPSidebar() {
   return (
     <motion.aside
       initial={false}
-      animate={{ width: sidebarOpen ? 264 : 72 }}
+      animate={{
+        width: isMobile ? 280 : sidebarOpen ? 264 : 72,
+        x: isMobile && !sidebarOpen ? -288 : 0,
+      }}
       transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
       className={cn(
-        "fixed z-40 flex flex-col transition-colors",
-        "left-0 top-0 h-screen border-r border-border/60 shadow-sm text-foreground",
-        "bg-card/84 backdrop-blur-xl dark:bg-card/70"
+        "fixed z-40 flex max-w-[82vw] flex-col transition-colors",
+        "left-0 top-0 h-screen border-r border-border/70 shadow-sm text-foreground",
+        "bg-card/84 backdrop-blur-xl dark:border-white/[0.07] dark:bg-card/70"
       )}
     >
       {/* Brand */}
       <div
         className={cn(
           "flex h-20 items-center px-4",
-          brandLogo && sidebarOpen ? "gap-0" : "gap-3",
+          brandLogo && isExpanded ? "gap-0" : "gap-3",
           "border-b border-border/30"
         )}
       >
@@ -75,7 +90,7 @@ export function ERPSidebar() {
           whileTap={{ scale: 0.96 }}
           className={cn(
             "flex shrink-0 items-center justify-center overflow-hidden",
-            brandLogo && sidebarOpen ? "h-14 w-full rounded-lg" : "h-10 w-10 rounded-xl",
+            brandLogo && isExpanded ? "h-14 w-full rounded-lg" : "h-12 w-12 rounded-xl",
             brandLogo
               ? "bg-transparent shadow-none ring-0"
               : "bg-primary text-primary-foreground shadow-sm ring-1 ring-primary/20"
@@ -85,7 +100,7 @@ export function ERPSidebar() {
             <img
               src={brandLogo}
               alt="Nexport ERP logo"
-              className={cn("h-full w-full object-contain", sidebarOpen ? "p-0.5" : "p-1.5")}
+              className={cn("h-full w-full object-contain", isExpanded ? "p-0.5" : "p-0.5")}
               onError={() => applyBrandLogo(brandLogoMode, "")}
             />
           ) : (
@@ -93,7 +108,7 @@ export function ERPSidebar() {
           )}
         </motion.div>
         <AnimatePresence initial={false}>
-          {sidebarOpen && !brandLogo && (
+          {isExpanded && !brandLogo && (
             <motion.div
               initial={{ opacity: 0, x: -8 }}
               animate={{ opacity: 1, x: 0 }}
@@ -126,7 +141,7 @@ export function ERPSidebar() {
 
           return (
             <div key={section} className={cn("mb-6", sIdx > 0 && "pt-2")}>
-              {sidebarOpen && (
+              {(sidebarOpen || isMobile) && (
                 <div className="mb-2 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80">
                   {section}
                 </div>
@@ -139,9 +154,12 @@ export function ERPSidebar() {
                   const btn = (
                     <Link
                       href={`/${item.id}`}
+                      onClick={() => {
+                        if (isMobile) setSidebarOpen(false);
+                      }}
                       className={cn(
                         "group relative flex h-10 w-full items-center overflow-hidden rounded-xl text-sm font-medium transition-all duration-200",
-                        sidebarOpen ? "gap-3 px-3" : "justify-center px-0",
+                        sidebarOpen || isMobile ? "gap-3 px-3" : "justify-center px-0",
                         isActive
                           ? "bg-primary/10 text-primary shadow-sm"
                           : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
@@ -157,7 +175,7 @@ export function ERPSidebar() {
                         strokeWidth={2}
                       />
                       <AnimatePresence initial={false}>
-                        {sidebarOpen && (
+                        {(sidebarOpen || isMobile) && (
                           <motion.span
                             initial={{ opacity: 0, x: -6 }}
                             animate={{ opacity: 1, x: 0 }}
@@ -172,7 +190,7 @@ export function ERPSidebar() {
                     </Link>
                   );
 
-                  if (!sidebarOpen) {
+                  if (!sidebarOpen && !isMobile) {
                     return (
                       <Tooltip key={item.id} delayDuration={0}>
                         <TooltipTrigger asChild>{btn}</TooltipTrigger>
@@ -195,7 +213,7 @@ export function ERPSidebar() {
         <div
           className={cn(
             "flex min-h-[52px] items-center gap-3 rounded-2xl p-2 transition-colors",
-            sidebarOpen ? "bg-muted/30" : ""
+            sidebarOpen || isMobile ? "bg-muted/30" : ""
           )}
         >
           <Avatar className="h-9 w-9 shrink-0 ring-1 ring-border/50 shadow-sm">
@@ -210,7 +228,7 @@ export function ERPSidebar() {
             </AvatarFallback>
           </Avatar>
           <AnimatePresence initial={false}>
-            {sidebarOpen && (
+            {(sidebarOpen || isMobile) && (
               <motion.div
                 initial={{ opacity: 0, x: -6 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -227,7 +245,7 @@ export function ERPSidebar() {
               </motion.div>
             )}
           </AnimatePresence>
-          {sidebarOpen && (
+          {(sidebarOpen || isMobile) && (
             <button
               onClick={logout}
               className="shrink-0 rounded-xl p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"

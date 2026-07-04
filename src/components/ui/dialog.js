@@ -42,7 +42,7 @@ function DialogContent({ className, children, showCloseButton = true, ...props }
         data-slot="dialog-content"
         className={cn(
           "fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%]",
-          "gap-4 rounded-2xl border border-white/60 dark:border-white/[0.08] bg-white/85 dark:bg-slate-950/85 p-6",
+          "max-h-[calc(100svh-1rem)] overflow-y-auto gap-4 rounded-2xl border border-white/60 dark:border-white/[0.08] bg-white/85 dark:bg-slate-950/85 p-4 sm:p-6",
           "backdrop-blur-2xl shadow-enterprise-xl",
           "data-[state=open]:animate-in data-[state=closed]:animate-out",
           "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
@@ -58,12 +58,13 @@ function DialogContent({ className, children, showCloseButton = true, ...props }
           <DialogPrimitive.Close
             data-slot="dialog-close"
             className={cn(
-              "absolute top-4 right-4 flex h-8 w-8 items-center justify-center rounded-lg",
-              "text-muted-foreground opacity-70 transition-all",
-              "hover:bg-muted/70 hover:opacity-100 hover:text-foreground",
-              "focus:ring-2 focus:ring-ring/50 focus:outline-none",
+              "absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full",
+              "border border-border/70 bg-background/90 text-muted-foreground shadow-sm backdrop-blur",
+              "transition-all duration-200 hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive hover:shadow-md",
+              "focus:ring-2 focus:ring-ring/50 focus:ring-offset-2 focus:ring-offset-background focus:outline-none",
               "disabled:pointer-events-none",
-              "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+              "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg]:transition-transform [&_svg]:duration-200",
+              "hover:[&_svg]:rotate-90 [&_svg:not([class*='size-'])]:size-4"
             )}
           >
             <XIcon />

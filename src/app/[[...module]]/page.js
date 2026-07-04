@@ -19,6 +19,7 @@ import { ERPHeader } from "@/components/erp/header";
 import { CommandPalette } from "@/components/erp/command-palette";
 import { Badge } from "@/components/ui/badge";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 import DashboardModule from "@/components/erp/modules/dashboard";
 import ShipmentsModule from "@/components/erp/modules/shipments";
@@ -185,10 +186,11 @@ function PermissionBoundary({ module, children }) {
 }
 
 function HomeContent() {
-  const { activeModule, sidebarOpen, setActiveModule, token, canView, user } =
+  const { activeModule, sidebarOpen, setSidebarOpen, setActiveModule, token, canView, user } =
     useERPStore();
   const params = useParams();
   const router = useRouter();
+  const isMobile = useIsMobile();
   const routeModule = params?.module
     ? Array.isArray(params.module)
       ? params.module[0]
@@ -201,6 +203,12 @@ function HomeContent() {
       setActiveModule(routeModule);
     }
   }, [routeModule, activeModule, setActiveModule]);
+
+  useEffect(() => {
+    if (isMobile) {
+      setSidebarOpen(false);
+    }
+  }, [isMobile, setSidebarOpen]);
 
   useEffect(() => {
     if (!token || !user || routeModule === "login" || routeModule === "setup-password") return;
@@ -225,35 +233,43 @@ function HomeContent() {
 
   return (
     <TooltipProvider delayDuration={0}>
-      <div className="erp-shell flex h-screen overflow-hidden text-foreground">
+      <div className="erp-shell flex h-[100svh] overflow-hidden text-foreground">
+        {isMobile && sidebarOpen && (
+          <button
+            type="button"
+            aria-label="Close sidebar"
+            className="fixed inset-0 z-30 bg-slate-950/45 backdrop-blur-[2px] lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
         <ERPSidebar />
         <motion.main
           initial={false}
-          animate={{ marginLeft: sidebarOpen ? 264 : 72 }}
+          animate={{ marginLeft: isMobile ? 0 : sidebarOpen ? 264 : 72 }}
           transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-          className="flex flex-1 flex-col overflow-hidden"
+          className="min-w-0 flex flex-1 flex-col overflow-hidden"
         >
           <ERPHeader />
           <div className="flex-1 overflow-y-auto custom-scrollbar">
-            <div className="w-full max-w-[1680px] mx-auto p-4 sm:p-5 lg:p-7">
+            <div className="w-full max-w-[1680px] mx-auto p-3 sm:p-5 lg:p-7">
               {/* Module hero */}
               <motion.div
                 key={activeModule}
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
-                className="mb-6 flex items-center gap-4 rounded-lg border border-border/70 bg-card/82 p-4 sm:p-5 shadow-enterprise-md backdrop-blur-xl dark:border-white/[0.07] dark:bg-card/72"
+                className="mb-4 flex items-center gap-3 rounded-lg border border-border/70 bg-card/82 p-3 shadow-enterprise-md backdrop-blur-xl dark:border-white/[0.07] dark:bg-card/72 sm:mb-6 sm:gap-4 sm:p-5"
               >
                 <motion.div
                   initial={{ scale: 0.9, rotate: -6 }}
                   animate={{ scale: 1, rotate: 0 }}
                   transition={{ type: "spring", stiffness: 280, damping: 22 }}
-                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-teal/12 text-teal ring-1 ring-teal/25 shadow-sm"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-teal/12 text-teal ring-1 ring-teal/25 shadow-sm sm:h-12 sm:w-12"
                 >
-                  <ModuleIcon className="h-6 w-6" strokeWidth={2} />
+                  <ModuleIcon className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={2} />
                 </motion.div>
                 <div className="min-w-0 flex-1">
-                  <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
+                  <h1 className="truncate text-lg font-bold tracking-tight sm:text-2xl">
                     {currentModule.title}
                   </h1>
                   <p className="mt-0.5 text-sm text-muted-foreground truncate">

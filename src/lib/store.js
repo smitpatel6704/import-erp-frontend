@@ -44,6 +44,9 @@ export const useERPStore = create((set, get) => ({
             return null;
         const response = await window.fetch("/api/auth/me", {
             cache: "no-store",
+            headers: {
+                Authorization: `Bearer ${get().token}`,
+            },
         });
         if (!response.ok)
             return null;

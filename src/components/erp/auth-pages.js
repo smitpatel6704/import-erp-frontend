@@ -16,6 +16,7 @@ import { useERPStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { getSavedBrandLogos, loadBrandLogosFromDatabase } from "@/components/erp/theme-runtime";
 
 /* ─── Split-screen shell ───────────────────────────────────────── */
 
@@ -25,7 +26,55 @@ const brandFeatures = [
   { icon: ShieldCheck, label: "Enterprise-grade access control" },
 ];
 
+function BrandLogo({ logo, tone = "dark" }) {
+  const isLight = tone === "light";
+
+  return (
+    <div
+      className={`flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl shadow-lg ring-1 backdrop-blur ${
+        isLight
+          ? "bg-white/[0.08] ring-white/15"
+          : "bg-gradient-to-br from-teal/20 to-teal/5 ring-teal/25"
+      }`}
+    >
+      {logo ? (
+        <img
+          src={logo}
+          alt="Nexport ERP logo"
+          className="h-full w-full object-contain p-1"
+        />
+      ) : (
+        <Anchor
+          className={`h-5 w-5 ${isLight ? "text-teal-light" : "text-teal"}`}
+          strokeWidth={2.2}
+        />
+      )}
+    </div>
+  );
+}
+
 function AuthShell({ title, description, badge, children }) {
+  const [brandLogos, setBrandLogos] = useState(() => getSavedBrandLogos());
+  const darkPanelLogo = brandLogos.collapsed || brandLogos.dark || brandLogos.light || "";
+  const mobileLogo = brandLogos.collapsed || brandLogos.light || brandLogos.dark || "";
+
+  useEffect(() => {
+    const onLogoChange = (event) => {
+      setBrandLogos(event.detail || getSavedBrandLogos());
+    };
+
+    window.addEventListener("nexport-brand-logo-change", onLogoChange);
+    void loadBrandLogosFromDatabase()
+      .then(setBrandLogos)
+      .catch((error) => {
+        console.error("Brand logos could not be loaded:", error);
+      });
+
+    return () => {
+      window.removeEventListener("nexport-brand-logo-change", onLogoChange);
+    };
+  }, []);
+
   return (
     <div className="relative min-h-screen w-full overflow-hidden">
       <div className="ambient-orbs" aria-hidden="true" />
@@ -43,9 +92,7 @@ function AuthShell({ title, description, badge, children }) {
           <div className="absolute -bottom-32 -left-16 h-96 w-96 rounded-full bg-amber/15 blur-3xl" />
 
           <div className="relative flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/[0.08] ring-1 ring-white/15 shadow-lg backdrop-blur">
-              <Anchor className="h-5 w-5 text-teal-light" strokeWidth={2.2} />
-            </div>
+            <BrandLogo logo={darkPanelLogo} tone="light" />
             <div>
               <p className="text-sm font-bold tracking-tight">Nexport ERP</p>
               <p className="text-[10.5px] font-medium uppercase tracking-[0.16em] text-white/45">
@@ -107,9 +154,7 @@ function AuthShell({ title, description, badge, children }) {
           <div className="w-full max-w-md">
             {/* Compact mobile brand */}
             <div className="mb-6 flex items-center gap-3 lg:hidden">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-teal/20 to-teal/5 ring-1 ring-teal/25 shadow-sm">
-                <Anchor className="h-5 w-5 text-teal" strokeWidth={2.2} />
-              </div>
+              <BrandLogo logo={mobileLogo} />
               <div>
                 <p className="text-sm font-bold tracking-tight">Nexport ERP</p>
                 <p className="text-[10.5px] font-medium uppercase tracking-[0.14em] text-muted-foreground">

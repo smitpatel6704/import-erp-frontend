@@ -1,6 +1,7 @@
 "use client";
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import React, { useEffect, useState, useCallback, useRef } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Ship,
@@ -31,6 +32,7 @@ import {
   Anchor,
   Inbox,
 } from "lucide-react";
+import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -192,7 +194,9 @@ const carrierSupported = (shippingLine) => {
     value.includes("msc") ||
     value.includes("mediterraneanshipping") ||
     value.includes("evergreen") ||
-    value.includes("shipmentlink")
+    value.includes("shipmentlink") ||
+    value.includes("hapag") ||
+    value.includes("hlag")
   );
 };
 const containerOptionValue = (size, type) => `${size || ""}|||${type || ""}`;
@@ -203,6 +207,9 @@ const parseContainerOptionValue = (value) => {
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function ShipmentsModule() {
   var _a, _b, _c, _d, _e;
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const canCreateShipments = useERPStore((state) => state.canAction("shipments", "create"));
   const canUpdateShipments = useERPStore((state) => state.canAction("shipments", "update"));
   const canDeleteShipments = useERPStore((state) => state.canAction("shipments", "delete"));
@@ -217,6 +224,7 @@ export default function ShipmentsModule() {
   const [shipments, setShipments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState(null);
+  const [deleteShipmentObj, setDeleteShipmentObj] = useState(null);
   const [viewMode, setViewMode] = useState("table");
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
@@ -572,6 +580,59 @@ export default function ShipmentsModule() {
         });
       });
   };
+  const openCreateShipment = useCallback(() => {
+    setEditingId(null);
+    setEntryMode("automatic");
+    setTrackingFetchState("idle");
+    setTrackingFetchMessage("");
+    lastAutomaticLookup.current = "";
+    setNewForm({
+      blNumber: "",
+      invoiceNumber: "",
+      shippingLine: "",
+      freightForwarder: "",
+      vesselName: "",
+      voyageNumber: "",
+      etd: "",
+      eta: "",
+      originCountry: "",
+      originPort: "",
+      destinationPort: "",
+      priority: "normal",
+      status: "draft",
+      shipmentValue: "",
+      currency: "USD",
+      companyId: "",
+      exporterCompanyId: "",
+      goodsDescription: "",
+      notes: "",
+      internalNotes: "",
+      requiredDocumentIds: documentChecklist
+        .filter((item) => item.isRequired)
+        .map((item) => item.id),
+      notificationUserIds: [],
+      containers: [],
+    });
+    setDetailOpen(false);
+    setNewShipmentOpen(true);
+  }, [documentChecklist]);
+  useEffect(() => {
+    const shouldOpenNewShipment =
+      searchParams.get("new") === "1" ||
+      searchParams.get("new") === "shipment" ||
+      searchParams.get("action") === "new";
+    if (!shouldOpenNewShipment) return;
+    if (canCreateShipments) {
+      openCreateShipment();
+    } else {
+      toast({
+        title: "Permission denied",
+        description: "You do not have create permission for shipments.",
+        variant: "destructive",
+      });
+    }
+    router.replace(pathname, { scroll: false });
+  }, [canCreateShipments, openCreateShipment, pathname, router, searchParams]);
   const saveShipment = async () => {
     try {
     const url = editingId
@@ -662,10 +723,6 @@ export default function ShipmentsModule() {
       });
       return;
     }
-    const confirmed = window.confirm(
-      `Delete shipment ${shipment.shipmentNumber}? This will remove it from active shipment lists.`,
-    );
-    if (!confirmed) return;
     setDeletingId(shipment.id);
     try {
       const res = await fetch(`/api/shipments/${shipment.id}`, {
@@ -922,41 +979,7 @@ export default function ShipmentsModule() {
                     _jsxs(Button, {
                       size: "sm",
                       className: "h-9 text-xs ml-auto",
-                      onClick: () => {
-                        setEditingId(null);
-                        setEntryMode("automatic");
-                        setTrackingFetchState("idle");
-                        setTrackingFetchMessage("");
-                        lastAutomaticLookup.current = "";
-                        setNewForm({
-                          blNumber: "",
-                          invoiceNumber: "",
-                          shippingLine: "",
-                          freightForwarder: "",
-                          vesselName: "",
-                          voyageNumber: "",
-                          etd: "",
-                          eta: "",
-                          originCountry: "",
-                          originPort: "",
-                          destinationPort: "",
-                          priority: "normal",
-                          status: "draft",
-                          shipmentValue: "",
-                          currency: "USD",
-                          companyId: "",
-                          exporterCompanyId: "",
-                          goodsDescription: "",
-                          notes: "",
-                          internalNotes: "",
-                          requiredDocumentIds: documentChecklist
-                            .filter((item) => item.isRequired)
-                            .map((item) => item.id),
-                          notificationUserIds: [],
-                          containers: [],
-                        });
-                        setNewShipmentOpen(true);
-                      },
+                      onClick: openCreateShipment,
                       children: [
                         _jsx(Plus, { className: "h-3.5 w-3.5 mr-1" }),
                         " New Shipment",
@@ -1360,7 +1383,7 @@ export default function ShipmentsModule() {
                                                   disabled: deletingId === s.id,
                                                   onClick: (event) => {
                                                     event.stopPropagation();
-                                                    deleteShipment(s);
+                                                    setDeleteShipmentObj(s);
                                                   },
                                                   title: "Delete shipment",
                                                   children:
@@ -1545,7 +1568,7 @@ export default function ShipmentsModule() {
                                                       deletingId === s.id,
                                                     onClick: (event) => {
                                                       event.stopPropagation();
-                                                      deleteShipment(s);
+                                                      setDeleteShipmentObj(s);
                                                     },
                                                     title: "Delete shipment",
                                                     children:
@@ -1724,7 +1747,7 @@ export default function ShipmentsModule() {
                           _jsxs(Button, {
                             variant: "outline",
                             size: "sm",
-                            onClick: () => deleteShipment(selectedShipment),
+                            onClick: () => setDeleteShipmentObj(selectedShipment),
                             disabled: deletingId === selectedShipment.id,
                             className:
                               "h-7 px-2 text-xs border-red-500/30 text-red-600 hover:bg-red-500/10 hover:text-red-700",
@@ -2534,7 +2557,7 @@ export default function ShipmentsModule() {
                                     _jsx("span", {
                                       className:
                                         "block text-[10px] opacity-75 mt-0.5",
-                                      children: "Fill from Maersk or MSC",
+                                      children: "Fill from Maersk, MSC, or Hapag-Lloyd",
                                     }),
                                   ],
                                 }),
@@ -2780,7 +2803,7 @@ export default function ShipmentsModule() {
                                           className: "text-xs font-medium",
                                           children:
                                             trackingFetchState === "idle"
-                                              ? "Enter BL and select Maersk or MSC"
+                                              ? "Enter BL and select supported carrier"
                                               : trackingFetchState === "loading"
                                                 ? "Fetching carrier details"
                                                 : trackingFetchState ===
@@ -3431,6 +3454,18 @@ export default function ShipmentsModule() {
             }),
           ],
         }),
+      }),
+      _jsx(ConfirmDeleteDialog, { 
+        open: !!deleteShipmentObj, 
+        onOpenChange: (open) => !open && setDeleteShipmentObj(null), 
+        onConfirm: () => { 
+          if (deleteShipmentObj) { 
+            deleteShipment(deleteShipmentObj); 
+            setDeleteShipmentObj(null); 
+          } 
+        }, 
+        title: "Delete Shipment", 
+        description: deleteShipmentObj ? `Delete shipment ${deleteShipmentObj.shipmentNumber}? This will remove it from active shipment lists.` : "" 
       }),
     ],
   });

@@ -226,6 +226,7 @@ function ShipmentChecklistModal({ shipment, shipments, open, onOpenChange, onNav
     const [selectedMergeIds, setSelectedMergeIds] = useState([]);
     const [mergeOrderIds, setMergeOrderIds] = useState([]);
     const [merging, setMerging] = useState(false);
+    const token = useERPStore((state) => state.token);
     const canUploadDocuments = useERPStore((state) => state.canAction('documents', 'upload'));
     const canVerifyDocuments = useERPStore((state) => state.canAction('documents', 'verify'));
     const mergeSensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
@@ -317,23 +318,41 @@ function ShipmentChecklistModal({ shipment, shipments, open, onOpenChange, onNav
             setSubmitting(false);
         }
     };
-    const openDocumentUrl = (fileUrl) => {
+    const fetchProtectedFile = async (fileUrl) => {
         if (!fileUrl) {
-            toast({
-                title: 'Preview not available',
-                description: 'This document does not have a file URL.',
-                variant: 'destructive',
-            });
-            return;
+            throw new Error('File URL is missing.');
         }
         let url = fileUrl;
         if (url.startsWith('/uploads/')) {
-            url = `${API_BASE_URL}${url}`;
+            url = `${API_BASE_URL}/api${url}`;
         }
         else if (url.startsWith('/documents/')) {
             url = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
         }
-        window.open(url, '_blank');
+        const headers = {};
+        const isProtectedBackendFile = url.startsWith('/api/uploads/') || (API_BASE_URL && url.startsWith(API_BASE_URL));
+        if (token && isProtectedBackendFile) {
+            headers.Authorization = `Bearer ${token}`;
+        }
+        const res = await fetch(url, { headers });
+        if (!res.ok)
+            throw new Error('Failed to load document');
+        return res.blob();
+    };
+    const openDocumentUrl = async (fileUrl) => {
+        try {
+            const blob = await fetchProtectedFile(fileUrl);
+            const blobUrl = URL.createObjectURL(blob);
+            window.open(blobUrl, '_blank', 'noopener,noreferrer');
+            window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60 * 1000);
+        }
+        catch (error) {
+            toast({
+                title: 'Preview not available',
+                description: error.message || 'This document could not be opened.',
+                variant: 'destructive',
+            });
+        }
     };
     const downloadFile = async (fileUrl, fileName = 'shipment-documents.pdf') => {
         if (!fileUrl) {
@@ -344,14 +363,7 @@ function ShipmentChecklistModal({ shipment, shipments, open, onOpenChange, onNav
             });
             return;
         }
-        let url = fileUrl;
-        if (url.startsWith('/')) {
-            url = `${API_BASE_URL}${url}`;
-        }
-        const res = await fetch(url);
-        if (!res.ok)
-            throw new Error('Failed to download merged PDF');
-        const blob = await res.blob();
+        const blob = await fetchProtectedFile(fileUrl);
         const blobUrl = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = blobUrl;

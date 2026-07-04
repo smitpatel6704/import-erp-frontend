@@ -24,6 +24,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { formatDistanceToNow, isAfter, isToday, isYesterday, subDays } from 'date-fns';
+import { ConfirmDeleteDialog } from '@/components/ui/confirm-delete-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -323,13 +324,14 @@ export function NotificationsModule() {
 }
 
 function NotificationRow({ notification, index, busy, onMarkRead, onSendEmail, onDismiss }) {
+  const [showConfirm, setShowConfirm] = useState(false);
   const typeConfig = typeColors[notification.type] || typeColors.info;
   const TypeIcon = typeConfig.icon;
   const CategoryIcon = categoryIcons[notification.category] || Settings;
-  const emailStatusColor = notification.emailStatus === 'sent'
-    ? 'text-emerald-600'
-    : notification.emailStatus === 'failed'
-      ? 'text-red-500'
+  const emailStatusColor = notification.emailStatus === 'failed'
+    ? 'text-red-500'
+    : notification.emailStatus === 'sent'
+      ? 'text-emerald-500'
       : 'text-muted-foreground';
 
   return (
@@ -375,10 +377,17 @@ function NotificationRow({ notification, index, busy, onMarkRead, onSendEmail, o
             <Eye className="h-3.5 w-3.5 text-muted-foreground" />
           </Button>
         )}
-        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => onDismiss(notification.id)} title="Dismiss">
+        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setShowConfirm(true)} title="Dismiss">
           <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
         </Button>
       </div>
+      <ConfirmDeleteDialog 
+        open={showConfirm} 
+        onOpenChange={setShowConfirm} 
+        onConfirm={() => { onDismiss(notification.id); setShowConfirm(false); }} 
+        title="Dismiss Notification" 
+        description="Are you sure you want to dismiss this notification?" 
+      />
     </motion.div>
   );
 }

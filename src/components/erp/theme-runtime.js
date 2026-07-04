@@ -7,10 +7,25 @@ const CUSTOM_COLOR_KEY = "nexport_custom_theme_color";
 const SIDEBAR_STYLE_KEY = "nexport_sidebar_style";
 const LOGO_LIGHT_KEY = "nexport_logo_light";
 const LOGO_DARK_KEY = "nexport_logo_dark";
+const LOGO_COLLAPSED_KEY = "nexport_logo_collapsed";
 const DEFAULT_COLOR = "teal";
 const DEFAULT_CUSTOM_COLOR = "#8b5cf6";
 const DEFAULT_SIDEBAR_STYLE = "dark";
 const CUSTOM_COLOR = "custom";
+const THEME_COLORS = {
+  teal: "#0d9488",
+  blue: "#2563eb",
+  emerald: "#059669",
+  violet: "#7c3aed",
+  rose: "#e11d48",
+  amber: "#f59e0b",
+};
+
+function authHeaders() {
+  if (typeof window === "undefined") return {};
+  const token = window.sessionStorage.getItem("nexport_token");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 function normalizeHexColor(color) {
   if (typeof color !== "string") return DEFAULT_CUSTOM_COLOR;
@@ -72,6 +87,27 @@ function clearCustomVariables() {
   ].forEach((name) => document.documentElement.style.removeProperty(name));
 }
 
+function applyThemeVariables(hex) {
+  const themeColor = normalizeHexColor(hex);
+  const rootStyle = document.documentElement.style;
+  const readableText = getReadableTextColor(themeColor);
+  const variables = {
+    "--primary": themeColor,
+    "--ring": themeColor,
+    "--chart-1": themeColor,
+    "--teal": themeColor,
+    "--teal-light": `color-mix(in oklch, ${themeColor} 72%, white)`,
+    "--teal-dark": `color-mix(in oklch, ${themeColor} 78%, black)`,
+    "--accent": `color-mix(in oklch, ${themeColor} 16%, white)`,
+    "--accent-foreground": `color-mix(in oklch, ${themeColor} 78%, black)`,
+    "--primary-foreground": readableText,
+  };
+
+  Object.entries(variables).forEach(([name, value]) => {
+    rootStyle.setProperty(name, value);
+  });
+}
+
 export function applyThemeColor(color = DEFAULT_COLOR, customColor) {
   if (typeof document === "undefined") return;
   document.documentElement.dataset.themeColor = color;
@@ -79,9 +115,10 @@ export function applyThemeColor(color = DEFAULT_COLOR, customColor) {
   if (color === CUSTOM_COLOR) {
     const normalized = normalizeHexColor(customColor || getSavedCustomThemeColor());
     window.localStorage.setItem(CUSTOM_COLOR_KEY, normalized);
-    applyCustomVariables(normalized);
+    applyThemeVariables(normalized);
   } else {
-    clearCustomVariables();
+    const paletteColor = THEME_COLORS[color] || THEME_COLORS[DEFAULT_COLOR];
+    applyThemeVariables(paletteColor);
   }
 }
 
@@ -110,7 +147,7 @@ export function getSavedSidebarStyle() {
 
 export function applyBrandLogo(mode, logoDataUrl) {
   if (typeof window === "undefined") return;
-  const key = mode === "dark" ? LOGO_DARK_KEY : LOGO_LIGHT_KEY;
+  const key = mode === "collapsed" ? LOGO_COLLAPSED_KEY : mode === "dark" ? LOGO_DARK_KEY : LOGO_LIGHT_KEY;
   try {
     if (logoDataUrl) {
       window.localStorage.setItem(key, logoDataUrl);
@@ -127,11 +164,52 @@ export function applyBrandLogo(mode, logoDataUrl) {
   );
 }
 
+export async function loadBrandLogosFromDatabase() {
+  if (typeof window === "undefined") return getSavedBrandLogos();
+  const headers = authHeaders();
+  if (!headers.Authorization) return getSavedBrandLogos();
+  const response = await window.fetch("/api/settings/brand-logos", {
+    headers,
+    cache: "no-store",
+  });
+  if (!response.ok) return getSavedBrandLogos();
+  const json = await response.json();
+  const logos = {
+    light: json.data?.light || "",
+    dark: json.data?.dark || "",
+    collapsed: json.data?.collapsed || "",
+  };
+  applyBrandLogo("light", logos.light);
+  applyBrandLogo("dark", logos.dark);
+  applyBrandLogo("collapsed", logos.collapsed);
+  return logos;
+}
+
+export async function saveBrandLogoToDatabase(mode, logoDataUrl) {
+  applyBrandLogo(mode, logoDataUrl);
+  const headers = authHeaders();
+  if (!headers.Authorization) return getSavedBrandLogos();
+  const response = await window.fetch("/api/settings/brand-logos", {
+    method: "PUT",
+    headers: {
+      ...headers,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ mode, logoDataUrl: logoDataUrl || "" }),
+  });
+  const json = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(json.error || "Logo could not be saved to the database.");
+  }
+  return getSavedBrandLogos();
+}
+
 export function getSavedBrandLogos() {
-  if (typeof window === "undefined") return { light: "", dark: "" };
+  if (typeof window === "undefined") return { light: "", dark: "", collapsed: "" };
   return {
     light: window.localStorage.getItem(LOGO_LIGHT_KEY) || "",
     dark: window.localStorage.getItem(LOGO_DARK_KEY) || "",
+    collapsed: window.localStorage.getItem(LOGO_COLLAPSED_KEY) || "",
   };
 }
 
@@ -140,6 +218,9 @@ export function ThemeRuntime() {
     const savedTheme = getSavedThemeColor();
     applyThemeColor(savedTheme, getSavedCustomThemeColor());
     applySidebarStyle(getSavedSidebarStyle());
+    void loadBrandLogosFromDatabase().catch((error) => {
+      console.error("Brand logos could not be loaded from database:", error);
+    });
   }, []);
 
   return null;

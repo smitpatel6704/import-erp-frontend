@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
@@ -129,6 +130,8 @@ export default function UserManagement() {
   const [form, setForm] = useState(emptyForm);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [deleteUserObj, setDeleteUserObj] = useState(null);
+
   const fetchUsers = useCallback(async () => {
     const res = await fetch(
       `/api/settings/users?search=${encodeURIComponent(search)}`,
@@ -228,12 +231,6 @@ export default function UserManagement() {
     }
   };
   const deleteUser = async (user) => {
-    if (
-      !window.confirm(
-        `Permanently delete ${user.name} (${user.email})? This cannot be undone.`,
-      )
-    )
-      return;
     setMessage("");
     try {
       const res = await fetch(`/api/settings/users/${user.id}`, {
@@ -365,10 +362,12 @@ export default function UserManagement() {
                                       _jsx(Button, {
                                         variant: "ghost",
                                         size: "icon",
-                                        onClick: () => deleteUser(user),
-                                        title: "Delete user permanently",
+                                        onClick: () => setDeleteUserObj(user),
+                                        className:
+                                          "h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive",
+                                        title: "Delete user",
                                         children: _jsx(Trash2, {
-                                          className: "h-4 w-4 text-destructive",
+                                          className: "h-4 w-4",
                                         }),
                                       }),
                                   ],
@@ -638,6 +637,20 @@ export default function UserManagement() {
             }),
           ],
         }),
+      }),
+      _jsx(ConfirmDeleteDialog, {
+        open: !!deleteUserObj,
+        onOpenChange: (open) => !open && setDeleteUserObj(null),
+        onConfirm: () => {
+          if (deleteUserObj) {
+            deleteUser(deleteUserObj);
+            setDeleteUserObj(null);
+          }
+        },
+        title: "Delete User",
+        description: deleteUserObj
+          ? `Permanently delete ${deleteUserObj.name} (${deleteUserObj.email})? This cannot be undone.`
+          : "",
       }),
     ],
   });

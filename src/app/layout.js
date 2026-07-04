@@ -38,6 +38,11 @@ export const metadata = {
     "Enterprise",
   ],
   authors: [{ name: "Nexport ERP Team" }],
+  icons: {
+    icon: "/NS%20(Nextron%20solution).png",
+    shortcut: "/NS%20(Nextron%20solution).png",
+    apple: "/NS%20(Nextron%20solution).png",
+  },
   openGraph: {
     title: "Nexport ERP — Enterprise Import Management",
     description: "Comprehensive ERP system for import management",
