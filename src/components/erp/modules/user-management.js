@@ -98,7 +98,14 @@ const setAccess = (permissions, module, access) => {
   const remaining = permissions.filter((item) => item.module !== module);
   return access === "none"
     ? remaining
-    : [...remaining, { module, access, ...(access === "edit" ? { actions: fullActions() } : {}) }];
+    : [
+        ...remaining,
+        {
+          module,
+          access,
+          ...(access === "edit" ? { actions: fullActions() } : {}),
+        },
+      ];
 };
 const permissionForModule = (permissions, module) =>
   permissions.find((item) => item.module === module) || null;
@@ -152,7 +159,7 @@ export default function UserManagement() {
   const openCreate = () => {
     setEditing(null);
     setForm(emptyForm);
-    setMessage("");
+    
     setOpen(true);
   };
   const openEdit = (user) => {
@@ -165,12 +172,12 @@ export default function UserManagement() {
       phone: user.phone || "",
       permissions: user.permissions || [],
     });
-    setMessage("");
+    
     setOpen(true);
   };
   const save = async () => {
     setLoading(true);
-    setMessage("");
+    
     try {
       const res = await fetch(
         editing ? `/api/settings/users/${editing.id}` : "/api/settings/users",
@@ -183,7 +190,7 @@ export default function UserManagement() {
       const json = await readJsonResponse(res);
       if (!res.ok) throw new Error(json.error || "Unable to save user");
       if (editing) {
-        setMessage("User permissions updated.");
+        toast({ title: "Success", description: "User permissions updated." });
         await fetchUsers();
         setOpen(false);
       } else {
@@ -197,23 +204,22 @@ export default function UserManagement() {
             description: `Email sent to ${form.email}.`,
           });
         } else {
-          setMessage(
-            `User created. Email was not sent. Password link: ${delivery.inviteUrl}`,
-          );
+          
           toast({
             title: "User created",
-            description: "Email was not sent. Use the password link shown below.",
+            description:
+              "Email was not sent. Use the password link shown below.",
           });
         }
       }
     } catch (error) {
-      setMessage(error.message);
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
   };
   const resend = async (user) => {
-    setMessage("");
+    
     try {
       const res = await fetch(
         `/api/settings/users/${user.id}/resend-invitation`,
@@ -221,27 +227,28 @@ export default function UserManagement() {
       );
       const json = await readJsonResponse(res);
       if (!res.ok) throw new Error(json.error || "Unable to resend invitation");
-      setMessage(
-        json.data.emailSent
+      toast({
+        title: json.data.emailSent ? "Success" : "Notice",
+        description: json.data.emailSent
           ? "Invitation email sent."
           : `Email was not sent. Password link: ${json.data.inviteUrl}`,
-      );
+      });
     } catch (error) {
-      setMessage(error.message);
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     }
   };
   const deleteUser = async (user) => {
-    setMessage("");
+    
     try {
       const res = await fetch(`/api/settings/users/${user.id}`, {
         method: "DELETE",
       });
       const json = await readJsonResponse(res);
       if (!res.ok) throw new Error(json.error || "Unable to delete user");
-      setMessage("User deleted permanently.");
+      toast({ title: "Success", description: "User deleted permanently." });
       await fetchUsers();
     } catch (error) {
-      setMessage(error.message);
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     }
   };
   return _jsxs("div", {
@@ -391,11 +398,7 @@ export default function UserManagement() {
           }),
         ],
       }),
-      message &&
-        _jsx("div", {
-          className: "rounded-md border bg-muted/30 p-3 text-xs break-all",
-          children: message,
-        }),
+      
       _jsx(Dialog, {
         open,
         onOpenChange: setOpen,
@@ -521,8 +524,7 @@ export default function UserManagement() {
                       _jsxs(
                         "div",
                         {
-                          className:
-                            "rounded-md border p-3",
+                          className: "rounded-md border p-3",
                           children: [
                             _jsxs("div", {
                               className:

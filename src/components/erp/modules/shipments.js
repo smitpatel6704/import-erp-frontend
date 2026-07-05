@@ -85,11 +85,8 @@ const STATUSES = [
   { value: "in_transit", label: "In Transit" },
   { value: "at_pod", label: "At POD" },
   { value: "customs_clearance", label: "Customs Clearance" },
-  { value: "duty_paid", label: "Duty Paid" },
   { value: "in_transport", label: "In Transport" },
-  { value: "offloaded", label: "Offloaded" },
   { value: "delivered", label: "Delivered" },
-  { value: "closed", label: "Closed" },
 ];
 const PRIORITIES = [
   { value: "all", label: "All Priorities" },
@@ -356,6 +353,8 @@ export default function ShipmentsModule() {
                 type: container.containerType || container.type || "Dry Container",
                 currentWeight:
                   container.currentWeight || container.weight || container.grossWeight || "",
+                packageCount: container.packageCount || container.nos || container.packages || "",
+                measurementType: (container.packageCount || container.nos || container.packages) && !(container.currentWeight || container.weight || container.grossWeight) ? "nos" : "weight",
                 goodsDescription:
                   container.goodsDescription || container.containerGoods || "",
               }))
@@ -550,7 +549,17 @@ export default function ShipmentsModule() {
       notificationUserIds: Array.isArray(shipment.notificationUserIds)
         ? shipment.notificationUserIds
         : [],
-      containers: [], // Handle existing containers if needed
+      containers: Array.isArray(shipment.containers)
+        ? shipment.containers.map((c) => ({
+            containerNumber: c.containerNumber || "",
+            size: c.containerSize || c.size || "20FT",
+            type: c.containerType || c.type || "Dry Container",
+            currentWeight: c.currentWeight || "",
+            packageCount: c.packageCount || "",
+            measurementType: c.packageCount && !c.currentWeight ? "nos" : "weight",
+            goodsDescription: c.goodsDescription || "",
+          }))
+        : [],
     });
     setEntryMode("manual");
     setTrackingFetchState("idle");
@@ -660,6 +669,7 @@ export default function ShipmentsModule() {
               containerSize: container.containerSize || container.size,
               containerType: container.containerType || container.type,
               currentWeight: parseFloat(container.currentWeight) || 0,
+              packageCount: parseInt(container.packageCount) || 0,
             })),
           }),
         ),
@@ -769,11 +779,8 @@ export default function ShipmentsModule() {
     "in_transit",
     "at_pod",
     "customs_clearance",
-    "duty_paid",
     "in_transport",
-    "offloaded",
     "delivered",
-    "closed",
   ];
   const kpiTiles = [
     {
@@ -793,9 +800,7 @@ export default function ShipmentsModule() {
         (statusCounts.in_transit || 0) +
         (statusCounts.at_pod || 0) +
         (statusCounts.customs_clearance || 0) +
-        (statusCounts.duty_paid || 0) +
-        (statusCounts.in_transport || 0) +
-        (statusCounts.offloaded || 0),
+        (statusCounts.in_transport || 0),
       icon: Truck,
       iconColor: "text-sky-600 dark:text-sky-400",
       iconBg: "bg-sky-500/12",
@@ -1016,7 +1021,7 @@ export default function ShipmentsModule() {
                 setPage(1);
               },
               className: cn(
-                "relative flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap border backdrop-blur-sm transition-colors",
+                "relative flex shrink-0 items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap border backdrop-blur-sm transition-colors",
                 isActive
                   ? statusColorMap[status] +
                       " shadow-sm"
@@ -3212,12 +3217,14 @@ export default function ShipmentsModule() {
                                       size: "20FT",
                                       type: "Dry Container",
                                       currentWeight: "",
+                                      packageCount: "",
+                                      measurementType: "weight",
                                       goodsDescription: "",
                                     },
                                   ],
                                 }),
                               ),
-                            className: "h-6 text-xs px-2",
+                            className: "h-6 text-xs px-2 shrink-0",
                             size: "sm",
                             children: [
                               _jsx(Plus, { className: "w-3 h-3 mr-1" }),
@@ -3238,10 +3245,10 @@ export default function ShipmentsModule() {
                                 "div",
                                 {
                                   className:
-                                    "grid grid-cols-1 sm:grid-cols-[1fr_190px_100px_auto] gap-2 items-end rounded-lg border p-3",
+                                    "flex flex-wrap gap-3 relative rounded-lg border p-3 pt-6",
                                   children: [
                                     _jsxs("div", {
-                                      className: "flex-1",
+                                      className: "flex-1 min-w-[120px]",
                                       children: [
                                         _jsx(Label, {
                                           className: "text-xs",
@@ -3268,7 +3275,7 @@ export default function ShipmentsModule() {
                                       ],
                                     }),
                                     _jsxs("div", {
-                                      className: "w-full",
+                                      className: "w-full sm:w-[190px] shrink-0",
                                       children: [
                                         _jsx(Label, {
                                           className: "text-xs",
@@ -3328,37 +3335,70 @@ export default function ShipmentsModule() {
                                       ],
                                     }),
                                     _jsxs("div", {
-                                      className: "w-full",
+                                      className: "w-[100px] sm:w-[100px] shrink-0",
                                       children: [
                                         _jsx(Label, {
                                           className: "text-xs",
-                                          children: "Weight",
+                                          children: "Measure",
                                         }),
-                                        _jsx(Input, {
-                                          type: "number",
-                                          min: "0",
-                                          step: "0.01",
-                                          value: container.currentWeight || "",
-                                          onChange: (e) => {
-                                            const newContainers = [
-                                              ...newForm.containers,
-                                            ];
-                                            newContainers[idx].currentWeight =
-                                              e.target.value;
-                                            setNewForm(
-                                              Object.assign(
-                                                Object.assign({}, newForm),
-                                                { containers: newContainers },
-                                              ),
-                                            );
+                                        _jsxs(Select, {
+                                          value: container.measurementType || "weight",
+                                          onValueChange: (val) => {
+                                            const newContainers = [...newForm.containers];
+                                            newContainers[idx].measurementType = val;
+                                            setNewForm({ ...newForm, containers: newContainers });
                                           },
-                                          className: "h-7 text-xs mt-1",
-                                          placeholder: "kg",
-                                        }),
-                                      ],
+                                          children: [
+                                            _jsx(SelectTrigger, { className: "h-7 text-xs mt-1", children: _jsx(SelectValue, {}) }),
+                                            _jsxs(SelectContent, {
+                                              children: [
+                                                _jsx(SelectItem, { value: "weight", children: "Weight" }),
+                                                _jsx(SelectItem, { value: "nos", children: "Nos" }),
+                                              ]
+                                            })
+                                          ]
+                                        })
+                                      ]
                                     }),
                                     _jsxs("div", {
-                                      className: "sm:col-span-3",
+                                      className: "w-[100px] sm:w-[90px] shrink-0",
+                                      children: [
+                                        _jsx(Label, {
+                                          className: "text-xs",
+                                          children: container.measurementType === "nos" ? "Nos" : "Weight",
+                                        }),
+                                        container.measurementType === "nos" ? (
+                                          _jsx(Input, {
+                                            type: "number",
+                                            min: "0",
+                                            value: container.packageCount || "",
+                                            onChange: (e) => {
+                                              const newContainers = [...newForm.containers];
+                                              newContainers[idx].packageCount = e.target.value;
+                                              setNewForm({ ...newForm, containers: newContainers });
+                                            },
+                                            className: "h-7 text-xs mt-1",
+                                            placeholder: "0",
+                                          })
+                                        ) : (
+                                          _jsx(Input, {
+                                            type: "number",
+                                            min: "0",
+                                            step: "0.01",
+                                            value: container.currentWeight || "",
+                                            onChange: (e) => {
+                                              const newContainers = [...newForm.containers];
+                                              newContainers[idx].currentWeight = e.target.value;
+                                              setNewForm({ ...newForm, containers: newContainers });
+                                            },
+                                            className: "h-7 text-xs mt-1",
+                                            placeholder: "kg",
+                                          })
+                                        )
+                                      ]
+                                    }),
+                                    _jsxs("div", {
+                                      className: "w-full",
                                       children: [
                                         _jsx(Label, {
                                           className: "text-xs",
@@ -3401,7 +3441,7 @@ export default function ShipmentsModule() {
                                         ),
                                       variant: "ghost",
                                       className:
-                                        "h-7 px-2 text-xs text-red-600 hover:text-red-700",
+                                        "absolute top-1 right-1 h-7 px-2 text-xs text-red-600 hover:bg-red-50 hover:text-red-700 rounded-md",
                                       size: "sm",
                                       children: _jsx(X, {
                                         className: "w-3 h-3",
