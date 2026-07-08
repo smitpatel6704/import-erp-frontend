@@ -65,6 +65,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import { ImporterCompanyManagement } from "./companies";
 import UserManagement from "./user-management";
 import { ThemeCustomizer } from "@/components/erp/theme-customizer";
+import { useERPStore } from "@/lib/store";
 const roleColors = {
   admin: "bg-red-500/10 text-red-500 border-red-500/20",
   manager: "bg-amber/10 text-amber border-amber/20",
@@ -1144,8 +1145,10 @@ function AuditLogTab() {
   });
 }
 function ConfigurationTab() {
+  const storeCompanyName = useERPStore((state) => state.companyName);
+  const setStoreCompanyName = useERPStore((state) => state.setCompanyName);
   const [config, setConfig] = useState({
-    companyName: "Nexport ERP International",
+    companyName: storeCompanyName || "Nexport ERP International",
     defaultCurrency: "USD",
     timezone: "America/New_York",
     emailFrom: "notifications@importerp.com",
@@ -1496,6 +1499,11 @@ function ConfigurationTab() {
         className: "flex justify-end",
         children: _jsxs(Button, {
           className: "text-xs",
+          onClick: () => {
+            if (config.companyName) {
+              setStoreCompanyName(config.companyName);
+            }
+          },
           children: [
             _jsx(Shield, { className: "h-3.5 w-3.5 mr-1.5" }),
             " Save Configuration",

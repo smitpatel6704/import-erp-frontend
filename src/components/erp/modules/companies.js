@@ -1183,7 +1183,7 @@ export function ImporterCompanyManagement() {
         open: newCompanyOpen,
         onOpenChange: setNewCompanyOpen,
         children: _jsxs(DialogContent, {
-          className: "max-w-lg max-h-[80vh] overflow-hidden p-0",
+          className: "max-w-lg max-h-[80vh] flex flex-col overflow-hidden p-0",
           children: [
             _jsxs(DialogHeader, {
               className: "px-6 pt-6 pb-4 border-b",
@@ -1196,7 +1196,7 @@ export function ImporterCompanyManagement() {
               ],
             }),
             _jsx(ScrollArea, {
-              className: "h-[60vh] px-6 pb-6",
+              className: "flex-1 overflow-y-auto px-6 pb-6",
               children: _jsxs("div", {
                 className: "space-y-4 pt-4",
                 children: [
