@@ -5,9 +5,7 @@ import { useEffect } from "react";
 const STORAGE_KEY = "nexport_theme_color";
 const CUSTOM_COLOR_KEY = "nexport_custom_theme_color";
 const SIDEBAR_STYLE_KEY = "nexport_sidebar_style";
-const LOGO_LIGHT_KEY = "nexport_logo_light";
-const LOGO_DARK_KEY = "nexport_logo_dark";
-const LOGO_COLLAPSED_KEY = "nexport_logo_collapsed";
+const LOGO_EXISTS_KEY = "nexport_logo_exists";
 const DEFAULT_COLOR = "teal";
 const DEFAULT_CUSTOM_COLOR = "#8b5cf6";
 const DEFAULT_SIDEBAR_STYLE = "dark";
@@ -145,50 +143,87 @@ export function getSavedSidebarStyle() {
   return window.localStorage.getItem(SIDEBAR_STYLE_KEY) === "rail" ? "rail" : DEFAULT_SIDEBAR_STYLE;
 }
 
-export function applyBrandLogo(mode, logoDataUrl) {
-  if (typeof window === "undefined") return;
-  const key = mode === "collapsed" ? LOGO_COLLAPSED_KEY : mode === "dark" ? LOGO_DARK_KEY : LOGO_LIGHT_KEY;
+export function getLogoUrl(mode) {
+  return `/api/branding/logo/${mode}`;
+}
+
+function getLogosFromStorage() {
+  if (typeof window === "undefined") return { light: false, dark: false, collapsed: false };
   try {
-    if (logoDataUrl) {
-      window.localStorage.setItem(key, logoDataUrl);
-    } else {
-      window.localStorage.removeItem(key);
-    }
-  } catch (error) {
-    throw new Error("Logo is too large to save. Please upload a smaller image.");
+    return JSON.parse(window.localStorage.getItem(LOGO_EXISTS_KEY)) || { light: false, dark: false, collapsed: false };
+  } catch {
+    return { light: false, dark: false, collapsed: false };
   }
+}
+
+function setLogosInStorage(exists) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(LOGO_EXISTS_KEY, JSON.stringify(exists));
+}
+
+function existsToUrls(exists) {
+  const getUrl = (mode, val) => {
+    if (!val) return "";
+    const base = getLogoUrl(mode);
+    return typeof val === 'number' ? `${base}?t=${val}` : base;
+  };
+  return {
+    light: getUrl("light", exists.light),
+    dark: getUrl("dark", exists.dark),
+    collapsed: getUrl("collapsed", exists.collapsed),
+  };
+}
+
+export function applyBrandLogo(mode, exists) {
+  if (typeof window === "undefined") return;
+  const current = getLogosFromStorage();
+  current[mode] = exists ? Date.now() : false;
+  setLogosInStorage(current);
+  
+  const urls = getSavedBrandLogos();
+  if (typeof exists === "string" && exists.startsWith("data:")) {
+    urls[mode] = exists;
+  }
+  
   window.dispatchEvent(
     new CustomEvent("nexport-brand-logo-change", {
-      detail: getSavedBrandLogos(),
+      detail: urls,
     })
   );
 }
 
 export async function loadBrandLogosFromDatabase() {
   if (typeof window === "undefined") return getSavedBrandLogos();
-  const headers = authHeaders();
-  if (!headers.Authorization) return getSavedBrandLogos();
-  const response = await window.fetch("/api/settings/brand-logos", {
-    headers,
-    cache: "no-store",
-  });
-  if (!response.ok) return getSavedBrandLogos();
-  const json = await response.json();
-  const logos = {
-    light: json.data?.light || "",
-    dark: json.data?.dark || "",
-    collapsed: json.data?.collapsed || "",
-  };
-  applyBrandLogo("light", logos.light);
-  applyBrandLogo("dark", logos.dark);
-  applyBrandLogo("collapsed", logos.collapsed);
-  return logos;
+  try {
+    const response = await window.fetch("/api/branding/logos", { cache: "no-store" });
+    if (response.ok) {
+      const json = await response.json();
+      const exists = json.data || { light: false, dark: false, collapsed: false };
+      
+      const current = getLogosFromStorage();
+      const nextExists = { ...exists };
+      for (const mode in nextExists) {
+        if (nextExists[mode] && current[mode]) {
+          nextExists[mode] = current[mode];
+        }
+      }
+      
+      setLogosInStorage(nextExists);
+      const urls = existsToUrls(nextExists);
+      window.dispatchEvent(
+        new CustomEvent("nexport-brand-logo-change", { detail: urls })
+      );
+      return urls;
+    }
+  } catch (error) {
+    console.error("Brand logos could not be loaded:", error);
+  }
+  return getSavedBrandLogos();
 }
 
 export async function saveBrandLogoToDatabase(mode, logoDataUrl) {
-  applyBrandLogo(mode, logoDataUrl);
   const headers = authHeaders();
-  if (!headers.Authorization) return getSavedBrandLogos();
+  if (!headers.Authorization) throw new Error("Not authenticated");
   const response = await window.fetch("/api/settings/brand-logos", {
     method: "PUT",
     headers: {
@@ -201,16 +236,12 @@ export async function saveBrandLogoToDatabase(mode, logoDataUrl) {
   if (!response.ok) {
     throw new Error(json.error || "Logo could not be saved to the database.");
   }
+  applyBrandLogo(mode, !!logoDataUrl);
   return getSavedBrandLogos();
 }
 
 export function getSavedBrandLogos() {
-  if (typeof window === "undefined") return { light: "", dark: "", collapsed: "" };
-  return {
-    light: window.localStorage.getItem(LOGO_LIGHT_KEY) || "",
-    dark: window.localStorage.getItem(LOGO_DARK_KEY) || "",
-    collapsed: window.localStorage.getItem(LOGO_COLLAPSED_KEY) || "",
-  };
+  return existsToUrls(getLogosFromStorage());
 }
 
 export function ThemeRuntime() {

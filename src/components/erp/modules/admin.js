@@ -13,6 +13,7 @@ import {
   Wifi,
   WifiOff,
   Plus,
+  RefreshCw,
   Search,
   Shield,
   Cpu,
@@ -178,6 +179,7 @@ export function AdminModule() {
       items: [
         { id: "config", label: "General Configuration", icon: Settings },
         { id: "system", label: "System Health", icon: Server },
+        { id: "cron", label: "Cron Jobs", icon: Clock },
       ],
     },
     {
@@ -198,6 +200,8 @@ export function AdminModule() {
         return _jsx(UserManagement, {});
       case "system":
         return _jsx(SystemTab, {});
+      case "cron":
+        return _jsx(CronJobsTab, {});
       case "audit":
         return _jsx(AuditLogTab, {});
       case "config":
@@ -736,6 +740,398 @@ function SystemTab() {
     ],
   });
 }
+const formatCronTimestamp = (value) => {
+  if (!value) return "Never";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Never";
+  return format(date, "MMM dd, yyyy HH:mm:ss");
+};
+function CronJobsTab() {
+  const [status, setStatus] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [runningJobId, setRunningJobId] = useState(null);
+  const [message, setMessage] = useState("");
+  const fetchStatus = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await fetch("/api/settings/cron/status");
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to fetch cron status");
+      setStatus(json.data || null);
+    } catch (error) {
+      setMessage(error.message || "Failed to fetch cron status");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      fetchStatus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [fetchStatus]);
+  const runJob = async (jobId = "daily") => {
+    try {
+      setRunningJobId(jobId);
+      setMessage("");
+      const res = await fetch("/api/settings/cron/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to run cron job");
+      setMessage(`${json.data?.status === "success" ? "Cron job completed" : "Cron job finished"}: ${jobId}.`);
+      await fetchStatus();
+    } catch (error) {
+      setMessage(error.message || "Failed to run cron job");
+    } finally {
+      setRunningJobId(null);
+    }
+  };
+  const jobs = (status === null || status === void 0 ? void 0 : status.jobs) || [];
+  const dailyJob = jobs[0] || null;
+  const lastResult = (dailyJob === null || dailyJob === void 0 ? void 0 : dailyJob.lastResult) || null;
+  return _jsxs("div", {
+    className: "space-y-4",
+    children: [
+      _jsx(Card, {
+        className: "shadow-sm",
+        children: _jsxs(CardContent, {
+          className: "p-4",
+          children: [
+            _jsxs("div", {
+              className:
+                "flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between",
+              children: [
+                _jsxs("div", {
+                  children: [
+                    _jsx("h3", {
+                      className: "text-base font-semibold",
+                      children: "Cron Job Dashboard",
+                    }),
+                    _jsx("p", {
+                      className: "text-xs text-muted-foreground",
+                      children:
+                        "Monitor scheduled background jobs and run the daily job manually.",
+                    }),
+                  ],
+                }),
+                _jsxs("div", {
+                  className: "flex flex-wrap items-center gap-2",
+                  children: [
+                    _jsx(Badge, {
+                      variant: "outline",
+                      className: cn(
+                        "text-[10px] font-semibold",
+                        status === null || status === void 0
+                          ? false
+                          : status.cronSecretConfigured
+                            ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                            : "bg-red-500/10 text-red-500 border-red-500/20",
+                      ),
+                      children:
+                        status === null || status === void 0
+                          ? "Checking secret"
+                          : status.cronSecretConfigured
+                            ? "CRON_SECRET configured"
+                            : "CRON_SECRET missing",
+                    }),
+                    _jsxs(Button, {
+                      size: "sm",
+                      variant: "outline",
+                      className: "h-8 text-xs",
+                      onClick: fetchStatus,
+                      disabled: loading || !!runningJobId,
+                      children: [
+                        _jsx(RefreshCw, {
+                          className: cn("h-3.5 w-3.5 mr-1", loading && "animate-spin"),
+                        }),
+                        " Refresh",
+                      ],
+                    }),
+                    _jsxs(Button, {
+                      size: "sm",
+                      className: "h-8 text-xs",
+                      onClick: () => runJob("daily"),
+                      disabled: !!runningJobId,
+                      children: [
+                        _jsx(Clock, {
+                          className: cn("h-3.5 w-3.5 mr-1", runningJobId === "daily" && "animate-spin"),
+                        }),
+                        runningJobId === "daily" ? "Running..." : "Run All Daily Jobs",
+                      ],
+                    }),
+                  ],
+                }),
+              ],
+            }),
+            message &&
+              _jsx("p", {
+                className: cn(
+                  "mt-3 rounded-md border px-3 py-2 text-xs",
+                  message.toLowerCase().includes("success")
+                    ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-700"
+                    : "border-red-500/20 bg-red-500/10 text-red-600",
+                ),
+                children: message,
+              }),
+          ],
+        }),
+      }),
+      _jsx("div", {
+        className: "grid grid-cols-1 sm:grid-cols-3 gap-4",
+        children: [
+          {
+            label: "Schedule",
+            value: (dailyJob === null || dailyJob === void 0 ? void 0 : dailyJob.schedule) || "0 0 * * *",
+            sub: "Every day at midnight UTC",
+            icon: Clock,
+            color: "text-teal",
+          },
+          {
+            label: "Last Status",
+            value:
+              (dailyJob === null || dailyJob === void 0 ? void 0 : dailyJob.lastStatus) || "No runs yet",
+            sub: dailyJob === null || dailyJob === void 0 ? void 0 : dailyJob.lastRunBy
+              ? `Triggered by ${dailyJob.lastRunBy}`
+              : "Waiting for first run",
+            icon: Activity,
+            color:
+              (dailyJob === null || dailyJob === void 0 ? void 0 : dailyJob.lastStatus) === "success"
+                ? "text-emerald-600"
+                : "text-amber",
+          },
+          {
+            label: "Last Finished",
+            value: formatCronTimestamp(
+              dailyJob === null || dailyJob === void 0 ? void 0 : dailyJob.lastFinishedAt,
+            ),
+            sub:
+              dailyJob === null || dailyJob === void 0
+                ? "No duration"
+                : dailyJob.lastDurationMs
+                  ? `${dailyJob.lastDurationMs} ms`
+                  : "No duration",
+            icon: Server,
+            color: "text-cyan-600",
+          },
+        ].map((item) =>
+          _jsx(
+            Card,
+            {
+              className: "shadow-sm",
+              children: _jsx(CardContent, {
+                className: "p-4",
+                children: _jsxs("div", {
+                  className: "flex items-start justify-between gap-3",
+                  children: [
+                    _jsxs("div", {
+                      children: [
+                        _jsx("p", {
+                          className:
+                            "text-[11px] font-medium text-muted-foreground uppercase tracking-wider",
+                          children: item.label,
+                        }),
+                        _jsx("p", {
+                          className: "text-sm font-bold mt-1",
+                          children: item.value,
+                        }),
+                        _jsx("p", {
+                          className: "text-[11px] text-muted-foreground mt-1",
+                          children: item.sub,
+                        }),
+                      ],
+                    }),
+                    _jsx("div", {
+                      className: "rounded-lg p-2 bg-muted/50",
+                      children: _jsx(item.icon, {
+                        className: cn("h-4 w-4", item.color),
+                      }),
+                    }),
+                  ],
+                }),
+              }),
+            },
+            item.label,
+          ),
+        ),
+      }),
+      _jsx(Card, {
+        className: "shadow-sm",
+        children: _jsxs(CardContent, {
+          className: "p-0",
+          children: [
+            _jsx("div", {
+              className: "border-b px-5 py-4",
+              children: _jsx(CardTitle, {
+                className: "text-base font-semibold",
+                children: "Registered Jobs",
+              }),
+            }),
+            _jsx("div", {
+              className: "overflow-x-auto",
+              children: _jsxs(Table, {
+                children: [
+                  _jsx(TableHeader, {
+                    children: _jsxs(TableRow, {
+                      children: [
+                        _jsx(TableHead, { className: "text-xs", children: "Job" }),
+                        _jsx(TableHead, { className: "text-xs", children: "Endpoint" }),
+                        _jsx(TableHead, { className: "text-xs", children: "Schedule" }),
+                        _jsx(TableHead, { className: "text-xs", children: "Last Run" }),
+                        _jsx(TableHead, { className: "text-xs", children: "Result" }),
+                        _jsx(TableHead, { className: "text-xs text-right", children: "Action" }),
+                      ],
+                    }),
+                  }),
+                  _jsx(TableBody, {
+                    children: loading
+                      ? _jsx(TableRow, {
+                          children: _jsx(TableCell, {
+                            colSpan: 6,
+                            className: "py-8 text-center text-xs text-muted-foreground",
+                            children: "Loading cron jobs...",
+                          }),
+                        })
+                      : jobs.map((job) =>
+                          _jsxs(
+                            TableRow,
+                            {
+                              children: [
+                                _jsx(TableCell, {
+                                  children: _jsxs("div", {
+                                    children: [
+                                      _jsx("p", {
+                                        className: "text-sm font-medium",
+                                        children: job.name,
+                                      }),
+                                      _jsx("p", {
+                                        className: "text-[11px] text-muted-foreground",
+                                        children: job.description,
+                                      }),
+                                      _jsx("p", {
+                                        className: "text-[10px] text-muted-foreground mt-1",
+                                        children: `Source: ${job.source || "system"}`,
+                                      }),
+                                    ],
+                                  }),
+                                }),
+                                _jsx(TableCell, {
+                                  className: "text-xs font-mono",
+                                  children: job.path,
+                                }),
+                                _jsx(TableCell, {
+                                  className: "text-xs",
+                                  children: `${job.schedule} (${job.timezone})`,
+                                }),
+                                _jsx(TableCell, {
+                                  className: "text-xs",
+                                  children: formatCronTimestamp(job.lastFinishedAt),
+                                }),
+                                _jsx(TableCell, {
+                                  children: _jsx(Badge, {
+                                    variant: "outline",
+                                    className: cn(
+                                      "text-[10px]",
+                                      job.lastStatus === "success"
+                                        ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                                        : job.lastStatus === "failed"
+                                          ? "bg-red-500/10 text-red-500 border-red-500/20"
+                                          : "bg-slate-500/10 text-slate-500 border-slate-500/20",
+                                    ),
+                                    children: job.lastStatus || "Not run",
+                                  }),
+                                }),
+                                _jsx(TableCell, {
+                                  className: "text-right",
+                                  children: job.runnable
+                                    ? _jsx(Button, {
+                                        size: "sm",
+                                        variant: "outline",
+                                        className: "h-8 text-xs",
+                                        disabled: !!runningJobId,
+                                        onClick: () => runJob(job.id),
+                                        children:
+                                          runningJobId === job.id
+                                            ? "Running..."
+                                            : "Run",
+                                      })
+                                    : _jsx(Badge, {
+                                        variant: "secondary",
+                                        className: "text-[10px]",
+                                        children: job.enabled === false ? "Not configured" : "Auto",
+                                      }),
+                                }),
+                              ],
+                            },
+                            job.id,
+                          ),
+                        ),
+                  }),
+                ],
+              }),
+            }),
+          ],
+        }),
+      }),
+      lastResult &&
+        _jsx(Card, {
+          className: "shadow-sm",
+          children: _jsxs(CardContent, {
+            className: "p-4",
+            children: [
+              _jsx(CardTitle, {
+                className: "text-base font-semibold mb-3",
+                children: "Last Run Output",
+              }),
+              _jsx("div", {
+                className: "grid grid-cols-1 gap-3 sm:grid-cols-3",
+                children: [
+                  {
+                    label: "Carrier Shipments Checked",
+                    value: lastResult.carrierShipmentsChecked ?? 0,
+                  },
+                  {
+                    label: "Notifications Created",
+                    value: lastResult.notifications?.created ?? 0,
+                  },
+                  {
+                    label: "Pending Shipments Checked",
+                    value: lastResult.notifications?.pendingShipmentsChecked ?? 0,
+                  },
+                ].map((item) =>
+                  _jsxs(
+                    "div",
+                    {
+                      className: "rounded-lg border bg-muted/20 p-3",
+                      children: [
+                        _jsx("p", {
+                          className:
+                            "text-[11px] uppercase tracking-wider text-muted-foreground",
+                          children: item.label,
+                        }),
+                        _jsx("p", {
+                          className: "mt-1 text-lg font-bold",
+                          children: item.value,
+                        }),
+                      ],
+                    },
+                    item.label,
+                  ),
+                ),
+              }),
+              lastResult.error &&
+                _jsx("p", {
+                  className: "mt-3 text-xs text-red-500",
+                  children: lastResult.error,
+                }),
+            ],
+          }),
+        }),
+    ],
+  });
+}
 const formatAuditEntity = (entity) =>
   String(entity || "-")
     .replace(/_/g, " ")
@@ -1161,6 +1557,14 @@ function ConfigurationTab() {
     enableDarkMode: true,
     enableApiAccess: true,
   });
+  const [savedSection, setSavedSection] = useState("");
+  const saveConfigSection = (section) => {
+    if (section === "company" && config.companyName) {
+      setStoreCompanyName(config.companyName);
+    }
+    setSavedSection(section);
+    window.setTimeout(() => setSavedSection(""), 1800);
+  };
   return _jsxs("div", {
     className: "space-y-6",
     children: [
@@ -1190,124 +1594,146 @@ function ConfigurationTab() {
             }),
             _jsx(CardContent, {
               className: "space-y-4",
-              children: _jsxs("div", {
-                className: "grid grid-cols-1 sm:grid-cols-2 gap-4",
                 children: [
-                  _jsxs("div", {
-                    children: [
-                      _jsx(Label, {
-                        className: "text-xs",
-                        children: "Company Name",
-                      }),
-                      _jsx(Input, {
-                        value: config.companyName,
-                        onChange: (e) =>
-                          setConfig(
-                            Object.assign(Object.assign({}, config), {
-                              companyName: e.target.value,
-                            }),
-                          ),
-                        className: "h-8 text-xs mt-1",
-                      }),
-                    ],
-                  }),
-                  _jsxs("div", {
-                    children: [
-                      _jsx(Label, {
-                        className: "text-xs",
-                        children: "Default Currency",
-                      }),
-                      _jsxs(Select, {
-                        value: config.defaultCurrency,
-                        onValueChange: (v) =>
-                          setConfig(
-                            Object.assign(Object.assign({}, config), {
-                              defaultCurrency: v,
-                            }),
-                          ),
-                        children: [
-                          _jsx(SelectTrigger, {
-                            className: "h-8 text-xs mt-1",
-                            children: _jsx(SelectValue, {}),
-                          }),
-                          _jsxs(SelectContent, {
-                            children: [
-                              _jsx(SelectItem, {
-                                value: "USD",
-                                children: "USD - US Dollar",
+                    _jsxs("div", {
+                      key: "company-grid",
+                      className: "grid grid-cols-1 sm:grid-cols-2 gap-4",
+                      children: [
+                        _jsxs("div", {
+                          children: [
+                            _jsx(Label, {
+                              className: "text-xs",
+                              children: "Company Name",
+                        }),
+                        _jsx(Input, {
+                          value: config.companyName,
+                          onChange: (e) =>
+                            setConfig(
+                              Object.assign(Object.assign({}, config), {
+                                companyName: e.target.value,
                               }),
-                              _jsx(SelectItem, {
-                                value: "EUR",
-                                children: "EUR - Euro",
-                              }),
-                              _jsx(SelectItem, {
-                                value: "GBP",
-                                children: "GBP - British Pound",
-                              }),
-                              _jsx(SelectItem, {
-                                value: "INR",
-                                children: "INR - Indian Rupee",
-                              }),
-                              _jsx(SelectItem, {
-                                value: "CNY",
-                                children: "CNY - Chinese Yuan",
-                              }),
-                            ],
-                          }),
-                        ],
-                      }),
-                    ],
-                  }),
-                  _jsxs("div", {
-                    children: [
-                      _jsx(Label, {
-                        className: "text-xs",
-                        children: "Timezone",
-                      }),
-                      _jsxs(Select, {
-                        value: config.timezone,
-                        onValueChange: (v) =>
-                          setConfig(
-                            Object.assign(Object.assign({}, config), {
-                              timezone: v,
-                            }),
-                          ),
-                        children: [
-                          _jsx(SelectTrigger, {
-                            className: "h-8 text-xs mt-1",
-                            children: _jsx(SelectValue, {}),
-                          }),
-                          _jsx(SelectContent, {
-                            children: Intl.supportedValuesOf("timeZone").map(
-                              (tz) => {
-                                const offset = new Intl.DateTimeFormat('en', { timeZone: tz, timeZoneName: 'shortOffset' }).formatToParts(new Date()).find(p => p.type === 'timeZoneName').value;
-                                return _jsx(SelectItem, {
-                                  key: tz,
-                                  value: tz,
-                                  children: `(${offset}) ${tz.replace(/_/g, " ")}`,
-                                }, tz)
-                              }
                             ),
-                          }),
-                        ],
+                          className: "h-8 text-xs mt-1",
+                        }),
+                      ],
+                    }),
+                    _jsxs("div", {
+                      children: [
+                        _jsx(Label, {
+                          className: "text-xs",
+                          children: "Default Currency",
+                        }),
+                        _jsxs(Select, {
+                          value: config.defaultCurrency,
+                          onValueChange: (v) =>
+                            setConfig(
+                              Object.assign(Object.assign({}, config), {
+                                defaultCurrency: v,
+                              }),
+                            ),
+                          children: [
+                            _jsx(SelectTrigger, {
+                              className: "h-8 text-xs mt-1",
+                              children: _jsx(SelectValue, {}),
+                            }),
+                            _jsxs(SelectContent, {
+                              children: [
+                                _jsx(SelectItem, {
+                                  value: "USD",
+                                  children: "USD - US Dollar",
+                                }),
+                                _jsx(SelectItem, {
+                                  value: "EUR",
+                                  children: "EUR - Euro",
+                                }),
+                                _jsx(SelectItem, {
+                                  value: "GBP",
+                                  children: "GBP - British Pound",
+                                }),
+                                _jsx(SelectItem, {
+                                  value: "INR",
+                                  children: "INR - Indian Rupee",
+                                }),
+                                _jsx(SelectItem, {
+                                  value: "CNY",
+                                  children: "CNY - Chinese Yuan",
+                                }),
+                              ],
+                            }),
+                          ],
+                        }),
+                      ],
+                    }),
+                    _jsxs("div", {
+                      children: [
+                        _jsx(Label, {
+                          className: "text-xs",
+                          children: "Timezone",
+                        }),
+                        _jsxs(Select, {
+                          value: config.timezone,
+                          onValueChange: (v) =>
+                            setConfig(
+                              Object.assign(Object.assign({}, config), {
+                                timezone: v,
+                              }),
+                            ),
+                          children: [
+                            _jsx(SelectTrigger, {
+                              className: "h-8 text-xs mt-1",
+                              children: _jsx(SelectValue, {}),
+                            }),
+                            _jsx(SelectContent, {
+                              children: Intl.supportedValuesOf("timeZone").map(
+                                (tz) => {
+                                  const offset = new Intl.DateTimeFormat('en', { timeZone: tz, timeZoneName: 'shortOffset' }).formatToParts(new Date()).find(p => p.type === 'timeZoneName').value;
+                                  return _jsx(SelectItem, {
+                                    value: tz,
+                                    children: `(${offset}) ${tz.replace(/_/g, " ")}`,
+                                  }, tz)
+                                }
+                              ),
+                            }),
+                          ],
+                        }),
+                      ],
+                    }),
+                    _jsxs("div", {
+                      children: [
+                        _jsx(Label, {
+                          className: "text-xs",
+                          children: "Language",
+                        }),
+                        _jsx(Input, {
+                          value: "English (US)",
+                          disabled: true,
+                          className: "h-8 text-xs mt-1",
+                        }),
+                      ],
+                    }),
+                  ],
+                }),
+                _jsxs("div", {
+                  key: "company-buttons",
+                  className: "flex items-center justify-end gap-2 border-t pt-4",
+                  children: [
+                    savedSection === "company" &&
+                      _jsx("span", {
+                        className: "text-xs text-emerald-600",
+                        children: "Saved",
                       }),
-                    ],
-                  }),
-                  _jsxs("div", {
-                    children: [
-                      _jsx(Label, {
-                        className: "text-xs",
-                        children: "Language",
-                      }),
-                      _jsx(Input, {
-                        value: "English (US)",
-                        disabled: true,
-                        className: "h-8 text-xs mt-1",
-                      }),
-                    ],
-                  }),
-                ],
-              }),
+                    _jsxs(Button, {
+                      size: "sm",
+                      className: "h-8 text-xs",
+                      onClick: () => saveConfigSection("company"),
+                      children: [
+                        _jsx(Shield, { className: "h-3.5 w-3.5 mr-1.5" }),
+                        "Save Company Settings",
+                      ],
+                    }),
+                  ],
+                }),
+              ],
             }),
           ],
         }),
@@ -1335,67 +1761,90 @@ function ConfigurationTab() {
                 }),
               ],
             }),
-            _jsx(CardContent, {
-              className: "space-y-4",
-              children: _jsxs("div", {
-                className: "grid grid-cols-1 sm:grid-cols-2 gap-4",
-                children: [
-                  _jsxs("div", {
-                    children: [
-                      _jsx(Label, {
-                        className: "text-xs",
-                        children: "From Email",
+                _jsx(CardContent, {
+                  className: "space-y-4",
+                  children: [
+                    _jsxs("div", {
+                      key: "email-grid",
+                      className: "grid grid-cols-1 sm:grid-cols-2 gap-4",
+                      children: [
+                        _jsxs("div", {
+                          children: [
+                            _jsx(Label, {
+                              className: "text-xs",
+                              children: "From Email",
+                        }),
+                        _jsx(Input, {
+                          value: config.emailFrom,
+                          onChange: (e) =>
+                            setConfig(
+                              Object.assign(Object.assign({}, config), {
+                                emailFrom: e.target.value,
+                              }),
+                            ),
+                          className: "h-8 text-xs mt-1",
+                        }),
+                      ],
+                    }),
+                    _jsxs("div", {
+                      children: [
+                        _jsx(Label, {
+                          className: "text-xs",
+                          children: "SMTP Server",
+                        }),
+                        _jsx(Input, {
+                          value: config.emailSmtp,
+                          onChange: (e) =>
+                            setConfig(
+                              Object.assign(Object.assign({}, config), {
+                                emailSmtp: e.target.value,
+                              }),
+                            ),
+                          className: "h-8 text-xs mt-1",
+                        }),
+                      ],
+                    }),
+                    _jsxs("div", {
+                      children: [
+                        _jsx(Label, {
+                          className: "text-xs",
+                          children: "SMTP Port",
+                        }),
+                        _jsx(Input, {
+                          value: config.emailPort,
+                          onChange: (e) =>
+                            setConfig(
+                              Object.assign(Object.assign({}, config), {
+                                emailPort: e.target.value,
+                              }),
+                            ),
+                          className: "h-8 text-xs mt-1",
+                        }),
+                      ],
+                    }),
+                  ],
+                }),
+                _jsxs("div", {
+                  key: "email-buttons",
+                  className: "flex items-center justify-end gap-2 border-t pt-4",
+                  children: [
+                    savedSection === "email" &&
+                      _jsx("span", {
+                        className: "text-xs text-emerald-600",
+                        children: "Saved",
                       }),
-                      _jsx(Input, {
-                        value: config.emailFrom,
-                        onChange: (e) =>
-                          setConfig(
-                            Object.assign(Object.assign({}, config), {
-                              emailFrom: e.target.value,
-                            }),
-                          ),
-                        className: "h-8 text-xs mt-1",
-                      }),
-                    ],
-                  }),
-                  _jsxs("div", {
-                    children: [
-                      _jsx(Label, {
-                        className: "text-xs",
-                        children: "SMTP Server",
-                      }),
-                      _jsx(Input, {
-                        value: config.emailSmtp,
-                        onChange: (e) =>
-                          setConfig(
-                            Object.assign(Object.assign({}, config), {
-                              emailSmtp: e.target.value,
-                            }),
-                          ),
-                        className: "h-8 text-xs mt-1",
-                      }),
-                    ],
-                  }),
-                  _jsxs("div", {
-                    children: [
-                      _jsx(Label, {
-                        className: "text-xs",
-                        children: "SMTP Port",
-                      }),
-                      _jsx(Input, {
-                        value: config.emailPort,
-                        onChange: (e) =>
-                          setConfig(
-                            Object.assign(Object.assign({}, config), {
-                              emailPort: e.target.value,
-                            }),
-                          ),
-                        className: "h-8 text-xs mt-1",
-                      }),
-                    ],
-                  }),
-                ],
-              }),
+                    _jsxs(Button, {
+                      size: "sm",
+                      className: "h-8 text-xs",
+                      onClick: () => saveConfigSection("email"),
+                      children: [
+                        _jsx(Shield, { className: "h-3.5 w-3.5 mr-1.5" }),
+                        "Save Email Settings",
+                      ],
+                    }),
+                  ],
+                }),
+              ],
             }),
           ],
         }),
@@ -1424,89 +1873,98 @@ function ConfigurationTab() {
               ],
             }),
             _jsx(CardContent, {
-              children: _jsx("div", {
-                className: "space-y-4",
-                children: [
-                  {
-                    key: "enableNotifications",
-                    label: "Email Notifications",
-                    desc: "Send email alerts for important events",
-                  },
-                  {
-                    key: "enableAutoBackup",
-                    label: "Auto Backup",
-                    desc: "Automatically backup database daily",
-                  },
-                  {
-                    key: "enableTwoFactor",
-                    label: "Two-Factor Authentication",
-                    desc: "Require 2FA for all users",
-                  },
-                  {
-                    key: "enableAuditLog",
-                    label: "Audit Logging",
-                    desc: "Track all user actions and system events",
-                  },
-                  {
-                    key: "enableDarkMode",
-                    label: "Dark Mode Support",
-                    desc: "Allow users to switch to dark theme",
-                  },
-                  {
-                    key: "enableApiAccess",
-                    label: "API Access",
-                    desc: "Enable external API access with API keys",
-                  },
-                ].map((feature) =>
-                  _jsxs(
-                    "div",
+              className: "space-y-4",
+              children: [
+                _jsx("div", {
+                  key: "features-list",
+                  className: "space-y-4",
+                  children: [
                     {
-                      className:
-                        "flex items-center justify-between py-2 border-b border-border/50 last:border-0",
-                      children: [
-                        _jsxs("div", {
-                          children: [
-                            _jsx("p", {
-                              className: "text-sm font-medium",
-                              children: feature.label,
-                            }),
-                            _jsx("p", {
-                              className: "text-xs text-muted-foreground",
-                              children: feature.desc,
-                            }),
-                          ],
-                        }),
-                        _jsx(Switch, {
-                          checked: config[feature.key],
-                          onCheckedChange: (checked) =>
-                            setConfig(
-                              Object.assign(Object.assign({}, config), {
-                                [feature.key]: checked,
-                              }),
-                            ),
-                        }),
-                      ],
+                      key: "enableNotifications",
+                      label: "Email Notifications",
+                      desc: "Send email alerts for important events",
                     },
-                    feature.key,
+                    {
+                      key: "enableAutoBackup",
+                      label: "Auto Backup",
+                      desc: "Automatically backup database daily",
+                    },
+                    {
+                      key: "enableTwoFactor",
+                      label: "Two-Factor Authentication",
+                      desc: "Require 2FA for all users",
+                    },
+                    {
+                      key: "enableAuditLog",
+                      label: "Audit Logging",
+                      desc: "Track all user actions and system events",
+                    },
+                    {
+                      key: "enableDarkMode",
+                      label: "Dark Mode Support",
+                      desc: "Allow users to switch to dark theme",
+                    },
+                    {
+                      key: "enableApiAccess",
+                      label: "API Access",
+                      desc: "Enable external API access with API keys",
+                    },
+                  ].map((feature) =>
+                    _jsxs(
+                      "div",
+                      {
+                        className:
+                          "flex items-center justify-between py-2 border-b border-border/50 last:border-0",
+                        children: [
+                          _jsxs("div", {
+                            children: [
+                              _jsx("p", {
+                                className: "text-sm font-medium",
+                                children: feature.label,
+                              }),
+                              _jsx("p", {
+                                className: "text-xs text-muted-foreground",
+                                children: feature.desc,
+                              }),
+                            ],
+                          }),
+                          _jsx(Switch, {
+                            checked: config[feature.key],
+                            onCheckedChange: (checked) =>
+                              setConfig(
+                                Object.assign(Object.assign({}, config), {
+                                  [feature.key]: checked,
+                                }),
+                              ),
+                          }),
+                        ],
+                      },
+                      feature.key,
+                    ),
                   ),
-                ),
-              }),
+                }),
+                _jsxs("div", {
+                  key: "features-buttons",
+                  className: "flex items-center justify-end gap-2 border-t pt-4",
+                  children: [
+                    savedSection === "features" &&
+                      _jsx("span", {
+                        className: "text-xs text-emerald-600",
+                        children: "Saved",
+                      }),
+                    _jsxs(Button, {
+                      size: "sm",
+                      className: "h-8 text-xs",
+                      onClick: () => saveConfigSection("features"),
+                      children: [
+                        _jsx(Shield, { className: "h-3.5 w-3.5 mr-1.5" }),
+                        "Save Feature Toggles",
+                      ],
+                    }),
+                  ],
+                }),
+              ],
             }),
-          ],
-        }),
-      }),
-      _jsx("div", {
-        className: "flex justify-end",
-        children: _jsxs(Button, {
-          className: "text-xs",
-          onClick: () => {
-            if (config.companyName) {
-              setStoreCompanyName(config.companyName);
-            }
-          },
-          children: [
-            _jsx(Shield, { className: "h-3.5 w-3.5 mr-1.5" }),
-            " Save Configuration",
           ],
         }),
       }),

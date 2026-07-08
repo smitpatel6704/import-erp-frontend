@@ -257,7 +257,7 @@ export default function DashboardModule() {
         <Button asChild variant="outline" className="h-14 justify-start gap-3 bg-card hover:border-primary hover:text-primary">
           <Link href="/documents">
             <div className="rounded-full bg-primary/10 p-2"><FileCheck2 className="h-4 w-4" /></div>
-            Customs Doc
+            Documents
           </Link>
         </Button>
       </div>

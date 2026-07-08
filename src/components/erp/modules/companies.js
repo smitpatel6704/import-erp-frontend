@@ -16,6 +16,7 @@ import {
   Landmark,
   Hash,
   User,
+  Trash2,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -35,10 +36,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import ExporterCompanyManagement from "./exporter-company-management";
 import { ShippingLoader } from "@/components/erp/shipping-loader";
+import { useERPStore } from "@/lib/store";
 // ─── Constants ────────────────────────────────────────────────────────────────
 const currencyFmt = (val) =>
   new Intl.NumberFormat("en-US", {
@@ -93,6 +96,12 @@ const invoiceStatusColor = {
 // ─── Main Component ───────────────────────────────────────────────────────────
 export function ImporterCompanyManagement() {
   var _a, _b, _c;
+  const canCreateCompanies = useERPStore((state) =>
+    state.canAction("companies", "create"),
+  );
+  const canDeleteCompanies = useERPStore((state) =>
+    state.canAction("companies", "delete"),
+  );
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -102,6 +111,7 @@ export function ImporterCompanyManagement() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [deleteCompany, setDeleteCompany] = useState(null);
   // New company dialog
   const [newCompanyOpen, setNewCompanyOpen] = useState(false);
   const [newForm, setNewForm] = useState({
@@ -124,7 +134,12 @@ export function ImporterCompanyManagement() {
     try {
       const params = new URLSearchParams(
         Object.assign(
-          { page: String(page), limit: "20", companyType: "importer" },
+          {
+            page: String(page),
+            limit: "20",
+            companyType: "importer",
+            isActive: "true",
+          },
           searchQuery && { search: searchQuery },
         ),
       );
@@ -162,6 +177,7 @@ export function ImporterCompanyManagement() {
     }
   };
   const createCompany = async () => {
+    if (!canCreateCompanies) return;
     try {
       await fetch(`/api/companies`, {
         method: "POST",
@@ -188,6 +204,33 @@ export function ImporterCompanyManagement() {
         shippingAddress: "",
         creditLimit: "",
       });
+      fetchCompanies();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+  const handleDeleteCompany = async () => {
+    if (!deleteCompany) return;
+    if (!canDeleteCompanies) {
+      setDeleteCompany(null);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/companies/${deleteCompany.id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        throw new Error("Failed to delete importer company");
+      }
+      setDeleteCompany(null);
+      if (
+        (selectedCompany === null || selectedCompany === void 0
+          ? void 0
+          : selectedCompany.id) === deleteCompany.id
+      ) {
+        setDetailOpen(false);
+        setSelectedCompany(null);
+      }
       fetchCompanies();
     } catch (e) {
       console.error(e);
@@ -263,15 +306,16 @@ export function ImporterCompanyManagement() {
                     className: "text-xs",
                     children: [totalCount, " importers"],
                   }),
-                  _jsxs(Button, {
-                    size: "sm",
-                    className: "h-9 text-xs",
-                    onClick: () => setNewCompanyOpen(true),
-                    children: [
-                      _jsx(Plus, { className: "h-3.5 w-3.5 mr-1" }),
-                      " Add Importer",
-                    ],
-                  }),
+                  canCreateCompanies &&
+                    _jsxs(Button, {
+                      size: "sm",
+                      className: "h-9 text-xs",
+                      onClick: () => setNewCompanyOpen(true),
+                      children: [
+                        _jsx(Plus, { className: "h-3.5 w-3.5 mr-1" }),
+                        " Add Importer",
+                      ],
+                    }),
                 ],
               }),
             ],
@@ -357,17 +401,37 @@ export function ImporterCompanyManagement() {
                                   }),
                                 ],
                               }),
-                              _jsx(Badge, {
-                                variant: "outline",
-                                className: cn(
-                                  "text-[9px] font-semibold shrink-0",
-                                  company.isActive
-                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800"
-                                    : "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800",
-                                ),
-                                children: company.isActive
-                                  ? "Active"
-                                  : "Inactive",
+                              _jsxs("div", {
+                                className: "flex items-center gap-1 shrink-0",
+                                children: [
+                                  _jsx(Badge, {
+                                    variant: "outline",
+                                    className: cn(
+                                      "text-[9px] font-semibold",
+                                      company.isActive
+                                        ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800"
+                                        : "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800",
+                                    ),
+                                    children: company.isActive
+                                      ? "Active"
+                                      : "Inactive",
+                                  }),
+                                  canDeleteCompanies &&
+                                    _jsx(Button, {
+                                      variant: "ghost",
+                                      size: "sm",
+                                      className:
+                                        "h-7 w-7 p-0 text-destructive opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity",
+                                      onClick: (e) => {
+                                        e.stopPropagation();
+                                        setDeleteCompany(company);
+                                      },
+                                      title: "Delete importer",
+                                      children: _jsx(Trash2, {
+                                        className: "h-3.5 w-3.5",
+                                      }),
+                                    }),
+                                ],
                               }),
                             ],
                           }),
@@ -568,17 +632,33 @@ export function ImporterCompanyManagement() {
                     ],
                   }),
                   selectedCompany &&
-                    _jsx(Badge, {
-                      variant: "outline",
-                      className: cn(
-                        "text-[10px] font-semibold",
-                        selectedCompany.isActive
-                          ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800"
-                          : "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800",
-                      ),
-                      children: selectedCompany.isActive
-                        ? "Active"
-                        : "Inactive",
+                    _jsxs("div", {
+                      className: "flex items-center gap-2",
+                      children: [
+                        _jsx(Badge, {
+                          variant: "outline",
+                          className: cn(
+                            "text-[10px] font-semibold",
+                            selectedCompany.isActive
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800"
+                              : "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800",
+                          ),
+                          children: selectedCompany.isActive
+                            ? "Active"
+                            : "Inactive",
+                        }),
+                        canDeleteCompanies &&
+                          _jsx(Button, {
+                            variant: "ghost",
+                            size: "sm",
+                            className: "h-8 w-8 p-0 text-destructive",
+                            onClick: () => setDeleteCompany(selectedCompany),
+                            title: "Delete importer",
+                            children: _jsx(Trash2, {
+                              className: "h-4 w-4",
+                            }),
+                          }),
+                      ],
                     }),
                 ],
               }),
@@ -1515,6 +1595,17 @@ export function ImporterCompanyManagement() {
             }),
           ],
         }),
+      }),
+      _jsx(ConfirmDeleteDialog, {
+        open: !!deleteCompany,
+        onOpenChange: (open) => !open && setDeleteCompany(null),
+        onConfirm: handleDeleteCompany,
+        title: "Delete Importer",
+        description: `Are you sure you want to delete ${
+          (deleteCompany === null || deleteCompany === void 0
+            ? void 0
+            : deleteCompany.name) || "this importer company"
+        }?`,
       }),
     ],
   });
