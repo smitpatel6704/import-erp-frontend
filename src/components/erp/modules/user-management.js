@@ -38,6 +38,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
 import { useERPStore } from "@/lib/store";
 import { readJsonResponse } from "@/lib/utils";
@@ -90,6 +91,7 @@ const emptyForm = {
   department: "",
   phone: "",
   permissions: rolePresets.employee,
+  requireOtp: true,
 };
 
 const accessFor = (permissions, module) =>
@@ -171,6 +173,7 @@ export default function UserManagement() {
       department: user.department || "",
       phone: user.phone || "",
       permissions: user.permissions || [],
+      requireOtp: user.requireOtp !== false,
     });
     
     setOpen(true);
@@ -501,6 +504,30 @@ export default function UserManagement() {
                       className: "mt-1",
                     }),
                   ],
+                }),
+              ],
+            }),
+            _jsxs("div", {
+              className: "flex items-center justify-between rounded-lg border p-3 mt-4 mb-2",
+              children: [
+                _jsxs("div", {
+                  className: "space-y-0.5",
+                  children: [
+                    _jsx(Label, { children: "Require OTP for login" }),
+                    _jsx("p", {
+                      className: "text-sm text-muted-foreground",
+                      children: "If disabled, the user can log in with only their password.",
+                    }),
+                  ],
+                }),
+                _jsx(Switch, {
+                  checked: form.requireOtp,
+                  onCheckedChange: (checked) =>
+                    setForm(
+                      Object.assign(Object.assign({}, form), {
+                        requireOtp: checked,
+                      })
+                    ),
                 }),
               ],
             }),

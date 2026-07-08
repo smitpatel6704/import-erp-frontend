@@ -249,9 +249,9 @@ export default function DashboardModule() {
           </Link>
         </Button>
         <Button asChild variant="outline" className="h-14 justify-start gap-3 bg-card hover:border-primary hover:text-primary">
-          <Link href="/documents">
-            <div className="rounded-full bg-primary/10 p-2"><FileText className="h-4 w-4" /></div>
-            Generate Invoice
+          <Link href="/reports">
+            <div className="rounded-full bg-primary/10 p-2"><PieChartIcon className="h-4 w-4" /></div>
+            Reports
           </Link>
         </Button>
         <Button asChild variant="outline" className="h-14 justify-start gap-3 bg-card hover:border-primary hover:text-primary">

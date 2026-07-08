@@ -37,7 +37,7 @@ const navItems = [
 const sections = ["Overview", "Operations", "System"];
 
 export function ERPSidebar() {
-  const { activeModule, sidebarOpen, setSidebarOpen, user, canView, logout } = useERPStore();
+  const { activeModule, sidebarOpen, setSidebarOpen, user, canView, logout, companyName } = useERPStore();
   const [brandLogos, setBrandLogos] = useState(() => getSavedBrandLogos());
   const isMobile = useIsMobile();
   const isExpanded = sidebarOpen || isMobile;
@@ -117,7 +117,7 @@ export function ERPSidebar() {
               className="flex flex-col overflow-hidden"
             >
               <span className="text-sm font-bold tracking-tight text-foreground">
-                Nexport ERP
+                {companyName || "Nexport ERP"}
               </span>
               <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
                 Enterprise Suite

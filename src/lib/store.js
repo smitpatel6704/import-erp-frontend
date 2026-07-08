@@ -63,13 +63,20 @@ export const useERPStore = create((set, get) => ({
         localStorage.removeItem("nexport_token");
         localStorage.removeItem("nexport_user");
         let user = null;
+        let companyName = "Nexport ERP";
         try {
             user = storedUser ? JSON.parse(storedUser) : null;
         }
         catch (_a) {
             user = null;
         }
-        set({ token, user, authReady: true });
+        try {
+            const storedName = localStorage.getItem("nexport_company_name");
+            if (storedName) companyName = storedName;
+        } catch (_b) {
+            // silent
+        }
+        set({ token, user, authReady: true, companyName });
     },
     logout: () => {
         if (typeof window !== "undefined") {
@@ -102,6 +109,14 @@ export const useERPStore = create((set, get) => ({
         if (!permission.actions)
             return true;
         return permission.actions[action] !== false;
+    },
+    // Settings
+    companyName: "Nexport ERP",
+    setCompanyName: (name) => {
+        if (typeof window !== "undefined") {
+            localStorage.setItem("nexport_company_name", name);
+        }
+        set({ companyName: name });
     },
     // Navigation
     activeModule: "dashboard",

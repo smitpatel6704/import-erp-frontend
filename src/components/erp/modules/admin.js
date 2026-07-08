@@ -1981,6 +1981,45 @@ function ContainerSizeTypeSettings() {
   });
 }
 function WorkflowAutomationsTab() {
+  const [config, setConfig] = useState({
+    autoAssignTracking: true,
+    requireDocumentsForClearance: true,
+    notifyOnStatusChange: true,
+    notifyOnDelay: true,
+  });
+  const [loading, setLoading] = useState(false);
+
+  const fetchConfig = useCallback(async () => {
+    try {
+      const res = await fetch("/api/settings/workflow");
+      const json = await res.json();
+      if (json.data) setConfig(json.data);
+    } catch (error) {
+      console.error(error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchConfig();
+  }, [fetchConfig]);
+
+  const handleSave = async () => {
+    setLoading(true);
+    try {
+      await fetch("/api/settings/workflow", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(config),
+      });
+      alert("Workflow automation settings saved successfully.");
+    } catch (error) {
+      console.error(error);
+      alert("Failed to save settings.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return _jsxs("div", {
     className: "space-y-6",
     children: [
@@ -2050,14 +2089,34 @@ function WorkflowAutomationsTab() {
                             }),
                           ],
                         }),
-                        _jsx(Switch, { defaultChecked: true }),
+                        _jsx(Switch, {
+                          checked: config[feature.key],
+                          onCheckedChange: (checked) =>
+                            setConfig(
+                              Object.assign(Object.assign({}, config), {
+                                [feature.key]: checked,
+                              })
+                            ),
+                        }),
                       ],
                     },
-                    feature.key,
-                  ),
+                    feature.key
+                  )
                 ),
               }),
             }),
+          ],
+        }),
+      }),
+      _jsx("div", {
+        className: "flex justify-end",
+        children: _jsxs(Button, {
+          className: "text-xs",
+          onClick: handleSave,
+          disabled: loading,
+          children: [
+            _jsx(Shield, { className: "h-3.5 w-3.5 mr-1.5" }),
+            loading ? "Saving..." : "Save Automations",
           ],
         }),
       }),
