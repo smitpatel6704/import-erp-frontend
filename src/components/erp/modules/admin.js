@@ -1380,7 +1380,8 @@ function AuditLogTab() {
                           children: "Details",
                         }),
                         _jsx(TableHead, {
-                          className: "text-xs",
+                          className:
+                            "sticky right-0 z-20 min-w-[150px] bg-muted/95 text-xs shadow-[-8px_0_12px_-12px_rgba(0,0,0,0.45)] backdrop-blur-sm",
                           children: "Timestamp",
                         }),
                       ],
@@ -1423,7 +1424,7 @@ function AuditLogTab() {
                               TableRow,
                               {
                                 className:
-                                  "hover:bg-accent/30 transition-colors align-top",
+                                  "group hover:bg-accent/30 transition-colors align-top",
                                 children: [
                                   _jsx(TableCell, {
                                     children: _jsxs("div", {
@@ -1444,13 +1445,34 @@ function AuditLogTab() {
                                                 .join("")
                                             : "?",
                                         }),
-                                        _jsx("span", {
-                                          className: "text-xs font-medium",
-                                          children:
-                                            ((_b = activity.user) === null ||
-                                            _b === void 0
-                                              ? void 0
-                                              : _b.name) || "System",
+                                        _jsxs("div", {
+                                          className: "min-w-0",
+                                          children: [
+                                            _jsx("p", {
+                                              className:
+                                                "truncate text-xs font-medium",
+                                              children:
+                                                ((_b = activity.user) === null ||
+                                                _b === void 0
+                                                  ? void 0
+                                                  : _b.name) || "System",
+                                            }),
+                                            activity.user &&
+                                              _jsx("p", {
+                                                className:
+                                                  "truncate text-[10px] capitalize text-muted-foreground",
+                                                children: [
+                                                  activity.user.role
+                                                    ? activity.user.role.replace(/_/g, " ")
+                                                    : null,
+                                                  activity.user.role &&
+                                                  activity.user.department
+                                                    ? " · "
+                                                    : null,
+                                                  activity.user.department || null,
+                                                ],
+                                              }),
+                                          ],
                                         }),
                                       ],
                                     }),
@@ -1517,7 +1539,7 @@ function AuditLogTab() {
                                   }),
                                   _jsx(TableCell, {
                                     className:
-                                      "text-xs text-muted-foreground whitespace-nowrap",
+                                      "sticky right-0 z-10 min-w-[150px] whitespace-nowrap bg-background text-xs text-muted-foreground shadow-[-8px_0_12px_-12px_rgba(0,0,0,0.45)] group-hover:bg-accent",
                                     title: formatAuditTimestamp(
                                       activity.createdAt,
                                     ),

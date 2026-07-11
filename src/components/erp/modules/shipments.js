@@ -167,16 +167,15 @@ const shipmentStatusFromCarrier = (status) => {
   if (value.includes("transship")) return "in_transit";
   if (
     value.includes("arrived") ||
+    value.includes("arrival") ||
     value.includes("discharge") ||
     value.includes("import to consignee")
   )
     return "at_pod";
-  if (
-    value.includes("depart") ||
-    value.includes("in transit") ||
-    value.includes("loaded on vessel")
-  )
+  if (value.includes("in transit") || value.includes("transship"))
     return "in_transit";
+  if (value.includes("depart") || value.includes("loaded on vessel"))
+    return "vessel_departed";
   if (value.includes("gate in") || value.includes("export received"))
     return "at_pol";
   return "booking_confirmed";
@@ -344,7 +343,9 @@ export default function ShipmentsModule() {
         originPort: details.originPort || details.origin || current.originPort,
         destinationPort:
           details.destinationPort || details.destination || current.destinationPort,
-        status: shipmentStatusFromCarrier(details.status),
+        status: shipmentStatusFromCarrier(
+          [details.status, details.lastEvent].filter(Boolean).join(" "),
+        ),
         containers:
           details.containers?.length > 0
             ? details.containers.map((container) => ({
@@ -537,11 +538,14 @@ export default function ShipmentsModule() {
       currency: shipment.currency || "USD",
       companyId:
         ((_a = shipment.company) === null || _a === void 0 ? void 0 : _a.id) ||
+        shipment.companyId ||
         "",
       exporterCompanyId:
         ((_b = shipment.exporterCompany) === null || _b === void 0
           ? void 0
-          : _b.id) || "",
+          : _b.id) ||
+        shipment.exporterCompanyId ||
+        "",
       internalNotes: shipment.internalNotes || "",
       goodsDescription: shipment.goodsDescription || "",
       notes: shipment.notes || "",
@@ -1668,7 +1672,7 @@ export default function ShipmentsModule() {
           className: "max-w-3xl max-h-[85vh] overflow-hidden p-0",
           children: [
             _jsx(DialogHeader, {
-              className: "px-6 pt-6 pb-4 border-b",
+              className: "border-b px-2 pb-2 pt-2 pr-14",
               children: _jsxs("div", {
                 className: "flex items-center gap-3",
                 children: [
@@ -1789,9 +1793,10 @@ export default function ShipmentsModule() {
                     className: "w-full",
                     children: [
                       _jsx("div", {
-                        className: "px-6 pt-2",
+                        className:
+                          "flex w-full justify-center overflow-x-auto px-2 pt-2",
                         children: _jsxs(TabsList, {
-                          className: "h-8",
+                          className: "h-8 shrink-0",
                           children: [
                             _jsx(TabsTrigger, {
                               value: "overview",
@@ -1843,11 +1848,11 @@ export default function ShipmentsModule() {
                         }),
                       }),
                       _jsxs(ScrollArea, {
-                        className: "h-[55vh] px-6 pb-6",
+                        className: "h-[55vh] px-2 pb-2",
                         children: [
                           _jsxs(TabsContent, {
                             value: "overview",
-                            className: "mt-4",
+                            className: "mt-2",
                             children: [
                               _jsx("div", {
                                 className: "grid grid-cols-2 gap-4",
@@ -1970,7 +1975,7 @@ export default function ShipmentsModule() {
                           }),
                           _jsx(TabsContent, {
                             value: "timeline",
-                            className: "mt-4",
+                            className: "mt-2",
                             children:
                               selectedShipment.timelineEvents.length === 0
                                 ? _jsx("p", {
@@ -2066,7 +2071,7 @@ export default function ShipmentsModule() {
                           }),
                           _jsx(TabsContent, {
                             value: "containers",
-                            className: "mt-4",
+                            className: "mt-2",
                             children:
                               selectedShipment.containers.length === 0
                                 ? _jsx("p", {
@@ -2134,7 +2139,7 @@ export default function ShipmentsModule() {
                           }),
                           _jsxs(TabsContent, {
                             value: "documents",
-                            className: "mt-4",
+                            className: "mt-2",
                             children: [
                               _jsxs("div", {
                                 className:
@@ -2405,7 +2410,7 @@ export default function ShipmentsModule() {
                           }),
                           _jsx(TabsContent, {
                             value: "expenses",
-                            className: "mt-4",
+                            className: "mt-2",
                             children:
                               selectedShipment.expenses.length === 0
                                 ? _jsx("p", {
@@ -2496,10 +2501,11 @@ export default function ShipmentsModule() {
         open: newShipmentOpen,
         onOpenChange: setNewShipmentOpen,
         children: _jsxs(DialogContent, {
-          className: "max-w-lg max-h-[80vh] overflow-hidden p-0",
+          className:
+            "max-w-lg h-[calc(100svh-1rem)] max-h-none grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:h-[80svh]",
           children: [
             _jsxs(DialogHeader, {
-              className: "px-6 pt-6 pb-4 border-b",
+              className: "border-b px-2 pb-2 pt-2 pr-14",
               children: [
                 _jsx(DialogTitle, {
                   children: editingId ? "Edit Shipment" : "Create New Shipment",
@@ -2512,9 +2518,9 @@ export default function ShipmentsModule() {
               ],
             }),
             _jsx(ScrollArea, {
-              className: "h-[60vh] px-6 pb-6",
+              className: "h-full min-h-0 px-2 pb-1",
               children: _jsxs("div", {
-                className: "space-y-4 pt-4",
+                className: "space-y-3 pt-2",
                 children: [
                   _jsxs("div", {
                       className: "rounded-lg border bg-muted/20 p-3 space-y-3",
@@ -3477,7 +3483,7 @@ export default function ShipmentsModule() {
               }),
             }),
             _jsxs(DialogFooter, {
-              className: "px-6 py-4 border-t",
+              className: "border-t px-2 py-1",
               children: [
                 _jsx(Button, {
                   variant: "outline",

@@ -17,6 +17,7 @@ import {
   Hash,
   User,
   Trash2,
+  Pencil,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -114,6 +115,7 @@ export function ImporterCompanyManagement() {
   const [deleteCompany, setDeleteCompany] = useState(null);
   // New company dialog
   const [newCompanyOpen, setNewCompanyOpen] = useState(false);
+  const [editingCompanyId, setEditingCompanyId] = useState(null);
   const [newForm, setNewForm] = useState({
     name: "",
     contactPerson: "",
@@ -179,8 +181,10 @@ export function ImporterCompanyManagement() {
   const createCompany = async () => {
     if (!canCreateCompanies) return;
     try {
-      await fetch(`/api/companies`, {
-        method: "POST",
+      const method = editingCompanyId ? 'PUT' : 'POST';
+      const url = editingCompanyId ? `/api/companies/${editingCompanyId}` : `/api/companies`;
+      await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(
           Object.assign(Object.assign({}, newForm), {
@@ -190,6 +194,7 @@ export function ImporterCompanyManagement() {
         ),
       });
       setNewCompanyOpen(false);
+      setEditingCompanyId(null);
       setNewForm({
         name: "",
         contactPerson: "",
@@ -208,6 +213,33 @@ export function ImporterCompanyManagement() {
     } catch (e) {
       console.error(e);
     }
+  };
+  const handleEditCompany = (company) => {
+    setEditingCompanyId(company.id);
+    let customFields = [{ name: "", value: "" }];
+    try {
+        if (company.customFields) {
+            const parsed = typeof company.customFields === 'string' ? JSON.parse(company.customFields) : company.customFields;
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                customFields = parsed;
+            }
+        }
+    } catch (e) {}
+    setNewForm({
+      name: company.name || "",
+      contactPerson: company.contactPerson || "",
+      mobile: company.mobile || "",
+      email: company.email || "",
+      officeAddress: company.officeAddress || "",
+      customFields,
+      bankName: company.bankName || "",
+      bankAccount: company.bankAccount || "",
+      bankIfsc: company.bankIfsc || "",
+      billingAddress: company.billingAddress || "",
+      shippingAddress: company.shippingAddress || "",
+      creditLimit: company.creditLimit || "",
+    });
+    setNewCompanyOpen(true);
   };
   const handleDeleteCompany = async () => {
     if (!deleteCompany) return;
@@ -310,7 +342,24 @@ export function ImporterCompanyManagement() {
                     _jsxs(Button, {
                       size: "sm",
                       className: "h-9 text-xs",
-                      onClick: () => setNewCompanyOpen(true),
+                      onClick: () => {
+                        setNewForm({
+                          name: "",
+                          contactPerson: "",
+                          mobile: "",
+                          email: "",
+                          officeAddress: "",
+                          customFields: [{ name: "", value: "" }],
+                          bankName: "",
+                          bankAccount: "",
+                          bankIfsc: "",
+                          billingAddress: "",
+                          shippingAddress: "",
+                          creditLimit: "",
+                        });
+                        setEditingCompanyId(null);
+                        setNewCompanyOpen(true);
+                      },
                       children: [
                         _jsx(Plus, { className: "h-3.5 w-3.5 mr-1" }),
                         " Add Importer",
@@ -647,6 +696,21 @@ export function ImporterCompanyManagement() {
                             ? "Active"
                             : "Inactive",
                         }),
+                        canCreateCompanies &&
+                          _jsx(Button, {
+                            variant: "outline",
+                            size: "sm",
+                            className: "h-8 px-2 text-xs",
+                            onClick: () => handleEditCompany(selectedCompany),
+                            title: "Edit importer",
+                            children: _jsxs("span", {
+                              className: "flex items-center gap-1",
+                              children: [
+                                _jsx(Pencil, { className: "h-3.5 w-3.5" }),
+                                " Edit",
+                              ]
+                            }),
+                          }),
                         canDeleteCompanies &&
                           _jsx(Button, {
                             variant: "ghost",
@@ -1268,10 +1332,15 @@ export function ImporterCompanyManagement() {
             _jsxs(DialogHeader, {
               className: "px-6 pt-6 pb-4 border-b",
               children: [
-                _jsx(DialogTitle, { children: "Create New Company" }),
+                _jsxs(DialogTitle, {
+                  className: "flex items-center gap-2",
+                  children: [
+                    _jsx(Building2, { className: "h-5 w-5 text-teal" }),
+                    editingCompanyId ? "Edit Importer" : "Create New Company",
+                  ],
+                }),
                 _jsx(DialogDescription, {
-                  children:
-                    "Enter company details to register a new business partner",
+                  children: editingCompanyId ? "Update the importer company details" : "Enter company details to register a new business partner",
                 }),
               ],
             }),
@@ -1588,8 +1657,8 @@ export function ImporterCompanyManagement() {
                 _jsx(Button, {
                   onClick: createCompany,
                   className: "h-8 text-xs",
-                  disabled: !newForm.name,
-                  children: "Create Company",
+                  disabled: !newForm.name || !newForm.email,
+                  children: editingCompanyId ? "Save Changes" : "Create Company",
                 }),
               ],
             }),
