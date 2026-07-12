@@ -239,13 +239,13 @@ export function ERPHeader() {
 
   return (
     <>
-      <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b bg-background/80 backdrop-blur-sm px-4 lg:px-6">
+      <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-sidebar-border bg-sidebar text-sidebar-foreground px-4 lg:px-6">
         <Button variant="ghost" size="icon" className="lg:hidden shrink-0" onClick={toggleSidebar}>
           <Menu className="h-4.5 w-4.5" />
           <span className="sr-only">Toggle sidebar</span>
         </Button>
 
-        <Breadcrumb className="hidden sm:flex">
+        <Breadcrumb className="flex">
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink href="#" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
@@ -266,7 +266,6 @@ export function ERPHeader() {
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
-        <span className="sm:hidden text-sm font-semibold">{moduleLabels[activeModule]}</span>
 
         <div className="flex-1" />
 

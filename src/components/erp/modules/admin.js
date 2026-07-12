@@ -1594,7 +1594,7 @@ function ConfigurationTab() {
                 }),
               ],
             }),
-            _jsx(CardContent, {
+            _jsxs(CardContent, {
               className: "space-y-4",
                 children: [
                     _jsxs("div", {
@@ -1763,7 +1763,7 @@ function ConfigurationTab() {
                 }),
               ],
             }),
-                _jsx(CardContent, {
+                _jsxs(CardContent, {
                   className: "space-y-4",
                   children: [
                     _jsxs("div", {
@@ -1874,7 +1874,7 @@ function ConfigurationTab() {
                 }),
               ],
             }),
-            _jsx(CardContent, {
+            _jsxs(CardContent, {
               className: "space-y-4",
               children: [
                 _jsx("div", {

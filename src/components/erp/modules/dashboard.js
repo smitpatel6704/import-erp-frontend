@@ -50,7 +50,7 @@ import { toast } from '@/hooks/use-toast';
 const emptyData = {
   shipments: {
     total: 0, active: 0, atPol: 0, inTransit: 0, atPod: 0,
-    customsClearance: 0, delivered: 0, totalValue: 0,
+    customsClearance: 0, delivered: 0,
     monthlyTrend: [], yearlyTrend: [], bySupplier: [], byPort: [], byOriginCountry: [],
   },
   notifications: { total: 0, unread: 0 },
@@ -178,13 +178,7 @@ export default function DashboardModule() {
         <StatCard label="Delivered" value={s.delivered} change={15} changeLabel="this month" icon={CheckCircle2} />
       </div>
 
-      {/* Compact secondary metrics */}
-      <div className="flex flex-wrap gap-3">
-        <StatCardCompact label="At POL" value={s.atPol} icon={Anchor} />
-        <StatCardCompact label="At POD" value={s.atPod} icon={Box} />
-        <StatCardCompact label="Customs" value={s.customsClearance} icon={FileText} />
-        <StatCardCompact label="Shipment Value" value={currency(s.totalValue)} icon={TrendingUp} color="text-success bg-success/8 ring-success/15" />
-      </div>
+
 
       {/* Pipeline + Needs Attention */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -199,8 +193,9 @@ export default function DashboardModule() {
           <CardContent className="p-5">
             <div className="flex items-center gap-1 overflow-x-auto pb-2">
               {pipelineStages.map((stage, i) => {
-                const count = s[stage.key] ?? 0;
-                const maxCount = Math.max(...pipelineStages.map((st) => s[st.key] ?? 0), 1);
+                const getCount = (key) => Number(s.byStatus?.find((x) => x.status === key)?.count || 0);
+                const count = getCount(stage.key);
+                const maxCount = Math.max(...pipelineStages.map((st) => getCount(st.key)), 1);
                 const pct = (count / maxCount) * 100;
                 return (
                   <div key={stage.key} className="flex min-w-0 flex-1 flex-col items-center gap-2">
@@ -271,8 +266,8 @@ export default function DashboardModule() {
         <Card className="overflow-hidden">
           <div className="border-b border-border px-5 py-3.5">
             <SectionHeader
-              title="Monthly Volume & Value"
-              description="Shipments and declared value over the last 6 months"
+              title="Monthly Volume"
+              description="Shipments over the last 6 months"
             />
           </div>
           <CardContent className="p-5">
@@ -284,21 +279,14 @@ export default function DashboardModule() {
                       <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.3} />
                       <stop offset="100%" stopColor="var(--primary)" stopOpacity={0.02} />
                     </linearGradient>
-                    <linearGradient id="grad-val" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="var(--warning)" stopOpacity={0.25} />
-                      <stop offset="100%" stopColor="var(--warning)" stopOpacity={0.02} />
-                    </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 4" stroke="var(--border)" opacity={0.5} />
                   <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" />
                   <YAxis yAxisId="count" tick={{ fontSize: 11 }} allowDecimals={false} stroke="var(--muted-foreground)" />
-                  <YAxis yAxisId="value" orientation="right" tick={{ fontSize: 11 }} tickFormatter={compactNumber} stroke="var(--muted-foreground)" />
                   <Tooltip
                     contentStyle={{ background: 'var(--popover)', border: '1px solid var(--border)', borderRadius: '8px', fontSize: 12 }}
-                    formatter={(v, n) => (n === 'Value' ? currency(v) : v)}
                   />
                   <Area yAxisId="count" type="monotone" dataKey="shipments" name="Shipments" stroke="var(--primary)" fill="url(#grad-vol)" strokeWidth={2} />
-                  <Area yAxisId="value" type="monotone" dataKey="value" name="Value" stroke="var(--warning)" fill="url(#grad-val)" strokeWidth={2} />
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
@@ -380,7 +368,6 @@ export default function DashboardModule() {
                 <th className="px-5 py-3 font-semibold">Shipment</th>
                 <th className="px-5 py-3 font-semibold">Route</th>
                 <th className="px-5 py-3 font-semibold">Status</th>
-                <th className="px-5 py-3 font-semibold text-right">Value</th>
               </tr>
             </thead>
             <tbody>
@@ -398,9 +385,6 @@ export default function DashboardModule() {
                   </td>
                   <td className="px-5 py-3">
                     <StatusBadge status={shipment.status} />
-                  </td>
-                  <td className="px-5 py-3 text-right font-medium tabular-nums text-foreground">
-                    {currency(shipment.shipmentValue)}
                   </td>
                 </tr>
               ))}

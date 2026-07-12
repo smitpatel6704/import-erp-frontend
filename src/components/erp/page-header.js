@@ -13,15 +13,15 @@ export function PageHeader({
   return (
     <div
       className={cn(
-        "flex flex-col gap-4 pb-6 sm:flex-row sm:items-start sm:justify-between",
+        "flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between bg-sidebar border border-sidebar-border rounded-xl shadow-sm mb-6",
         className
       )}
       {...props}
     >
       <div className="flex items-start gap-3 min-w-0">
         {Icon && (
-          <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/8 text-primary ring-1 ring-primary/15">
-            <Icon className="h-4.5 w-4.5" strokeWidth={2} />
+          <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/8 text-primary ring-1 ring-primary/15 shadow-sm">
+            <Icon className="h-5 w-5" strokeWidth={2} />
           </div>
         )}
         <div className="min-w-0">

@@ -338,15 +338,6 @@ export default function ShipmentsModule() {
   // ─── Save ────────────────────────────────────────────────────────────
   const isFormValid = () => {
     if (!newForm.companyId || !newForm.exporterCompanyId) return false;
-    if (!newForm.blNumber?.trim() || !newForm.invoiceNumber?.trim()) return false;
-    if (!newForm.shippingLine?.trim() || !newForm.vesselName?.trim()) return false;
-    if (!newForm.etd || !newForm.eta) return false;
-    if (!newForm.originCountry?.trim() || !newForm.originPort?.trim() || !newForm.destinationPort?.trim()) return false;
-    for (const c of newForm.containers) {
-      if (!c.containerNumber?.trim()) return false;
-      if (!(c.containerSize || c.size)) return false;
-      if (!(c.containerType || c.type)) return false;
-    }
     return true;
   };
 
@@ -878,22 +869,22 @@ export default function ShipmentsModule() {
               <SectionHeader title="Shipment Details" />
               <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <div className="grid gap-1.5">
-                  <Label className="text-xs">BL Number <span className="text-danger">*</span></Label>
+                  <Label className="text-xs">BL Number</Label>
                   <Input className="h-9 text-sm" value={newForm.blNumber} onChange={(e) => setNewForm((c) => ({ ...c, blNumber: e.target.value }))} placeholder="e.g. MSCU1234567" />
                 </div>
                 <div className="grid gap-1.5">
-                  <Label className="text-xs">Invoice Number <span className="text-danger">*</span></Label>
+                  <Label className="text-xs">Invoice Number</Label>
                   <Input className="h-9 text-sm" value={newForm.invoiceNumber} onChange={(e) => setNewForm((c) => ({ ...c, invoiceNumber: e.target.value }))} placeholder="e.g. INV-2024-001" />
                 </div>
                 <div className="grid gap-1.5">
-                  <Label className="text-xs">Shipping Line <span className="text-danger">*</span></Label>
+                  <Label className="text-xs">Shipping Line</Label>
                   <Select value={newForm.shippingLine} onValueChange={(v) => setNewForm((c) => ({ ...c, shippingLine: v }))}>
                     <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select line" /></SelectTrigger>
                     <SelectContent>{shippingLines.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div className="grid gap-1.5">
-                  <Label className="text-xs">Vessel Name <span className="text-danger">*</span></Label>
+                  <Label className="text-xs">Vessel Name</Label>
                   <Input className="h-9 text-sm" value={newForm.vesselName} onChange={(e) => setNewForm((c) => ({ ...c, vesselName: e.target.value }))} placeholder="e.g. MSC DIANA" />
                 </div>
 
@@ -905,21 +896,21 @@ export default function ShipmentsModule() {
               <SectionHeader title="Route & Schedule" />
               <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <div className="grid gap-1.5">
-                  <Label className="text-xs">Origin Country <span className="text-danger">*</span></Label>
+                  <Label className="text-xs">Origin Country</Label>
                   <Input className="h-9 text-sm" value={newForm.originCountry} onChange={(e) => setNewForm((c) => ({ ...c, originCountry: e.target.value }))} placeholder="e.g. China" />
                 </div>
                 <div className="grid gap-1.5">
-                  <Label className="text-xs">Origin Port <span className="text-danger">*</span></Label>
+                  <Label className="text-xs">Origin Port</Label>
                   <Input className="h-9 text-sm" value={newForm.originPort} onChange={(e) => setNewForm((c) => ({ ...c, originPort: e.target.value }))} placeholder="e.g. Shanghai" />
                 </div>
                 <div className="grid gap-1.5">
-                  <Label className="text-xs">Destination Port <span className="text-danger">*</span></Label>
+                  <Label className="text-xs">Destination Port</Label>
                   <Input className="h-9 text-sm" value={newForm.destinationPort} onChange={(e) => setNewForm((c) => ({ ...c, destinationPort: e.target.value }))} placeholder="e.g. Mundra" />
                 </div>
               </div>
               <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-2">
                 <div className="grid gap-1.5">
-                  <Label className="text-xs">ETD <span className="text-danger">*</span></Label>
+                  <Label className="text-xs">ETD</Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
@@ -944,7 +935,7 @@ export default function ShipmentsModule() {
                   </Popover>
                 </div>
                 <div className="grid gap-1.5">
-                  <Label className="text-xs">ETA <span className="text-danger">*</span></Label>
+                  <Label className="text-xs">ETA</Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
@@ -983,32 +974,40 @@ export default function ShipmentsModule() {
                       <span className="text-xs font-semibold text-foreground">Container #{i + 1}</span>
                       <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-danger" onClick={() => removeContainer(i)}><X className="h-3.5 w-3.5" /></Button>
                     </div>
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                      <div className="grid gap-1">
-                        <Label className="text-[10px]">Number <span className="text-danger">*</span></Label>
-                        <Input className="h-8 text-xs" placeholder="MSCU1234567" value={container.containerNumber} onChange={(e) => updateContainer(i, "containerNumber", e.target.value)} />
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        <div className="grid gap-1">
+                          <Label className="text-[10px]">Number</Label>
+                          <Input className="h-8 text-xs" placeholder="MSCU1234567" value={container.containerNumber} onChange={(e) => updateContainer(i, "containerNumber", e.target.value)} />
+                        </div>
+                        <div className="grid gap-1">
+                          <Label className="text-[10px]">Size & Type</Label>
+                          <Select value={`${container.size || ""}|||${container.type || ""}`} onValueChange={(v) => {
+                            const [s, t] = v.split("|||");
+                            setNewForm((cur) => {
+                              const updated = [...cur.containers];
+                              updated[i] = { ...updated[i], size: s, type: t };
+                              return { ...cur, containers: updated };
+                            });
+                          }}>
+                            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {containerSizes.flatMap((s) => containerTypes.map((t) => (
+                                <SelectItem key={`${s}|||${t}`} value={`${s}|||${t}`}>{`${s} - ${t}`}</SelectItem>
+                              )))}
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
-                      <div className="grid gap-1">
-                        <Label className="text-[10px]">Size & Type <span className="text-danger">*</span></Label>
-                        <Select value={`${container.size || ""}|||${container.type || ""}`} onValueChange={(v) => {
-                          const [s, t] = v.split("|||");
-                          setNewForm((cur) => {
-                            const updated = [...cur.containers];
-                            updated[i] = { ...updated[i], size: s, type: t };
-                            return { ...cur, containers: updated };
-                          });
-                        }}>
-                          <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {containerSizes.flatMap((s) => containerTypes.map((t) => (
-                              <SelectItem key={`${s}|||${t}`} value={`${s}|||${t}`}>{`${s} - ${t}`}</SelectItem>
-                            )))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="grid gap-1">
-                        <Label className="text-[10px]">Weight</Label>
-                        <Input type="number" className="h-8 text-xs" placeholder="kg" value={container.currentWeight} onChange={(e) => updateContainer(i, "currentWeight", e.target.value)} />
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        <div className="grid gap-1">
+                          <Label className="text-[10px]">Weight</Label>
+                          <Input type="number" className="h-8 text-xs" placeholder="kg" value={container.currentWeight} onChange={(e) => updateContainer(i, "currentWeight", e.target.value)} />
+                        </div>
+                        <div className="grid gap-1">
+                          <Label className="text-[10px]">Nos</Label>
+                          <Input type="number" className="h-8 text-xs" placeholder="e.g. 50" value={container.packageCount} onChange={(e) => updateContainer(i, "packageCount", e.target.value)} />
+                        </div>
                       </div>
                     </div>
                   </div>
