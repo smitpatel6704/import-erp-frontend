@@ -3,25 +3,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  AlertCircle,
-  AlertTriangle,
-  Bell,
-  BellOff,
-  CheckCheck,
-  CheckCircle2,
-  DollarSign,
-  Eye,
-  FileText,
-  Filter,
-  FolderOpen,
-  Info,
-  Loader2,
-  Mail,
-  Play,
-  Settings,
-  Shield,
-  Ship,
-  Trash2,
+  AlertCircle, AlertTriangle, Bell, BellOff, CheckCheck, CheckCircle2,
+  DollarSign, Eye, FileText, Filter, FolderOpen, Info, Loader2,
+  Mail, Play, Settings, Shield, Ship, Trash2,
 } from 'lucide-react';
 import { formatDistanceToNow, isAfter, isToday, isYesterday, subDays } from 'date-fns';
 import { ConfirmDeleteDialog } from '@/components/ui/confirm-delete-dialog';
@@ -32,6 +16,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { useERPStore } from '@/lib/store';
+import { PageHeader } from '@/components/erp/page-header';
+import { StatCard } from '@/components/erp/stat-card';
 
 const typeColors = {
   info: { bg: 'bg-teal/10', text: 'text-teal', icon: Info },
@@ -198,33 +184,23 @@ export function NotificationsModule() {
   const grouped = groupNotifications(notifications);
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat, index) => (
-          <motion.div key={stat.title} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.08 }}>
-            <Card className="shadow-sm">
-              <CardContent className="p-4 flex items-start justify-between">
-                <div>
-                  <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{stat.title}</p>
-                  <p className="text-2xl font-bold tracking-tight mt-1">{stat.value}</p>
-                </div>
-                <div className={cn('rounded-lg p-2', stat.bg)}>
-                  <stat.icon className={cn('h-4 w-4', stat.color)} />
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+    <div className="space-y-5">
+      <PageHeader icon={Bell} title="Notifications" description="Alerts, reminders, and email delivery status" />
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {stats.map((stat) => (
+          <StatCard key={stat.title} compact label={stat.title} value={stat.value} icon={stat.icon} />
         ))}
       </div>
 
-      <Card className="shadow-sm">
-        <CardContent className="p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+      <Card>
+        <CardContent className="p-3 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className={cn('rounded-lg p-2', emailConfig.configured ? 'bg-emerald-500/10' : 'bg-red-500/10')}>
-              <Mail className={cn('h-4 w-4', emailConfig.configured ? 'text-emerald-600' : 'text-red-500')} />
+            <div className={cn('flex h-8 w-8 items-center justify-center rounded-lg', emailConfig.configured ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger')}>
+              <Mail className="h-4 w-4" />
             </div>
             <div>
-              <p className="text-sm font-semibold">Gmail SMTP</p>
+              <p className="text-sm font-semibold text-foreground">Gmail SMTP</p>
               <p className="text-xs text-muted-foreground">
                 {emailConfig.configured
                   ? `${emailConfig.host}:${emailConfig.port} configured${emailConfig.connected ? ' and connected' : ''}`
@@ -233,13 +209,13 @@ export function NotificationsModule() {
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <Button variant="outline" size="sm" onClick={testEmailConnection} disabled={!emailConfig.configured || busyAction === 'test'}>
+            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={testEmailConnection} disabled={!emailConfig.configured || busyAction === 'test'}>
               {busyAction === 'test' ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Mail className="h-3.5 w-3.5 mr-1" />}
-              Test SMTP
+              Test
             </Button>
-            <Button variant="outline" size="sm" onClick={runReminders} disabled={busyAction === 'reminders'}>
+            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={runReminders} disabled={busyAction === 'reminders'}>
               {busyAction === 'reminders' ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Play className="h-3.5 w-3.5 mr-1" />}
-              Run ETA & Document Reminders
+              Run Reminders
             </Button>
           </div>
         </CardContent>
@@ -252,16 +228,16 @@ export function NotificationsModule() {
         </div>
       )}
 
-      <Card className="shadow-sm">
-        <CardHeader className="pb-3">
+      <Card className="overflow-hidden">
+        <div className="border-b border-border px-4 py-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-muted-foreground" />
-              <CardTitle className="text-base font-semibold">Notifications</CardTitle>
+              <span className="text-sm font-semibold text-foreground">Notifications</span>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <Select value={filterType} onValueChange={setFilterType}>
-                <SelectTrigger className="h-8 w-32 text-xs"><SelectValue placeholder="Type" /></SelectTrigger>
+                <SelectTrigger className="h-8 w-28 text-xs"><SelectValue placeholder="Type" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Types</SelectItem>
                   <SelectItem value="info">Info</SelectItem>
@@ -271,7 +247,7 @@ export function NotificationsModule() {
                 </SelectContent>
               </Select>
               <Select value={filterCategory} onValueChange={setFilterCategory}>
-                <SelectTrigger className="h-8 w-36 text-xs"><SelectValue placeholder="Category" /></SelectTrigger>
+                <SelectTrigger className="h-8 w-32 text-xs"><SelectValue placeholder="Category" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Categories</SelectItem>
                   <SelectItem value="shipment">Shipment</SelectItem>
@@ -286,9 +262,8 @@ export function NotificationsModule() {
               </Button>
             </div>
           </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          <ScrollArea className="max-h-[620px]">
+        </div>
+        <div>
             {loading ? (
               <div className="flex justify-center py-16"><Loader2 className="h-7 w-7 animate-spin text-teal" /></div>
             ) : notifications.length === 0 ? (
@@ -316,8 +291,7 @@ export function NotificationsModule() {
                 </AnimatePresence>
               </div>
             ))}
-          </ScrollArea>
-        </CardContent>
+          </div>
       </Card>
     </div>
   );

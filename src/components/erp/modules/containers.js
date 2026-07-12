@@ -1,46 +1,21 @@
 "use client";
-import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+
 import React, { useEffect, useState, useCallback } from "react";
-import { motion } from "framer-motion";
-import { Box, Search, Eye, Package, MapPin, Ship } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Box, Search, Eye, MapPin, Ship, Inbox, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
+import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-// ─── Constants ────────────────────────────────────────────────────────────────
+import { PageHeader } from "@/components/erp/page-header";
+import { SectionHeader } from "@/components/erp/section-header";
+import { StatCardCompact } from "@/components/erp/stat-card";
+import { StatusBadge } from "@/components/erp/status-badge";
+import { EmptyState } from "@/components/erp/empty-state";
+import { TableSkeleton } from "@/components/erp/loading-state";
+
 const CONTAINER_STATUSES = [
   { value: "all", label: "All Statuses" },
   { value: "booking_confirmed", label: "Booking Confirmed" },
@@ -52,40 +27,10 @@ const CONTAINER_STATUSES = [
   { value: "in_transport", label: "In Transport" },
   { value: "delivered", label: "Delivered" },
 ];
-// Types and sizes are now fetched dynamically from the db API
-const statusLabelMap = Object.fromEntries(
-  CONTAINER_STATUSES.map((s) => [s.value, s.label]),
-);
-const statusColorMap = {
-  booking_confirmed: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800",
-  at_pol: "bg-amber/10 text-amber-dark border-amber/20 dark:bg-amber/20 dark:text-amber-light",
-  vessel_departed: "bg-teal/10 text-teal-dark border-teal/20 dark:bg-teal/20 dark:text-teal-light",
-  in_transit: "bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-900/30 dark:text-sky-400 dark:border-sky-800",
-  at_pod: "bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-900/30 dark:text-violet-400 dark:border-violet-800",
-  customs_clearance: "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800",
-  in_transport: "bg-pink-100 text-pink-700 border-pink-200 dark:bg-pink-900/30 dark:text-pink-400 dark:border-pink-800",
-  delivered: "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800",
-};
-const statusDotMap = {
-  booking_confirmed: "bg-blue-500",
-  at_pol: "bg-amber",
-  vessel_departed: "bg-teal",
-  in_transit: "bg-sky-500",
-  at_pod: "bg-violet-500",
-  customs_clearance: "bg-orange-500",
-  in_transport: "bg-pink-500",
-  delivered: "bg-green-500",
-};
-const typeIconMap = {
-  standard: Box,
-  reefer: Package,
-  open_top: Box,
-  flat_rack: Box,
-  tank: Box,
-};
-// ─── Main Component ───────────────────────────────────────────────────────────
+const statusLabelMap = Object.fromEntries(CONTAINER_STATUSES.map((s) => [s.value, s.label]));
+const containerTypeLabel = (type) => type?.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()) || "—";
+
 export default function ContainersModule() {
-  var _a;
   const [containers, setContainers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
@@ -94,94 +39,48 @@ export default function ContainersModule() {
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  // Detail dialog
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedContainer, setSelectedContainer] = useState(null);
-  const [containerTypes, setContainerTypes] = useState([
-    { value: "all", label: "All Types" },
-  ]);
-  const [containerSizes, setContainerSizes] = useState([
-    { value: "all", label: "All Sizes" },
-  ]);
+  const [containerTypes, setContainerTypes] = useState([{ value: "all", label: "All Types" }]);
+  const [containerSizes, setContainerSizes] = useState([{ value: "all", label: "All Sizes" }]);
+
   useEffect(() => {
     const fetchOptions = async () => {
       try {
         const [sizes, types] = await Promise.all([
-          fetch("/api/settings/options?category=container_size").then((r) =>
-            r.json(),
-          ),
-          fetch("/api/settings/options?category=container_type").then((r) =>
-            r.json(),
-          ),
+          fetch("/api/settings/options?category=container_size").then((r) => r.json()),
+          fetch("/api/settings/options?category=container_type").then((r) => r.json()),
         ]);
-        if (sizes.data) {
-          setContainerSizes([
-            { value: "all", label: "All Sizes" },
-            ...sizes.data.map((d) => ({ value: d.value, label: d.label })),
-          ]);
-        }
-        if (types.data) {
-          setContainerTypes([
-            { value: "all", label: "All Types" },
-            ...types.data.map((d) => ({ value: d.value, label: d.label })),
-          ]);
-        }
-      } catch (err) {
-        console.error("Failed to fetch settings options:", err);
-      }
+        if (sizes.data) setContainerSizes([{ value: "all", label: "All Sizes" }, ...sizes.data.map((d) => ({ value: d.value, label: d.label }))]);
+        if (types.data) setContainerTypes([{ value: "all", label: "All Types" }, ...types.data.map((d) => ({ value: d.value, label: d.label }))]);
+      } catch (err) { console.error(err); }
     };
     fetchOptions();
   }, []);
+
   const fetchContainers = useCallback(async () => {
-    var _a;
     setLoading(true);
     try {
-      const params = new URLSearchParams(
-        Object.assign(
-          Object.assign(
-            Object.assign(
-              Object.assign(
-                {
-                  page: String(page),
-                  limit: "20",
-                  isActive: "true",
-                  linkedShipment: "true",
-                },
-                statusFilter !== "all" && { status: statusFilter },
-              ),
-              typeFilter !== "all" && { containerType: typeFilter },
-            ),
-            sizeFilter !== "all" && { containerSize: sizeFilter },
-          ),
-          searchQuery && { search: searchQuery },
-        ),
-      );
+      const params = new URLSearchParams({ page: String(page), limit: "20", isActive: "true", linkedShipment: "true" });
+      if (statusFilter !== "all") params.set("status", statusFilter);
+      if (typeFilter !== "all") params.set("containerType", typeFilter);
+      if (sizeFilter !== "all") params.set("containerSize", sizeFilter);
+      if (searchQuery) params.set("search", searchQuery);
       const res = await fetch(`/api/containers?${params}`);
       const json = await res.json();
       setContainers(json.data || []);
-      setTotalCount(
-        ((_a = json.pagination) === null || _a === void 0
-          ? void 0
-          : _a.total) || 0,
-      );
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
+      setTotalCount(json.pagination?.total || 0);
+    } catch (e) { console.error(e); } finally { setLoading(false); }
   }, [page, statusFilter, typeFilter, sizeFilter, searchQuery]);
-  useEffect(() => {
-    fetchContainers();
-  }, [fetchContainers]);
-  // Status counts for stats
+
+  useEffect(() => { fetchContainers(); }, [fetchContainers]);
+
   const statusCounts = React.useMemo(() => {
     const counts = {};
-    containers.forEach((c) => {
-      counts[c.status] = (counts[c.status] || 0) + 1;
-    });
+    containers.forEach((c) => { counts[c.status] = (counts[c.status] || 0) + 1; });
     return counts;
   }, [containers]);
-  // Group by location for status map
+
   const locationGroups = React.useMemo(() => {
     const groups = {};
     containers.forEach((c) => {
@@ -191,718 +90,270 @@ export default function ContainersModule() {
     });
     return groups;
   }, [containers]);
-  const containerTypeLabel = (type) =>
-    type.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
-  return _jsxs(motion.div, {
-    initial: { opacity: 0, y: 8 },
-    animate: { opacity: 1, y: 0 },
-    transition: { duration: 0.3 },
-    className: "space-y-4",
-    children: [
-      _jsx(Card, {
-        className: "glass border-0 shadow-enterprise",
-        children: _jsx(CardContent, {
-          className: "p-4",
-          children: _jsxs("div", {
-            className:
-              "flex flex-col sm:flex-row items-start sm:items-center gap-3",
-            children: [
-              _jsxs("div", {
-                className: "relative flex-1 w-full sm:max-w-xs",
-                children: [
-                  _jsx(Search, {
-                    className:
-                      "absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground",
-                  }),
-                  _jsx(Input, {
-                    placeholder: "Search container, seal, location...",
-                    value: searchQuery,
-                    onChange: (e) => {
-                      setSearchQuery(e.target.value);
-                      setPage(1);
-                    },
-                    className: "pl-9 h-9 text-sm",
-                  }),
-                ],
-              }),
-              _jsxs(Select, {
-                value: statusFilter,
-                onValueChange: (v) => {
-                  setStatusFilter(v);
-                  setPage(1);
-                },
-                children: [
-                  _jsx(SelectTrigger, {
-                    className: "w-full sm:w-[160px] h-9 text-sm",
-                    children: _jsx(SelectValue, {}),
-                  }),
-                  _jsx(SelectContent, {
-                    children: CONTAINER_STATUSES.map((s) =>
-                      _jsx(SelectItem, { value: s.value, children: s.label }, s.value),
-                    ),
-                  }),
-                ],
-              }),
-              _jsxs(Select, {
-                value: typeFilter,
-                onValueChange: (v) => {
-                  setTypeFilter(v);
-                  setPage(1);
-                },
-                children: [
-                  _jsx(SelectTrigger, {
-                    className: "w-full sm:w-[140px] h-9 text-sm",
-                    children: _jsx(SelectValue, {}),
-                  }),
-                  _jsx(SelectContent, {
-                    children: containerTypes.map((t) =>
-                      _jsx(
-                        SelectItem,
-                        { value: t.value, children: t.label },
-                        t.value,
-                      ),
-                    ),
-                  }),
-                ],
-              }),
-              _jsxs(Select, {
-                value: sizeFilter,
-                onValueChange: (v) => {
-                  setSizeFilter(v);
-                  setPage(1);
-                },
-                children: [
-                  _jsx(SelectTrigger, {
-                    className: "w-full sm:w-[120px] h-9 text-sm",
-                    children: _jsx(SelectValue, {}),
-                  }),
-                  _jsx(SelectContent, {
-                    children: containerSizes.map((s) =>
-                      _jsx(
-                        SelectItem,
-                        { value: s.value, children: s.label },
-                        s.value,
-                      ),
-                    ),
-                  }),
-                ],
-              }),
-            ],
-          }),
-        }),
-      }),
-      _jsx("div", {
-        className: "grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3",
-        children: CONTAINER_STATUSES.filter((s) => s.value !== "all").map(
-          (status, i) =>
-            _jsx(
-              motion.div,
-              {
-                initial: { opacity: 0, y: 12 },
-                animate: { opacity: 1, y: 0 },
-                transition: { delay: i * 0.04, duration: 0.25 },
-                children: _jsx(Card, {
-                  className: cn(
-                    "glass border-0 shadow-enterprise cursor-pointer hover-lift transition-colors",
-                    statusFilter === status.value && "ring-2 ring-teal/30",
-                  ),
-                  onClick: () => {
-                    setStatusFilter(statusFilter === status.value ? "all" : status.value);
-                    setPage(1);
-                  },
-                  children: _jsxs(CardContent, {
-                    className: "p-3 text-center",
-                    children: [
-                      _jsx("div", {
-                        className: cn("h-2 w-2 rounded-full mx-auto mb-2", statusDotMap[status.value]),
-                      }),
-                      _jsx("p", { className: "text-xl font-bold", children: statusCounts[status.value] || 0 }),
-                      _jsx("p", {
-                        className: "text-[10px] text-muted-foreground font-medium mt-0.5",
-                        children: status.label,
-                      }),
-                    ],
-                  }),
-                }),
-              },
-              status.value,
-            ),
-        ),
-      }),
-      _jsxs("div", {
-        className: "grid grid-cols-1 lg:grid-cols-4 gap-6",
-        children: [
-          _jsx("div", {
-            className: "lg:col-span-3",
-            children: _jsx(Card, {
-              className: "glass border-0 shadow-enterprise",
-              children: _jsxs(CardContent, {
-                className: "p-0",
-                children: [
-                  _jsx("div", {
-                    className: "overflow-x-auto",
-                    children: _jsxs(Table, {
-                      children: [
-                        _jsx(TableHeader, {
-                          children: _jsxs(TableRow, {
-                            children: [
-                              _jsx(TableHead, {
-                                className: "text-[11px] font-semibold",
-                                children: "Container",
-                              }),
-                              _jsx(TableHead, {
-                                className:
-                                  "text-[11px] font-semibold hidden sm:table-cell",
-                                children: "Type / Size",
-                              }),
-                              _jsx(TableHead, {
-                                className:
-                                  "text-[11px] font-semibold hidden md:table-cell",
-                                children: "Seal",
-                              }),
-                              _jsx(TableHead, {
-                                className: "text-[11px] font-semibold",
-                                children: "Shipment",
-                              }),
-                              _jsx(TableHead, {
-                                className:
-                                  "text-[11px] font-semibold hidden lg:table-cell",
-                                children: "Weight",
-                              }),
-                              _jsx(TableHead, {
-                                className: "text-[11px] font-semibold",
-                                children: "Status",
-                              }),
-                              _jsx(TableHead, {
-                                className:
-                                  "text-[11px] font-semibold hidden md:table-cell",
-                                children: "Location",
-                              }),
-                              _jsx(TableHead, {
-                                className: "text-[11px] font-semibold w-10",
-                              }),
-                            ],
-                          }),
-                        }),
-                        _jsx(TableBody, {
-                          children: loading
-                            ? Array.from({ length: 5 }).map((_, i) =>
-                                _jsx(
-                                  TableRow,
-                                  {
-                                    children: _jsx(TableCell, {
-                                      colSpan: 8,
-                                      children: _jsx("div", {
-                                        className:
-                                          "h-8 bg-muted rounded animate-pulse",
-                                      }),
-                                    }),
-                                  },
-                                  i,
-                                ),
-                              )
-                            : containers.length === 0
-                              ? _jsx(TableRow, {
-                                  children: _jsx(TableCell, {
-                                    colSpan: 8,
-                                    className:
-                                      "text-center py-12 text-muted-foreground",
-                                    children: "No shipment containers found",
-                                  }),
-                                })
-                              : containers.map((c, i) =>
-                                  _jsxs(
-                                    motion.tr,
-                                    {
-                                      initial: { opacity: 0, y: 8 },
-                                      animate: { opacity: 1, y: 0 },
-                                      transition: {
-                                        delay: i * 0.03,
-                                        duration: 0.2,
-                                      },
-                                      className:
-                                        "group cursor-pointer hover:bg-accent/30 transition-colors",
-                                      onClick: () => {
-                                        setSelectedContainer(c);
-                                        setDetailOpen(true);
-                                      },
-                                      children: [
-                                        _jsx(TableCell, {
-                                          children: _jsxs("div", {
-                                            className:
-                                              "flex items-center gap-2.5",
-                                            children: [
-                                              _jsx("div", {
-                                                className:
-                                                  "flex h-8 w-8 items-center justify-center rounded-lg bg-amber/10 shrink-0",
-                                                children: _jsx(Box, {
-                                                  className:
-                                                    "h-4 w-4 text-amber-dark",
-                                                }),
-                                              }),
-                                              _jsx("span", {
-                                                className:
-                                                  "text-sm font-medium",
-                                                children: c.containerNumber,
-                                              }),
-                                            ],
-                                          }),
-                                        }),
-                                        _jsxs(TableCell, {
-                                          className: "hidden sm:table-cell",
-                                          children: [
-                                            _jsx("p", {
-                                              className: "text-xs",
-                                              children: containerTypeLabel(
-                                                c.containerType,
-                                              ),
-                                            }),
-                                            _jsx("p", {
-                                              className:
-                                                "text-[11px] text-muted-foreground",
-                                              children: c.containerSize,
-                                            }),
-                                          ],
-                                        }),
-                                        _jsx(TableCell, {
-                                          className:
-                                            "hidden md:table-cell text-xs",
-                                          children: c.sealNumber || "—",
-                                        }),
-                                        _jsx(TableCell, {
-                                          children: _jsxs("div", {
-                                            className:
-                                              "flex items-center gap-1",
-                                            children: [
-                                              _jsx(Ship, {
-                                                className:
-                                                  "h-3 w-3 text-muted-foreground",
-                                              }),
-                                              _jsx("span", {
-                                                className: "text-xs",
-                                                children: c.shipment
-                                                  ? c.shipment.shipmentNumber
-                                                  : "—",
-                                              }),
-                                            ],
-                                          }),
-                                        }),
-                                        _jsx(TableCell, {
-                                          className: "hidden lg:table-cell",
-                                          children: _jsxs("div", {
-                                            className: "space-y-1",
-                                            children: [
-                                              _jsxs("p", {
-                                                className: "text-xs",
-                                                children: [
-                                                  c.currentWeight,
-                                                  "/",
-                                                  c.weightCapacity,
-                                                  " kg",
-                                                ],
-                                              }),
-                                              _jsx(Progress, {
-                                                value: c.weightCapacity
-                                                  ? (c.currentWeight /
-                                                      c.weightCapacity) *
-                                                    100
-                                                  : 0,
-                                                className: "h-1.5",
-                                              }),
-                                            ],
-                                          }),
-                                        }),
-                                        _jsx(TableCell, {
-                                          children: _jsx(Badge, {
-                                            variant: "outline",
-                                            className: cn(
-                                              "text-[10px] font-semibold",
-                                              statusColorMap[c.status] || "",
-                                            ),
-                                            children: statusLabelMap[c.status] || c.status,
-                                          }),
-                                        }),
-                                        _jsx(TableCell, {
-                                          className: "hidden md:table-cell",
-                                          children: _jsxs("div", {
-                                            className:
-                                              "flex items-center gap-1 text-xs text-muted-foreground",
-                                            children: [
-                                              _jsx(MapPin, {
-                                                className: "h-3 w-3",
-                                              }),
-                                              c.currentLocation || "—",
-                                            ],
-                                          }),
-                                        }),
-                                        _jsx(TableCell, {
-                                          children: _jsx(Button, {
-                                            variant: "ghost",
-                                            size: "icon",
-                                            className:
-                                              "h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity",
-                                            children: _jsx(Eye, {
-                                              className: "h-3.5 w-3.5",
-                                            }),
-                                          }),
-                                        }),
-                                      ],
-                                    },
-                                    c.id,
-                                  ),
-                                ),
-                        }),
-                      ],
-                    }),
-                  }),
-                  totalCount > 20 &&
-                    _jsxs("div", {
-                      className:
-                        "flex items-center justify-between px-4 py-3 border-t",
-                      children: [
-                        _jsxs("p", {
-                          className: "text-xs text-muted-foreground",
-                          children: [
-                            "Showing ",
-                            (page - 1) * 20 + 1,
-                            "\u2013",
-                            Math.min(page * 20, totalCount),
-                            " of ",
-                            totalCount,
-                          ],
-                        }),
-                        _jsxs("div", {
-                          className: "flex gap-1",
-                          children: [
-                            _jsx(Button, {
-                              variant: "outline",
-                              size: "sm",
-                              disabled: page === 1,
-                              onClick: () => setPage(page - 1),
-                              className: "h-7 text-xs",
-                              children: "Prev",
-                            }),
-                            _jsx(Button, {
-                              variant: "outline",
-                              size: "sm",
-                              disabled: page * 20 >= totalCount,
-                              onClick: () => setPage(page + 1),
-                              className: "h-7 text-xs",
-                              children: "Next",
-                            }),
-                          ],
-                        }),
-                      ],
-                    }),
-                ],
-              }),
-            }),
-          }),
-          _jsxs(Card, {
-            className: "glass border-0 shadow-enterprise",
-            children: [
-              _jsxs(CardHeader, {
-                className: "pb-3",
-                children: [
-                  _jsx(CardTitle, {
-                    className: "text-sm font-semibold",
-                    children: "By Location",
-                  }),
-                  _jsxs(CardDescription, {
-                    className: "text-[11px]",
-                    children: [
-                      Object.keys(locationGroups).length,
-                      " locations",
-                    ],
-                  }),
-                ],
-              }),
-              _jsx(CardContent, {
-                className: "pt-0",
-                children: _jsx(ScrollArea, {
-                  className: "h-[400px]",
-                  children: _jsx("div", {
-                    className: "space-y-3",
-                    children: Object.entries(locationGroups).map(
-                      ([loc, items]) =>
-                        _jsxs(
-                          "div",
-                          {
-                            className: "space-y-1.5",
-                            children: [
-                              _jsxs("div", {
-                                className: "flex items-center justify-between",
-                                children: [
-                                  _jsxs("div", {
-                                    className: "flex items-center gap-1.5",
-                                    children: [
-                                      _jsx(MapPin, {
-                                        className:
-                                          "h-3 w-3 text-muted-foreground",
-                                      }),
-                                      _jsx("span", {
-                                        className:
-                                          "text-xs font-medium truncate max-w-[120px]",
-                                        children: loc,
-                                      }),
-                                    ],
-                                  }),
-                                  _jsx(Badge, {
-                                    variant: "secondary",
-                                    className: "text-[10px] h-4 px-1.5",
-                                    children: items.length,
-                                  }),
-                                ],
-                              }),
-                              _jsx("div", {
-                                className: "space-y-1 pl-5",
-                                children: items.map((c) =>
-                                  _jsxs(
-                                    "div",
-                                    {
-                                      className: "flex items-center gap-1.5",
-                                      children: [
-                                        _jsx("span", {
-                                          className: cn(
-                                            "h-1.5 w-1.5 rounded-full shrink-0",
-                                            statusDotMap[c.status],
-                                          ),
-                                        }),
-                                        _jsx("span", {
-                                          className:
-                                            "text-[10px] text-muted-foreground truncate",
-                                          children: c.containerNumber,
-                                        }),
-                                      ],
-                                    },
-                                    c.id,
-                                  ),
-                                ),
-                              }),
-                            ],
-                          },
-                          loc,
-                        ),
-                    ),
-                  }),
-                }),
-              }),
-            ],
-          }),
-        ],
-      }),
-      _jsx(Dialog, {
-        open: detailOpen,
-        onOpenChange: setDetailOpen,
-        children: _jsxs(DialogContent, {
-          className: "max-w-lg max-h-[75vh] overflow-hidden p-0",
-          children: [
-            _jsx(DialogHeader, {
-              className: "px-6 pt-6 pb-4 border-b",
-              children: _jsxs("div", {
-                className: "flex items-center gap-3",
-                children: [
-                  _jsx("div", {
-                    className:
-                      "flex h-10 w-10 items-center justify-center rounded-xl bg-amber/10",
-                    children: _jsx(Box, {
-                      className: "h-5 w-5 text-amber-dark",
-                    }),
-                  }),
-                  _jsxs("div", {
-                    children: [
-                      _jsx(DialogTitle, {
-                        children:
-                          (selectedContainer === null ||
-                          selectedContainer === void 0
-                            ? void 0
-                            : selectedContainer.containerNumber) ||
-                          "Loading...",
-                      }),
-                      _jsx(DialogDescription, {
-                        className: "text-xs mt-0.5",
-                        children: selectedContainer
-                          ? `${containerTypeLabel(selectedContainer.containerType)} — ${selectedContainer.containerSize}`
-                          : "",
-                      }),
-                    ],
-                  }),
-                  selectedContainer &&
-                    _jsx(Badge, {
-                      variant: "outline",
-                      className: cn(
-                        "ml-auto text-[10px] font-semibold",
-                        statusColorMap[selectedContainer.status],
-                      ),
-                      children:
-                        statusLabelMap[selectedContainer.status] || selectedContainer.status,
-                    }),
-                ],
-              }),
-            }),
-            selectedContainer &&
-              _jsx(ScrollArea, {
-                className: "h-[55vh] px-6 pb-6",
-                children: _jsxs("div", {
-                  className: "space-y-4 pt-4",
-                  children: [
-                    _jsx("div", {
-                      className: "grid grid-cols-2 gap-4",
-                      children: [
-                        {
-                          label: "Container Number",
-                          value: selectedContainer.containerNumber,
-                        },
-                        {
-                          label: "Type",
-                          value: containerTypeLabel(
-                            selectedContainer.containerType,
-                          ),
-                        },
-                        {
-                          label: "Size",
-                          value: selectedContainer.containerSize,
-                        },
-                        {
-                          label: "Seal Number",
-                          value: selectedContainer.sealNumber,
-                        },
-                        {
-                          label: "Stuffing Type",
-                          value:
-                            (_a = selectedContainer.stuffingType) === null ||
-                            _a === void 0
-                              ? void 0
-                              : _a.toUpperCase(),
-                        },
-                        {
-                          label: "Status",
-                          value:
-                            statusLabelMap[selectedContainer.status] ||
-                            selectedContainer.status,
-                        },
-                        {
-                          label: "Current Location",
-                          value: selectedContainer.currentLocation,
-                        },
-                        {
-                          label: "Current Weight",
-                          value: `${selectedContainer.currentWeight} kg`,
-                        },
-                        {
-                          label: "Weight Capacity",
-                          value: `${selectedContainer.weightCapacity} kg`,
-                        },
-                        {
-                          label: "Created",
-                          value: format(
-                            new Date(selectedContainer.createdAt),
-                            "MMM d, yyyy",
-                          ),
-                        },
-                      ].map((field) =>
-                        _jsxs(
-                          "div",
-                          {
-                            children: [
-                              _jsx("p", {
-                                className:
-                                  "text-[11px] font-semibold text-muted-foreground uppercase tracking-wider",
-                                children: field.label,
-                              }),
-                              _jsx("p", {
-                                className: "text-sm mt-0.5",
-                                children: field.value || "—",
-                              }),
-                            ],
-                          },
-                          field.label,
-                        ),
-                      ),
-                    }),
-                    _jsxs("div", {
-                      children: [
-                        _jsxs("div", {
-                          className: "flex items-center justify-between mb-1.5",
-                          children: [
-                            _jsx("span", {
-                              className: "text-xs font-medium",
-                              children: "Weight Utilization",
-                            }),
-                            _jsx("span", {
-                              className: "text-xs text-muted-foreground",
-                              children: selectedContainer.weightCapacity
-                                ? `${((selectedContainer.currentWeight / selectedContainer.weightCapacity) * 100).toFixed(0)}%`
-                                : "N/A",
-                            }),
-                          ],
-                        }),
-                        _jsx(Progress, {
-                          value: selectedContainer.weightCapacity
-                            ? (selectedContainer.currentWeight /
-                                selectedContainer.weightCapacity) *
-                              100
-                            : 0,
-                          className: "h-2",
-                        }),
-                      ],
-                    }),
-                    _jsx(Separator, {}),
-                    _jsxs("div", {
-                      children: [
-                        _jsx("p", {
-                          className:
-                            "text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2",
-                          children: "Linked Shipment",
-                        }),
-                        _jsxs("div", {
-                          className:
-                            "flex items-center gap-3 p-3 rounded-lg border border-border/50 hover:bg-accent/20 transition-colors",
-                          children: [
-                            _jsx("div", {
-                              className:
-                                "flex h-8 w-8 items-center justify-center rounded-lg bg-teal/10 shrink-0",
-                              children: _jsx(Ship, {
-                                className: "h-4 w-4 text-teal",
-                              }),
-                            }),
-                            _jsxs("div", {
-                              className: "flex-1",
-                              children: [
-                                _jsx("p", {
-                                  className: "text-sm font-medium",
-                                  children:
-                                    selectedContainer.shipment.shipmentNumber,
-                                }),
-                                _jsxs("p", {
-                                  className:
-                                    "text-[11px] text-muted-foreground",
-                                  children: [
-                                    selectedContainer.shipment.originPort ||
-                                      "?",
-                                    " \u2192 ",
-                                    selectedContainer.shipment
-                                      .destinationPort || "?",
-                                  ],
-                                }),
-                              ],
-                            }),
-                            selectedContainer.shipment.company &&
-                              _jsx("span", {
-                                className: "text-xs text-muted-foreground",
-                                children:
-                                  selectedContainer.shipment.company.name,
-                              }),
-                          ],
-                        }),
-                      ],
-                    }),
-                  ],
-                }),
-              }),
-          ],
-        }),
-      }),
-    ],
-  });
+
+  return (
+    <>
+      <div className="space-y-5">
+        <PageHeader icon={Box} title="Containers" description="Track and manage container inventory">
+          <Button variant="outline" size="sm" className="h-9">Export</Button>
+        </PageHeader>
+
+        {/* Lifecycle metrics */}
+        <Card>
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex flex-wrap gap-2">
+              {CONTAINER_STATUSES.filter((s) => s.value !== "all").map((status) => {
+                const count = statusCounts[status.value] || 0;
+                const isActive = statusFilter === status.value;
+                return (
+                  <button
+                    key={status.value}
+                    onClick={() => { setStatusFilter(isActive ? "all" : status.value); setPage(1); }}
+                    className={cn(
+                      "flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium whitespace-nowrap transition-colors",
+                      isActive ? "bg-primary/10 text-primary border-primary/20" : "bg-card text-muted-foreground border-border hover:bg-muted/50 hover:text-foreground"
+                    )}
+                  >
+                    <StatusBadge status={status.value} dot={false} className="border-0 px-0 text-xs" />
+                    <span className={cn("tabular-nums", isActive && "font-bold")}>{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Filters */}
+        <Card>
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="relative flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input placeholder="Search container, seal, location..." value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }} className="h-9 pl-9 text-sm" />
+              </div>
+              <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setPage(1); }}>
+                <SelectTrigger className="h-9 w-full sm:w-[150px] text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>{containerTypes.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
+              </Select>
+              <Select value={sizeFilter} onValueChange={(v) => { setSizeFilter(v); setPage(1); }}>
+                <SelectTrigger className="h-9 w-full sm:w-[130px] text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>{containerSizes.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Main content */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
+          <div className="lg:col-span-3">
+            {loading ? (
+              <Card><CardContent className="p-5"><TableSkeleton rows={6} cols={7} /></CardContent></Card>
+            ) : (
+              <Card className="overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                        <th className="px-4 py-3 font-semibold">Container</th>
+                        <th className="hidden px-4 py-3 font-semibold sm:table-cell">Type / Size</th>
+                        <th className="hidden px-4 py-3 font-semibold md:table-cell">Seal</th>
+                        <th className="px-4 py-3 font-semibold">Shipment</th>
+                        <th className="hidden px-4 py-3 font-semibold lg:table-cell">Weight</th>
+                        <th className="px-4 py-3 font-semibold">Status</th>
+                        <th className="hidden px-4 py-3 font-semibold md:table-cell">Location</th>
+                        <th className="w-10 px-4 py-3" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {containers.length === 0 ? (
+                        <tr><td colSpan={8}><EmptyState icon={Box} title="No containers found" description="Containers linked to shipments will appear here." compact className="py-16" /></td></tr>
+                      ) : containers.map((c) => (
+                        <tr key={c.id} onClick={() => { setSelectedContainer(c); setDetailOpen(true); }} className="cursor-pointer border-b border-border/50 transition-colors hover:bg-muted/30 last:border-0">
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2.5">
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/8 text-primary ring-1 ring-primary/15">
+                                <Box className="h-4 w-4" strokeWidth={1.8} />
+                              </div>
+                              <span className="text-sm font-medium text-foreground">{c.containerNumber}</span>
+                            </div>
+                          </td>
+                          <td className="hidden px-4 py-3 sm:table-cell">
+                            <p className="text-xs text-foreground">{containerTypeLabel(c.containerType)}</p>
+                            <p className="text-[11px] text-muted-foreground">{c.containerSize}</p>
+                          </td>
+                          <td className="hidden px-4 py-3 text-xs md:table-cell">{c.sealNumber || "—"}</td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-1.5 text-xs">
+                              <Ship className="h-3 w-3 text-muted-foreground" />
+                              <span>{c.shipment?.shipmentNumber || "—"}</span>
+                            </div>
+                          </td>
+                          <td className="hidden px-4 py-3 lg:table-cell">
+                            <div className="space-y-1">
+                              <p className="text-xs text-foreground">{c.currentWeight || 0}/{c.weightCapacity || 0} kg</p>
+                              {c.weightCapacity > 0 && (
+                                <div className="h-1.5 w-full max-w-[100px] rounded-full bg-muted overflow-hidden">
+                                  <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${Math.min((c.currentWeight / c.weightCapacity) * 100, 100)}%` }} />
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3"><StatusBadge status={c.status} /></td>
+                          <td className="hidden px-4 py-3 md:table-cell">
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <MapPin className="h-3 w-3 shrink-0" />
+                              <span className="truncate max-w-[100px]">{c.currentLocation || "—"}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex justify-end">
+                              <Button variant="ghost" size="icon" className="h-7 w-7"><Eye className="h-3.5 w-3.5" /></Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {totalCount > 20 && (
+                  <div className="flex items-center justify-between border-t border-border px-4 py-3">
+                    <p className="text-xs text-muted-foreground tabular-nums">
+                      Showing <span className="font-semibold text-foreground">{(page - 1) * 20 + 1}</span>-
+                      <span className="font-semibold text-foreground">{Math.min(page * 20, totalCount)}</span> of{" "}
+                      <span className="font-semibold text-foreground">{totalCount}</span>
+                    </p>
+                    <div className="flex gap-1">
+                      <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(page - 1)} className="h-8 text-xs">Prev</Button>
+                      <Button variant="outline" size="sm" disabled={page * 20 >= totalCount} onClick={() => setPage(page + 1)} className="h-8 text-xs">Next</Button>
+                    </div>
+                  </div>
+                )}
+              </Card>
+            )}
+          </div>
+
+          {/* By Location Panel */}
+          <Card className="lg:col-span-1">
+            <div className="border-b border-border px-4 py-3">
+              <SectionHeader title="By Location" badge={String(Object.keys(locationGroups).length)} />
+            </div>
+            <div className="max-h-[500px] overflow-y-auto p-4">
+              <div className="space-y-3">
+                {Object.entries(locationGroups).map(([loc, items]) => (
+                  <div key={loc}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <MapPin className="h-3 w-3 shrink-0 text-muted-foreground" />
+                        <span className="text-xs font-medium truncate">{loc}</span>
+                      </div>
+                      <span className="text-[10px] font-semibold tabular-nums text-muted-foreground">{items.length}</span>
+                    </div>
+                    <div className="space-y-0.5 pl-5">
+                      {items.map((c) => (
+                        <div key={c.id} className="flex items-center gap-1.5">
+                          <span className="status-dot" style={{ background: c.status === "delivered" ? "var(--success)" : c.status === "in_transit" ? "var(--info)" : "var(--warning)" }} />
+                          <span className="text-[10px] text-muted-foreground">{c.containerNumber}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                {Object.keys(locationGroups).length === 0 && (
+                  <p className="text-xs text-muted-foreground text-center py-8">No location data</p>
+                )}
+              </div>
+            </div>
+          </Card>
+        </div>
+      </div>
+
+      {/* Detail Dialog */}
+      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/8 text-primary ring-1 ring-primary/15">
+                <Box className="h-5 w-5" />
+              </div>
+              <div>
+                <DialogTitle>{selectedContainer?.containerNumber || "Loading..."}</DialogTitle>
+                <DialogDescription>
+                  {selectedContainer ? `${containerTypeLabel(selectedContainer.containerType)} — ${selectedContainer.containerSize}` : ""}
+                </DialogDescription>
+              </div>
+              {selectedContainer && (
+                <div className="ml-auto">
+                  <StatusBadge status={selectedContainer.status} />
+                </div>
+              )}
+            </div>
+          </DialogHeader>
+
+          {selectedContainer && (
+            <div className="space-y-5">
+              <div className="grid grid-cols-2 gap-4">
+                {[
+                  { label: "Container Number", value: selectedContainer.containerNumber },
+                  { label: "Type", value: containerTypeLabel(selectedContainer.containerType) },
+                  { label: "Size", value: selectedContainer.containerSize },
+                  { label: "Seal Number", value: selectedContainer.sealNumber },
+                  { label: "Stuffing Type", value: selectedContainer.stuffingType?.toUpperCase() },
+                  { label: "Status", value: statusLabelMap[selectedContainer.status] || selectedContainer.status },
+                  { label: "Current Location", value: selectedContainer.currentLocation },
+                  { label: "Current Weight", value: `${selectedContainer.currentWeight || 0} kg` },
+                  { label: "Weight Capacity", value: `${selectedContainer.weightCapacity || 0} kg` },
+                  { label: "Created", value: selectedContainer.createdAt ? format(new Date(selectedContainer.createdAt), "MMM d, yyyy") : "—" },
+                ].map((field) => (
+                  <div key={field.label}>
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{field.label}</p>
+                    <p className="text-sm mt-0.5 text-foreground">{field.value || "—"}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Weight Utilization */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs font-medium text-foreground">Weight Utilization</span>
+                  <span className="text-xs text-muted-foreground">
+                    {selectedContainer.weightCapacity > 0
+                      ? `${((selectedContainer.currentWeight / selectedContainer.weightCapacity) * 100).toFixed(0)}%`
+                      : "Not available"}
+                  </span>
+                </div>
+                {selectedContainer.weightCapacity > 0 ? (
+                  <div className="h-2 rounded-full bg-muted overflow-hidden">
+                    <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${Math.min((selectedContainer.currentWeight / selectedContainer.weightCapacity) * 100, 100)}%` }} />
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">Not available</p>
+                )}
+              </div>
+
+              {/* Linked Shipment */}
+              {selectedContainer.shipment && (
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Linked Shipment</p>
+                  <div className="flex items-center gap-3 rounded-lg border bg-card p-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/8 text-primary ring-1 ring-primary/15">
+                      <Ship className="h-4 w-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground">{selectedContainer.shipment.shipmentNumber}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {selectedContainer.shipment.originPort || "?"} → {selectedContainer.shipment.destinationPort || "?"}
+                      </p>
+                    </div>
+                    {selectedContainer.shipment.company && (
+                      <span className="text-xs text-muted-foreground">{selectedContainer.shipment.company.name}</span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
+  );
 }

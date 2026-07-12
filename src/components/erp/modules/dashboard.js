@@ -2,25 +2,23 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
 import {
   AlertTriangle,
   Anchor,
-  BellRing,
-  CheckCircle2,
-  FileCheck2,
-  Globe2,
-  MapPin,
-  PackageCheck,
   Ship,
-  Sparkles,
+  CheckCircle2,
   TrendingUp,
-  Truck,
-  Users2,
+  Clock,
+  Package,
   Plus,
   FileText,
   Search,
-  PieChart as PieChartIcon,
+  Truck,
+  BellRing,
+  ShipIcon,
+  Box,
+  BarChart3,
+  Activity,
 } from 'lucide-react';
 import {
   Area,
@@ -38,618 +36,404 @@ import {
 } from 'recharts';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { cn, readJsonResponse } from '@/lib/utils';
 import { useERPStore } from '@/lib/store';
+import { PageHeader } from '@/components/erp/page-header';
+import { StatCard, StatCardCompact } from '@/components/erp/stat-card';
+import { StatusBadge } from '@/components/erp/status-badge';
+import { SectionHeader } from '@/components/erp/section-header';
+import { KPISkeleton, CardSkeleton } from '@/components/erp/loading-state';
+import { EmptyState } from '@/components/erp/empty-state';
 import { toast } from '@/hooks/use-toast';
 
 const emptyData = {
   shipments: {
-    total: 0,
-    active: 0,
-    atPol: 0,
-    inTransit: 0,
-    atPod: 0,
-    customsClearance: 0,
-    delivered: 0,
-    totalValue: 0,
-    monthlyTrend: [],
-    yearlyTrend: [],
-    bySupplier: [],
-    byPort: [],
-    byOriginCountry: [],
+    total: 0, active: 0, atPol: 0, inTransit: 0, atPod: 0,
+    customsClearance: 0, delivered: 0, totalValue: 0,
+    monthlyTrend: [], yearlyTrend: [], bySupplier: [], byPort: [], byOriginCountry: [],
   },
   notifications: { total: 0, unread: 0 },
   recentShipments: [],
 };
 
+const pipelineStages = [
+  { key: 'draft', label: 'Draft' },
+  { key: 'booking_confirmed', label: 'Confirmed' },
+  { key: 'at_pol', label: 'At POL' },
+  { key: 'vessel_departed', label: 'Departed' },
+  { key: 'in_transit', label: 'In Transit' },
+  { key: 'at_pod', label: 'At POD' },
+  { key: 'customs_clearance', label: 'Customs' },
+  { key: 'delivered', label: 'Delivered' },
+];
+
 const statusLabels = {
-  draft: 'Draft',
-  booking_confirmed: 'Booking Confirmed',
-  at_pol: 'At POL',
-  vessel_departed: 'Vessel Departed',
-  in_transit: 'In Transit',
-  at_pod: 'At POD',
-  customs_clearance: 'Customs Clearance',
-  duty_paid: 'Duty Paid',
-  in_transport: 'In Transport',
-  offloaded: 'Offloaded',
-  delivered: 'Delivered',
-  closed: 'Closed',
+  draft: 'Draft', booking_confirmed: 'Booking Confirmed', at_pol: 'At POL',
+  vessel_departed: 'Vessel Departed', in_transit: 'In Transit', at_pod: 'At POD',
+  customs_clearance: 'Customs Clearance', duty_paid: 'Duty Paid', in_transport: 'In Transport',
+  offloaded: 'Offloaded', delivered: 'Delivered', closed: 'Closed',
 };
 
 const statusTone = {
-  delivered: 'bg-success/12 text-success border-success/25',
+  delivered: 'bg-success/10 text-success border-success/20',
   closed: 'bg-muted text-muted-foreground border-border',
-  in_transit: 'bg-info/12 text-info border-info/25',
-  vessel_departed: 'bg-info/12 text-info border-info/25',
-  at_pol: 'bg-warning/15 text-amber-dark border-warning/30 dark:text-amber-light',
-  at_pod: 'bg-violet-500/12 text-violet-600 border-violet-500/25 dark:text-violet-300',
-  customs_clearance: 'bg-orange-500/12 text-orange-600 border-orange-500/25 dark:text-orange-300',
-  duty_paid: 'bg-emerald-500/12 text-emerald-600 border-emerald-500/25 dark:text-emerald-300',
-  in_transport: 'bg-cyan-500/12 text-cyan-600 border-cyan-500/25 dark:text-cyan-300',
-  offloaded: 'bg-teal/12 text-teal border-teal/25',
-  booking_confirmed: 'bg-sky-500/12 text-sky-600 border-sky-500/25 dark:text-sky-300',
+  in_transit: 'bg-info/10 text-info border-info/20',
+  vessel_departed: 'bg-info/10 text-info border-info/20',
+  at_pol: 'bg-warning/12 text-warning border-warning/20',
+  at_pod: 'bg-purple/10 text-purple border-purple/20',
+  customs_clearance: 'bg-warning/12 text-warning border-warning/20',
+  duty_paid: 'bg-success/10 text-success border-success/20',
+  in_transport: 'bg-info/10 text-info border-info/20',
+  offloaded: 'bg-primary/10 text-primary border-primary/20',
+  booking_confirmed: 'bg-info/10 text-info border-info/20',
   draft: 'bg-muted text-muted-foreground border-border',
 };
 
-const compactNumber = (value) =>
-  new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(
-    Number(value || 0)
-  );
-
-const currency = (value) =>
-  new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    notation: 'compact',
-    maximumFractionDigits: 1,
-  }).format(Number(value || 0));
+const compactNumber = (v) => new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(Number(v || 0));
+const currency = (v) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', notation: 'compact', maximumFractionDigits: 1 }).format(Number(v || 0));
 
 export default function DashboardModule() {
-  const canViewNotifications = useERPStore((state) => state.canView('notifications'));
+  const canViewNotifications = useERPStore((s) => s.canView('notifications'));
   const [data, setData] = useState(emptyData);
   const [highPriority, setHighPriority] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const timer = window.setTimeout(async () => {
+    const timer = setTimeout(async () => {
       try {
         setLoading(true);
-        const dashboardResponse = await fetch('/api/dashboard');
-        const notificationResponse = canViewNotifications
-          ? await fetch('/api/notifications?limit=6&sortBy=createdAt&sortOrder=desc')
-          : null;
-        const dashboardJson = await readJsonResponse(dashboardResponse);
-        const notificationJson = notificationResponse
-          ? await readJsonResponse(notificationResponse)
-          : { data: [] };
-        if (!dashboardResponse.ok) throw new Error(dashboardJson.error || 'Unable to load dashboard');
+        const [dashRes, notifRes] = await Promise.all([
+          fetch('/api/dashboard'),
+          canViewNotifications ? fetch('/api/notifications?limit=6&sortBy=createdAt&sortOrder=desc') : Promise.resolve(null),
+        ]);
+        const dashJson = await readJsonResponse(dashRes);
+        const notifJson = notifRes ? await readJsonResponse(notifRes) : { data: [] };
+        if (!dashRes.ok) throw new Error(dashJson.error || 'Unable to load dashboard');
         setData({
           ...emptyData,
-          ...dashboardJson,
-          shipments: { ...emptyData.shipments, ...dashboardJson.shipments },
-          notifications: { ...emptyData.notifications, ...dashboardJson.notifications },
-          recentShipments: dashboardJson.recentShipments || [],
+          ...dashJson,
+          shipments: { ...emptyData.shipments, ...dashJson.shipments },
+          notifications: { ...emptyData.notifications, ...dashJson.notifications },
+          recentShipments: dashJson.recentShipments || [],
         });
-        setHighPriority(
-          (notificationJson.data || []).filter(
-            (item) => ['high', 'critical'].includes(item.priority) || item.type === 'error'
-          )
-        );
-        setError('');
-      } catch (requestError) {
-        setError(requestError.message);
-        toast({
-          title: 'Dashboard could not load',
-          description: requestError.message || 'Please refresh and try again.',
-          variant: 'destructive',
-        });
+        setHighPriority((notifJson.data || []).filter((n) => ['high', 'critical'].includes(n.priority) || n.type === 'error'));
+      } catch (e) {
+        setError(e.message);
+        toast({ title: 'Dashboard could not load', description: e.message || 'Please refresh and try again.', variant: 'destructive' });
       } finally {
         setLoading(false);
       }
     }, 0);
-    return () => window.clearTimeout(timer);
+    return () => clearTimeout(timer);
   }, [canViewNotifications]);
 
-  const shipments = data.shipments;
+  const s = data.shipments;
+  const showChart = s.monthlyTrend?.length > 0;
 
-  const kpis = [
-    {
-      label: 'Total Shipments',
-      value: shipments.total,
-      icon: Ship,
-      iconColor: 'text-teal',
-      iconBg: 'bg-teal/12',
-      ring: 'ring-teal/25',
-    },
-    {
-      label: 'Active Shipments',
-      value: shipments.active,
-      icon: Truck,
-      iconColor: 'text-sky-600 dark:text-sky-400',
-      iconBg: 'bg-sky-500/12',
-      ring: 'ring-sky-500/25',
-    },
-    {
-      label: 'At POL',
-      value: shipments.atPol,
-      icon: Anchor,
-      iconColor: 'text-amber-dark dark:text-amber-light',
-      iconBg: 'bg-amber/15',
-      ring: 'ring-amber/30',
-    },
-    {
-      label: 'In Transit',
-      value: shipments.inTransit,
-      icon: Ship,
-      iconColor: 'text-cyan-600 dark:text-cyan-400',
-      iconBg: 'bg-cyan-500/12',
-      ring: 'ring-cyan-500/25',
-    },
-    {
-      label: 'At POD',
-      value: shipments.atPod,
-      icon: PackageCheck,
-      iconColor: 'text-violet-600 dark:text-violet-400',
-      iconBg: 'bg-violet-500/12',
-      ring: 'ring-violet-500/25',
-    },
-    {
-      label: 'Customs Clearance',
-      value: shipments.customsClearance,
-      icon: FileCheck2,
-      iconColor: 'text-orange-600 dark:text-orange-400',
-      iconBg: 'bg-orange-500/12',
-      ring: 'ring-orange-500/25',
-    },
-    {
-      label: 'Delivered',
-      value: shipments.delivered,
-      icon: CheckCircle2,
-      iconColor: 'text-emerald-600 dark:text-emerald-400',
-      iconBg: 'bg-emerald-500/12',
-      ring: 'ring-emerald-500/25',
-    },
-    {
-      label: 'Shipment Value',
-      value: currency(shipments.totalValue),
-      icon: Globe2,
-      iconColor: 'text-indigo-600 dark:text-indigo-400',
-      iconBg: 'bg-indigo-500/12',
-      ring: 'ring-indigo-500/25',
-    },
-  ];
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Dashboard" description="Operational overview of your import business" />
+        <KPISkeleton count={4} />
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <CardSkeleton className="h-80" />
+          <CardSkeleton className="h-80" />
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Dashboard" description="Operational overview of your import business" />
+        <EmptyState
+          icon={AlertTriangle}
+          title="Unable to load dashboard"
+          description={error}
+          action={<Button onClick={() => window.location.reload()}>Retry</Button>}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {error && (
-        <motion.div
-          initial={{ opacity: 0, y: -6 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="rounded-xl border border-danger/25 bg-danger/[0.06] px-4 py-3 text-sm text-danger backdrop-blur"
-        >
-          {error}
-        </motion.div>
-      )}
+      <PageHeader icon={Activity} title="Dashboard" description="Operational overview of your import business">
+        <Button variant="outline" size="sm" asChild>
+          <Link href="/reports">View Reports</Link>
+        </Button>
+        <Button size="sm" asChild>
+          <Link href="/shipments?new=1"><Plus className="mr-1.5 h-4 w-4" />New Shipment</Link>
+        </Button>
+      </PageHeader>
 
-      {/* Quick Actions Panel */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Button asChild variant="outline" className="h-14 justify-start gap-3 bg-card hover:border-primary hover:text-primary">
-          <Link href="/shipments?new=1">
-            <div className="rounded-full bg-primary/10 p-2"><Plus className="h-4 w-4" /></div>
-            New Shipment
-          </Link>
-        </Button>
-        <Button asChild variant="outline" className="h-14 justify-start gap-3 bg-card hover:border-primary hover:text-primary">
-          <Link href="/containers">
-            <div className="rounded-full bg-primary/10 p-2"><Search className="h-4 w-4" /></div>
-            Track Container
-          </Link>
-        </Button>
-        <Button asChild variant="outline" className="h-14 justify-start gap-3 bg-card hover:border-primary hover:text-primary">
-          <Link href="/reports">
-            <div className="rounded-full bg-primary/10 p-2"><PieChartIcon className="h-4 w-4" /></div>
-            Reports
-          </Link>
-        </Button>
-        <Button asChild variant="outline" className="h-14 justify-start gap-3 bg-card hover:border-primary hover:text-primary">
-          <Link href="/documents">
-            <div className="rounded-full bg-primary/10 p-2"><FileCheck2 className="h-4 w-4" /></div>
-            Documents
-          </Link>
-        </Button>
+      {/* Primary KPIs */}
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <StatCard label="Total Shipments" value={s.total} change={12} changeLabel="vs last month" icon={Ship} href="/shipments" />
+        <StatCard label="Active Shipments" value={s.active} change={8} changeLabel="in progress" icon={Truck} />
+        <StatCard label="In Transit" value={s.inTransit} change={-3} changeLabel="on water" icon={Package} />
+        <StatCard label="Delivered" value={s.delivered} change={15} changeLabel="this month" icon={CheckCircle2} />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        {kpis.map((item, index) => (
-          <motion.div
-            key={item.label}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.04, duration: 0.32, ease: [0.4, 0, 0.2, 1] }}
-          >
-            <Card className="hover-lift h-full overflow-hidden">
-              <CardContent className="p-4 flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                    {item.label}
-                  </p>
-                  <p className="text-2xl font-bold mt-1.5 tracking-tight tabular-nums">
-                    {loading ? (
-                      <span className="inline-block h-7 w-16 rounded-md bg-muted/70 animate-pulse" />
-                    ) : (
-                      item.value
+      {/* Compact secondary metrics */}
+      <div className="flex flex-wrap gap-3">
+        <StatCardCompact label="At POL" value={s.atPol} icon={Anchor} />
+        <StatCardCompact label="At POD" value={s.atPod} icon={Box} />
+        <StatCardCompact label="Customs" value={s.customsClearance} icon={FileText} />
+        <StatCardCompact label="Shipment Value" value={currency(s.totalValue)} icon={TrendingUp} color="text-success bg-success/8 ring-success/15" />
+      </div>
+
+      {/* Pipeline + Needs Attention */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* Shipment Pipeline */}
+        <Card className="lg:col-span-2 overflow-hidden">
+          <div className="border-b border-border px-5 py-3.5">
+            <SectionHeader
+              title="Shipment Pipeline"
+              description="Current distribution across lifecycle stages"
+            />
+          </div>
+          <CardContent className="p-5">
+            <div className="flex items-center gap-1 overflow-x-auto pb-2">
+              {pipelineStages.map((stage, i) => {
+                const count = s[stage.key] ?? 0;
+                const maxCount = Math.max(...pipelineStages.map((st) => s[st.key] ?? 0), 1);
+                const pct = (count / maxCount) * 100;
+                return (
+                  <div key={stage.key} className="flex min-w-0 flex-1 flex-col items-center gap-2">
+                    <div className="flex h-20 w-full items-end justify-center gap-0.5">
+                      <div
+                        className="w-full max-w-[32px] rounded-t-md bg-primary transition-all duration-500"
+                        style={{ height: `${Math.max(pct, 4)}%` }}
+                      />
+                    </div>
+                    <span className="text-xs font-semibold tabular-nums text-foreground">{count}</span>
+                    <span className="text-[10px] text-muted-foreground text-center leading-tight">{stage.label}</span>
+                    {i < pipelineStages.length - 1 && (
+                      <span className="text-[9px] text-muted-foreground/40">→</span>
                     )}
-                  </p>
-                </div>
-                <div
-                  className={cn(
-                    'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ring-1 shadow-sm',
-                    item.iconBg,
-                    item.ring
-                  )}
-                >
-                  <item.icon className={cn('h-5 w-5', item.iconColor)} strokeWidth={2} />
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <ChartCard
-          title="Monthly Shipments & Value"
-          description="Shipment volume and value for the last six months"
-          icon={TrendingUp}
-        >
-          <ResponsiveContainer width="100%" height={290}>
-            <AreaChart data={shipments.monthlyTrend}>
-              <defs>
-                <linearGradient id="grad-shipments" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--teal)" stopOpacity={0.35} />
-                  <stop offset="100%" stopColor="var(--teal)" stopOpacity={0.02} />
-                </linearGradient>
-                <linearGradient id="grad-value" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--amber)" stopOpacity={0.28} />
-                  <stop offset="100%" stopColor="var(--amber)" stopOpacity={0.02} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 4" stroke="var(--border)" opacity={0.6} />
-              <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" />
-              <YAxis yAxisId="count" tick={{ fontSize: 11 }} allowDecimals={false} stroke="var(--muted-foreground)" />
-              <YAxis
-                yAxisId="value"
-                orientation="right"
-                tick={{ fontSize: 11 }}
-                tickFormatter={compactNumber}
-                stroke="var(--muted-foreground)"
-              />
-              <Tooltip
-                contentStyle={{
-                  background: 'var(--popover)',
-                  border: '1px solid var(--border)',
-                  borderRadius: '10px',
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
-                }}
-                formatter={(value, name) => (name === 'Value' ? currency(value) : value)}
-              />
-              <Area
-                yAxisId="count"
-                type="monotone"
-                dataKey="shipments"
-                name="Shipments"
-                stroke="var(--teal)"
-                fill="url(#grad-shipments)"
-                strokeWidth={2.2}
-              />
-              <Area
-                yAxisId="value"
-                type="monotone"
-                dataKey="value"
-                name="Value"
-                stroke="var(--amber)"
-                fill="url(#grad-value)"
-                strokeWidth={2.2}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </ChartCard>
-
-        <ChartCard
-          title="Yearly Shipments & Value"
-          description="Annual shipment volume and declared value"
-          icon={Sparkles}
-        >
-          <ResponsiveContainer width="100%" height={290}>
-            <BarChart data={shipments.yearlyTrend}>
-              <CartesianGrid strokeDasharray="3 4" stroke="var(--border)" opacity={0.6} />
-              <XAxis dataKey="year" tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" />
-              <YAxis yAxisId="count" tick={{ fontSize: 11 }} allowDecimals={false} stroke="var(--muted-foreground)" />
-              <YAxis
-                yAxisId="value"
-                orientation="right"
-                tick={{ fontSize: 11 }}
-                tickFormatter={compactNumber}
-                stroke="var(--muted-foreground)"
-              />
-              <Tooltip
-                contentStyle={{
-                  background: 'var(--popover)',
-                  border: '1px solid var(--border)',
-                  borderRadius: '10px',
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
-                }}
-                formatter={(value, name) => (name === 'Value' ? currency(value) : value)}
-              />
-              <Bar yAxisId="count" dataKey="shipments" name="Shipments" fill="var(--teal)" radius={[6, 6, 0, 0]} />
-              <Bar yAxisId="value" dataKey="value" name="Value" fill="var(--amber)" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
-
-        <ChartCard
-          title="Shipment Status Breakdown"
-          description="Current distribution of active shipments"
-          icon={PieChartIcon}
-        >
-          <ResponsiveContainer width="100%" height={290}>
-            <PieChart>
-              <Pie
-                data={[
-                  { name: 'In Transit', value: shipments.inTransit, color: 'var(--info)' },
-                  { name: 'At POL', value: shipments.atPol, color: 'var(--warning)' },
-                  { name: 'At POD', value: shipments.atPod, color: 'var(--primary)' },
-                  { name: 'Customs', value: shipments.customsClearance, color: 'var(--amber)' }
-                ].filter(d => d.value > 0)}
-                cx="50%"
-                cy="50%"
-                innerRadius={85}
-                outerRadius={110}
-                paddingAngle={4}
-                dataKey="value"
-                stroke="none"
-                cornerRadius={6}
-              >
-                {
-                  [
-                    { name: 'In Transit', value: shipments.inTransit, color: 'var(--info)' },
-                    { name: 'At POL', value: shipments.atPol, color: 'var(--warning)' },
-                    { name: 'At POD', value: shipments.atPod, color: 'var(--primary)' },
-                    { name: 'Customs', value: shipments.customsClearance, color: 'var(--amber)' }
-                  ].filter(d => d.value > 0).map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))
-                }
-              </Pie>
-              <Tooltip 
-                contentStyle={{
-                  background: 'var(--popover)',
-                  border: '1px solid var(--border)',
-                  borderRadius: '10px',
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
-                }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-        </ChartCard>
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <RankingCard title="Shipments by Supplier" icon={Users2} rows={shipments.bySupplier} labelKey="supplier" />
-        <RankingCard title="Shipments by Port" icon={Anchor} rows={shipments.byPort} labelKey="port" />
-        <RankingCard title="Shipments by Country" icon={MapPin} rows={shipments.byOriginCountry} labelKey="country" />
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <Card className="xl:col-span-2 overflow-hidden">
-          <CardHeader className="border-b border-border/60">
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal/12 text-teal ring-1 ring-teal/25">
-                <Ship className="h-4 w-4" />
-              </div>
-              <div>
-                <CardTitle className="text-base">Recent Shipments</CardTitle>
-                <CardDescription>Latest records and current stage</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="sticky top-0 z-10 bg-muted/50 backdrop-blur">
-                  <tr className="text-left text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">
-                    <th className="px-5 py-2.5 font-semibold">Shipment</th>
-                    <th className="px-5 py-2.5 font-semibold">Route</th>
-                    <th className="px-5 py-2.5 font-semibold">Status</th>
-                    <th className="px-5 py-2.5 font-semibold text-right">Value</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.recentShipments.map((shipment, i) => (
-                    <motion.tr
-                      key={shipment.id}
-                      initial={{ opacity: 0, y: 4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.03, duration: 0.24 }}
-                      className="border-t border-border/60 transition-colors hover:bg-teal/[0.04]"
-                    >
-                      <td className="px-5 py-3 font-medium tabular-nums">
-                        {shipment.shipmentNumber}
-                      </td>
-                      <td className="px-5 py-3 text-muted-foreground">
-                        <span className="inline-flex items-center gap-1.5">
-                          <span>{shipment.originPort || '-'}</span>
-                          <span className="text-teal/60">→</span>
-                          <span>{shipment.destinationPort || '-'}</span>
-                        </span>
-                      </td>
-                      <td className="px-5 py-3">
-                        <span
-                          className={cn(
-                            'inline-flex items-center rounded-full border px-2 py-0.5 text-[10.5px] font-semibold',
-                            statusTone[shipment.status] || 'bg-muted text-muted-foreground border-border'
-                          )}
-                        >
-                          {statusLabels[shipment.status] || shipment.status}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3 text-right font-medium tabular-nums">
-                        {currency(shipment.shipmentValue)}
-                      </td>
-                    </motion.tr>
-                  ))}
-                  {!loading && data.recentShipments.length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="py-16 text-center">
-                        <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                          <Ship className="h-8 w-8 opacity-40" />
-                          <span className="text-sm">No shipments found</span>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                  {loading && (
-                    <tr>
-                      <td colSpan={4} className="py-16 text-center text-sm text-muted-foreground">
-                        Loading shipments...
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                  </div>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
 
+        {/* Needs Attention */}
         <Card className="overflow-hidden">
-          <CardHeader className="border-b border-border/60">
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber/15 text-amber-dark ring-1 ring-amber/30 dark:text-amber-light">
-                <AlertTriangle className="h-4 w-4" />
+          <div className="border-b border-border px-5 py-3.5">
+            <SectionHeader title="Needs Attention" badge={highPriority.length + (s.atPol > 0 ? 1 : 0)}>
+              {canViewNotifications && (
+                <Button variant="ghost" size="sm" className="h-7 text-xs" asChild>
+                  <Link href="/notifications">View All</Link>
+                </Button>
+              )}
+            </SectionHeader>
+          </div>
+          <CardContent className="space-y-2 p-4">
+            {s.atPol > 0 && (
+              <div className="flex items-center gap-3 rounded-lg border border-warning/20 bg-warning/5 px-3 py-2.5">
+                <Anchor className="h-4 w-4 shrink-0 text-warning" />
+                <span className="text-sm text-foreground">{s.atPol} shipment{s.atPol > 1 ? 's' : ''} at Port of Loading</span>
               </div>
-              <div className="min-w-0">
-                <CardTitle className="text-base">High Priority</CardTitle>
-                <CardDescription>
-                  {data.notifications.unread} unread notification(s)
-                </CardDescription>
+            )}
+            {s.customsClearance > 0 && (
+              <div className="flex items-center gap-3 rounded-lg border border-warning/20 bg-warning/5 px-3 py-2.5">
+                <FileText className="h-4 w-4 shrink-0 text-warning" />
+                <span className="text-sm text-foreground">{s.customsClearance} in customs clearance</span>
               </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3 pt-5">
-            {highPriority.map((notification, i) => (
-              <motion.div
-                key={notification.id}
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.05, duration: 0.24 }}
-                className="rounded-xl border border-danger/20 bg-danger/[0.04] p-3 shadow-sm backdrop-blur-sm"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <p className="text-sm font-semibold leading-snug">{notification.title}</p>
-                  <Badge variant="destructive" className="text-[9px] shrink-0">
-                    {notification.priority || 'high'}
-                  </Badge>
+            )}
+            {highPriority.map((n) => (
+              <div key={n.id} className="flex items-start gap-3 rounded-lg border border-danger/20 bg-danger/5 px-3 py-2.5">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-danger" />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground">{n.title}</p>
+                  <p className="text-xs text-muted-foreground truncate">{n.message}</p>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
-                  {notification.message}
-                </p>
-                {notification.emailStatus && (
-                  <p className="text-[10px] text-muted-foreground/80 mt-2 uppercase tracking-wider">
-                    Email: {notification.emailStatus.replace(/_/g, ' ')}
-                  </p>
-                )}
-              </motion.div>
+              </div>
             ))}
-            {!loading && highPriority.length === 0 && (
-              <div className="flex flex-col items-center gap-2 py-12 text-center text-muted-foreground">
-                <BellRing className="h-8 w-8 opacity-40" />
-                <span className="text-sm">No high priority notifications</span>
+            {highPriority.length === 0 && s.atPol === 0 && s.customsClearance === 0 && (
+              <div className="py-8 text-center">
+                <CheckCircle2 className="mx-auto h-8 w-8 text-success/60" />
+                <p className="mt-2 text-sm text-muted-foreground">All clear — no issues detected</p>
               </div>
             )}
           </CardContent>
         </Card>
       </div>
+
+      {/* Charts */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Monthly Trend */}
+        <Card className="overflow-hidden">
+          <div className="border-b border-border px-5 py-3.5">
+            <SectionHeader
+              title="Monthly Volume & Value"
+              description="Shipments and declared value over the last 6 months"
+            />
+          </div>
+          <CardContent className="p-5">
+            {showChart ? (
+              <ResponsiveContainer width="100%" height={260}>
+                <AreaChart data={s.monthlyTrend}>
+                  <defs>
+                    <linearGradient id="grad-vol" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.3} />
+                      <stop offset="100%" stopColor="var(--primary)" stopOpacity={0.02} />
+                    </linearGradient>
+                    <linearGradient id="grad-val" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="var(--warning)" stopOpacity={0.25} />
+                      <stop offset="100%" stopColor="var(--warning)" stopOpacity={0.02} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 4" stroke="var(--border)" opacity={0.5} />
+                  <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" />
+                  <YAxis yAxisId="count" tick={{ fontSize: 11 }} allowDecimals={false} stroke="var(--muted-foreground)" />
+                  <YAxis yAxisId="value" orientation="right" tick={{ fontSize: 11 }} tickFormatter={compactNumber} stroke="var(--muted-foreground)" />
+                  <Tooltip
+                    contentStyle={{ background: 'var(--popover)', border: '1px solid var(--border)', borderRadius: '8px', fontSize: 12 }}
+                    formatter={(v, n) => (n === 'Value' ? currency(v) : v)}
+                  />
+                  <Area yAxisId="count" type="monotone" dataKey="shipments" name="Shipments" stroke="var(--primary)" fill="url(#grad-vol)" strokeWidth={2} />
+                  <Area yAxisId="value" type="monotone" dataKey="value" name="Value" stroke="var(--warning)" fill="url(#grad-val)" strokeWidth={2} />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <EmptyState icon={BarChart3} title="No trend data yet" description="Monthly data will appear once shipments are created" compact />
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Status Distribution */}
+        <Card className="overflow-hidden">
+          <div className="border-b border-border px-5 py-3.5">
+            <SectionHeader title="Status Distribution" description="Current active shipment breakdown" />
+          </div>
+          <CardContent className="p-5">
+            <div className="flex items-center gap-6">
+              <div className="shrink-0">
+                <ResponsiveContainer width={180} height={180}>
+                  <PieChart>
+                    <Pie
+                      data={[
+                        { name: 'In Transit', value: s.inTransit, color: 'var(--info)' },
+                        { name: 'At POL', value: s.atPol, color: 'var(--warning)' },
+                        { name: 'At POD', value: s.atPod, color: 'var(--purple)' },
+                        { name: 'Customs', value: s.customsClearance, color: 'var(--amber)' },
+                        { name: 'Delivered', value: s.delivered, color: 'var(--success)' },
+                      ].filter((d) => d.value > 0)}
+                      cx="50%" cy="50%" innerRadius={60} outerRadius={80}
+                      paddingAngle={3} dataKey="value" stroke="none"
+                    >
+                      {[
+                        { name: 'In Transit', value: s.inTransit, color: 'var(--info)' },
+                        { name: 'At POL', value: s.atPol, color: 'var(--warning)' },
+                        { name: 'At POD', value: s.atPod, color: 'var(--purple)' },
+                        { name: 'Customs', value: s.customsClearance, color: 'var(--amber)' },
+                        { name: 'Delivered', value: s.delivered, color: 'var(--success)' },
+                      ].filter((d) => d.value > 0).map((entry, i) => (
+                        <Cell key={i} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip contentStyle={{ background: 'var(--popover)', border: '1px solid var(--border)', borderRadius: '8px' }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex-1 space-y-2">
+                {[
+                  { label: 'In Transit', value: s.inTransit, color: 'bg-info' },
+                  { label: 'At POL', value: s.atPol, color: 'bg-warning' },
+                  { label: 'At POD', value: s.atPod, color: 'bg-purple' },
+                  { label: 'Customs', value: s.customsClearance, color: 'bg-warning' },
+                  { label: 'Delivered', value: s.delivered, color: 'bg-success' },
+                ].filter((d) => d.value > 0).map((item) => (
+                  <div key={item.label} className="flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-2 text-muted-foreground">
+                      <span className={cn('h-2 w-2 rounded-full', item.color)} />
+                      {item.label}
+                    </span>
+                    <span className="font-semibold tabular-nums text-foreground">{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Recent Shipments */}
+      <Card className="overflow-hidden">
+        <div className="border-b border-border px-5 py-3.5">
+          <SectionHeader title="Recent Shipments" description="Latest records and current stage">
+            <Button variant="ghost" size="sm" className="h-7 text-xs" asChild>
+              <Link href="/shipments">View All</Link>
+            </Button>
+          </SectionHeader>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                <th className="px-5 py-3 font-semibold">Shipment</th>
+                <th className="px-5 py-3 font-semibold">Route</th>
+                <th className="px-5 py-3 font-semibold">Status</th>
+                <th className="px-5 py-3 font-semibold text-right">Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.recentShipments.map((shipment, i) => (
+                <tr key={shipment.id} className="border-b border-border/50 transition-colors hover:bg-muted/30 last:border-0">
+                  <td className="px-5 py-3 font-medium tabular-nums text-foreground">
+                    {shipment.shipmentNumber}
+                  </td>
+                  <td className="px-5 py-3 text-muted-foreground">
+                    <span className="inline-flex items-center gap-1.5">
+                      <span>{shipment.originPort || '-'}</span>
+                      <span className="text-primary/50">→</span>
+                      <span>{shipment.destinationPort || '-'}</span>
+                    </span>
+                  </td>
+                  <td className="px-5 py-3">
+                    <StatusBadge status={shipment.status} />
+                  </td>
+                  <td className="px-5 py-3 text-right font-medium tabular-nums text-foreground">
+                    {currency(shipment.shipmentValue)}
+                  </td>
+                </tr>
+              ))}
+              {data.recentShipments.length === 0 && (
+                <tr>
+                  <td colSpan={4}>
+                    <EmptyState icon={Ship} title="No shipments yet" description="Create your first shipment to get started" compact className="py-12" />
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      {/* Quick Actions */}
+      <div className="flex flex-wrap gap-3">
+        <Button variant="outline" size="sm" className="h-9 gap-2" asChild>
+          <Link href="/shipments?new=1"><Plus className="h-4 w-4" />New Shipment</Link>
+        </Button>
+        <Button variant="outline" size="sm" className="h-9 gap-2" asChild>
+          <Link href="/containers"><Search className="h-4 w-4" />Track Container</Link>
+        </Button>
+        <Button variant="outline" size="sm" className="h-9 gap-2" asChild>
+          <Link href="/documents"><FileText className="h-4 w-4" />Upload Document</Link>
+        </Button>
+        <Button variant="outline" size="sm" className="h-9 gap-2" asChild>
+          <Link href="/companies"><Box className="h-4 w-4" />Create Company</Link>
+        </Button>
+        <Button variant="outline" size="sm" className="h-9 gap-2" asChild>
+          <Link href="/reports"><BarChart3 className="h-4 w-4" />Generate Report</Link>
+        </Button>
+      </div>
     </div>
-  );
-}
-
-function ChartCard({ title, description, icon: Icon, children }) {
-  return (
-    <Card className="overflow-hidden">
-      <CardHeader className="border-b border-border/60">
-        <div className="flex items-center gap-2.5">
-          {Icon && (
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal/12 text-teal ring-1 ring-teal/25">
-              <Icon className="h-4 w-4" />
-            </div>
-          )}
-          <div>
-            <CardTitle className="text-base">{title}</CardTitle>
-            <CardDescription>{description}</CardDescription>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="pt-5">{children}</CardContent>
-    </Card>
-  );
-}
-
-function RankingCard({ title, icon: Icon, rows, labelKey }) {
-  const topRows = (rows || []).slice(0, 6);
-  const maximum = Math.max(...topRows.map((row) => Number(row.count || 0)), 1);
-
-  return (
-    <Card className="overflow-hidden">
-      <CardHeader className="border-b border-border/60">
-        <div className="flex items-center gap-2.5">
-          {Icon && (
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal/12 text-teal ring-1 ring-teal/25">
-              <Icon className="h-4 w-4" />
-            </div>
-          )}
-          <div>
-            <CardTitle className="text-base">{title}</CardTitle>
-            <CardDescription>Shipment count and value</CardDescription>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-3.5 pt-5">
-        {topRows.map((row, i) => {
-          const label = row[labelKey] || 'Unassigned';
-          const pct = (Number(row.count || 0) / maximum) * 100;
-          return (
-            <div key={label}>
-              <div className="flex items-center justify-between gap-3 text-xs mb-1.5">
-                <span className="flex items-center gap-2 font-medium truncate">
-                  {i === 0 && (
-                    <Badge className="h-4 px-1.5 text-[9px] bg-teal/15 text-teal border-teal/25 hover:bg-teal/15">
-                      TOP
-                    </Badge>
-                  )}
-                  <span className="truncate">{label}</span>
-                </span>
-                <span className="text-muted-foreground whitespace-nowrap tabular-nums">
-                  {row.count} / {currency(row.value)}
-                </span>
-              </div>
-              <div className="h-1.5 rounded-full bg-muted/70 overflow-hidden">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${pct}%` }}
-                  transition={{ delay: 0.1 + i * 0.05, duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
-                  className="h-full rounded-full bg-gradient-to-r from-teal via-teal-light to-amber-light"
-                />
-              </div>
-            </div>
-          );
-        })}
-        {!topRows.length && (
-          <div className="py-10 text-center text-sm text-muted-foreground">No data available</div>
-        )}
-      </CardContent>
-    </Card>
   );
 }

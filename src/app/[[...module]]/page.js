@@ -14,6 +14,7 @@ import {
   Eye,
 } from "lucide-react";
 import { useERPStore } from "@/lib/store";
+import { PageHeader } from "@/components/erp/page-header";
 import { ERPSidebar } from "@/components/erp/sidebar";
 import { ERPHeader } from "@/components/erp/header";
 import { CommandPalette } from "@/components/erp/command-palette";
@@ -36,21 +37,16 @@ import { ShippingLoader } from "@/components/erp/shipping-loader";
 function PlaceholderModule({ icon: Icon, title, description }) {
   return (
     <div className="flex flex-col items-center justify-center py-24">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.94 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.32, ease: [0.4, 0, 0.2, 1] }}
-        className="flex flex-col items-center gap-4"
-      >
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-teal/20 to-teal/5 ring-1 ring-teal/20 text-teal shadow-lg">
-          <Icon className="h-8 w-8" />
+      <div className="flex flex-col items-center gap-4">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted/50 ring-1 ring-border text-muted-foreground/60">
+          <Icon className="h-8 w-8" strokeWidth={1.5} />
         </div>
         <div className="text-center">
-          <h2 className="text-xl font-semibold">{title}</h2>
+          <h2 className="text-xl font-semibold text-foreground">{title}</h2>
           <p className="text-sm text-muted-foreground mt-1 max-w-md">{description}</p>
         </div>
         <Badge variant="secondary" className="mt-2">Coming Soon</Badge>
-      </motion.div>
+      </div>
     </div>
   );
 }
@@ -168,17 +164,12 @@ function PermissionBoundary({ module, children }) {
       }}
     >
       {!canEdit && (
-        <motion.div
-          initial={{ opacity: 0, y: -6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.24 }}
-          className="mb-4 flex items-center gap-2.5 rounded-xl border border-amber/30 bg-amber/10 px-4 py-2.5 text-sm text-amber-dark shadow-sm backdrop-blur dark:border-amber/25 dark:bg-amber/[0.08] dark:text-amber-light"
-        >
+        <div className="mb-4 flex items-center gap-2.5 rounded-lg border border-warning/20 bg-warning/8 px-4 py-2.5 text-sm text-warning shadow-xs">
           <Eye className="h-4 w-4 shrink-0" />
           <span>
             View-only access — you can review this module but cannot create, edit, or delete records.
           </span>
-        </motion.div>
+        </div>
       )}
       {children}
     </div>
@@ -196,7 +187,6 @@ function HomeContent() {
       ? params.module[0]
       : params.module
     : "dashboard";
-
 
   useEffect(() => {
     if (routeModule && moduleConfig[routeModule] && activeModule !== routeModule) {
@@ -233,7 +223,7 @@ function HomeContent() {
 
   return (
     <TooltipProvider delayDuration={0}>
-      <div className="erp-shell flex h-[100svh] overflow-hidden text-foreground">
+      <div className="flex h-[100svh] overflow-hidden bg-background text-foreground">
         {isMobile && sidebarOpen && (
           <button
             type="button"
@@ -243,55 +233,20 @@ function HomeContent() {
           />
         )}
         <ERPSidebar />
-        <motion.main
-          initial={false}
-          animate={{ marginLeft: isMobile ? 0 : sidebarOpen ? 264 : 72 }}
-          transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+        <main
           className="min-w-0 flex flex-1 flex-col overflow-hidden"
+          style={{ marginLeft: isMobile ? 0 : sidebarOpen ? 220 : 72 }}
         >
           <ERPHeader />
           <div className="flex-1 overflow-y-auto custom-scrollbar">
-            <div className="w-full max-w-[1680px] mx-auto p-3 sm:p-5 lg:p-7">
-              {/* Module hero */}
-              <motion.div
-                key={activeModule}
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
-                className="mb-4 flex items-center gap-3 rounded-lg border border-border/70 bg-card/82 p-3 shadow-enterprise-md backdrop-blur-xl dark:border-white/[0.07] dark:bg-card/72 sm:mb-6 sm:gap-4 sm:p-5"
-              >
-                <motion.div
-                  initial={{ scale: 0.9, rotate: -6 }}
-                  animate={{ scale: 1, rotate: 0 }}
-                  transition={{ type: "spring", stiffness: 280, damping: 22 }}
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-teal/12 text-teal ring-1 ring-teal/25 shadow-sm sm:h-12 sm:w-12"
-                >
-                  <ModuleIcon className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={2} />
-                </motion.div>
-                <div className="min-w-0 flex-1">
-                  <h1 className="truncate text-lg font-bold tracking-tight sm:text-2xl">
-                    {currentModule.title}
-                  </h1>
-                  <p className="mt-0.5 text-sm text-muted-foreground truncate">
-                    {currentModule.description}
-                  </p>
-                </div>
-                <Badge
-                  variant="outline"
-                  className="hidden sm:inline-flex border-teal/25 bg-teal/8 text-teal text-[10px] uppercase tracking-widest font-semibold"
-                >
-                  {currentModule.section}
-                </Badge>
-              </motion.div>
-
-              {/* Module content */}
+            <div className="mx-auto w-full max-w-[1600px] px-4 py-5 sm:px-6 lg:px-8">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={activeModule}
-                  initial={{ opacity: 0, y: 8 }}
+                  initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -6 }}
-                  transition={{ duration: 0.24, ease: [0.4, 0, 0.2, 1] }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
                 >
                   <PermissionBoundary module={activeModule}>
                     <CurrentComponent />
@@ -300,7 +255,7 @@ function HomeContent() {
               </AnimatePresence>
             </div>
           </div>
-        </motion.main>
+        </main>
         <CommandPalette />
       </div>
     </TooltipProvider>

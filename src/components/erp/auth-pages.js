@@ -3,22 +3,14 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
-  Anchor,
-  KeyRound,
-  LogIn,
-  Ship,
-  ShieldCheck,
-  Sparkles,
-  Globe2,
-  CheckCircle2,
+  Anchor, KeyRound, LogIn, Ship, ShieldCheck, Sparkles, Globe2,
+  CheckCircle2, Mail, Lock, Eye, EyeOff,
 } from "lucide-react";
 import { useERPStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getSavedBrandLogos, loadBrandLogosFromDatabase } from "@/components/erp/theme-runtime";
-
-/* ─── Split-screen shell ───────────────────────────────────────── */
 
 const brandFeatures = [
   { icon: Ship, label: "Shipment lifecycle tracking" },
@@ -27,27 +19,16 @@ const brandFeatures = [
 ];
 
 function BrandLogo({ logo, tone = "dark" }) {
-  const isLight = tone === "light";
-
   return (
-    <div
-      className={`flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl shadow-lg ring-1 backdrop-blur ${
-        isLight
-          ? "bg-white/[0.08] ring-white/15"
-          : "bg-gradient-to-br from-teal/20 to-teal/5 ring-teal/25"
-      }`}
-    >
+    <div className={`flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl shadow-lg ring-1 backdrop-blur ${
+      tone === "light"
+        ? "bg-white/[0.08] ring-white/15"
+        : "bg-gradient-to-br from-teal/20 to-teal/5 ring-teal/25"
+    }`}>
       {logo ? (
-        <img
-          src={logo}
-          alt="Nexport ERP logo"
-          className="h-full w-full object-contain p-1"
-        />
+        <img src={logo} alt="Nexport ERP logo" className="h-full w-full object-contain p-1" />
       ) : (
-        <Anchor
-          className={`h-5 w-5 ${isLight ? "text-teal-light" : "text-teal"}`}
-          strokeWidth={2.2}
-        />
+        <Anchor className={`h-5 w-5 ${tone === "light" ? "text-teal-light" : "text-teal"}`} strokeWidth={2.2} />
       )}
     </div>
   );
@@ -62,21 +43,15 @@ function AuthShell({ title, description, badge, children }) {
     const onLogoChange = (event) => {
       setBrandLogos(event.detail || getSavedBrandLogos());
     };
-
     window.addEventListener("nexport-brand-logo-change", onLogoChange);
     void loadBrandLogosFromDatabase()
       .then(setBrandLogos)
-      .catch((error) => {
-        console.error("Brand logos could not be loaded:", error);
-      });
-
-    return () => {
-      window.removeEventListener("nexport-brand-logo-change", onLogoChange);
-    };
+      .catch(() => {});
+    return () => window.removeEventListener("nexport-brand-logo-change", onLogoChange);
   }, []);
 
   return (
-    <div className="relative min-h-screen w-full overflow-hidden">
+    <div className="relative min-h-screen w-full overflow-hidden bg-background">
       <div className="ambient-orbs" aria-hidden="true" />
 
       <div className="relative z-10 grid min-h-screen grid-cols-1 lg:grid-cols-[1.05fr_1fr]">
@@ -87,9 +62,19 @@ function AuthShell({ title, description, badge, children }) {
           transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
           className="relative hidden lg:flex flex-col justify-between overflow-hidden sidebar-gradient p-10 text-white"
         >
-          <div className="aurora-strip absolute inset-x-0 top-0 h-1" />
+          <div className="aurora-strip absolute inset-x-0 top-0 h-[2px]" />
           <div className="absolute -top-32 -right-24 h-96 w-96 rounded-full bg-teal/20 blur-3xl" />
           <div className="absolute -bottom-32 -left-16 h-96 w-96 rounded-full bg-amber/15 blur-3xl" />
+
+          {/* Subtle dot-grid pattern */}
+          <div
+            className="absolute inset-0 opacity-[0.03]"
+            style={{
+              backgroundImage: "radial-gradient(circle, white 0.5px, transparent 0.5px)",
+              backgroundSize: "24px 24px",
+            }}
+            aria-hidden="true"
+          />
 
           <div className="relative flex items-center gap-3">
             <BrandLogo logo={darkPanelLogo} tone="light" />
@@ -140,7 +125,7 @@ function AuthShell({ title, description, badge, children }) {
           </div>
 
           <p className="relative text-[11px] text-white/35">
-            © {new Date().getFullYear()} Nexport ERP — Enterprise Import Management
+            &copy; {new Date().getFullYear()} Nexport ERP &mdash; Enterprise Import Management
           </p>
         </motion.aside>
 
@@ -151,27 +136,27 @@ function AuthShell({ title, description, badge, children }) {
           transition={{ delay: 0.1, duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
           className="flex items-center justify-center p-4 sm:p-8"
         >
-          <div className="w-full max-w-md">
+          <div className="w-full max-w-sm">
             {/* Compact mobile brand */}
             <div className="mb-6 flex items-center gap-3 lg:hidden">
               <BrandLogo logo={mobileLogo} />
               <div>
-                <p className="text-sm font-bold tracking-tight">Nexport ERP</p>
+                <p className="text-sm font-bold tracking-tight text-foreground">Nexport ERP</p>
                 <p className="text-[10.5px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
                   Enterprise Suite
                 </p>
               </div>
             </div>
 
-            <div className="rounded-2xl border border-white/60 bg-white/70 dark:border-white/[0.08] dark:bg-slate-950/60 p-6 sm:p-8 shadow-enterprise-xl backdrop-blur-2xl">
+            <div className="rounded-2xl border border-border/60 bg-white/70 dark:border-white/[0.08] dark:bg-slate-950/60 p-6 sm:p-7 shadow-enterprise-xl backdrop-blur-2xl">
               {badge && (
                 <div className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-teal/25 bg-teal/10 px-2.5 py-0.5 text-[10.5px] font-semibold uppercase tracking-wider text-teal">
                   <Sparkles className="h-3 w-3" />
                   {badge}
                 </div>
               )}
-              <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
-              <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">
+              <h1 className="text-xl font-bold tracking-tight text-foreground">{title}</h1>
+              <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
                 {description}
               </p>
               <div className="mt-6">{children}</div>
@@ -184,6 +169,35 @@ function AuthShell({ title, description, badge, children }) {
 }
 
 /* ─── Login page ───────────────────────────────────────────────── */
+
+function PasswordInput({ id, value, onChange, placeholder, disabled, autoFocus }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div className="relative">
+      <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      <Input
+        id={id}
+        type={visible ? "text" : "password"}
+        minLength={8}
+        value={value}
+        onChange={onChange}
+        required
+        disabled={disabled}
+        autoFocus={autoFocus}
+        className="h-10 pl-9 pr-9 text-sm"
+        placeholder={placeholder}
+      />
+      <button
+        type="button"
+        onClick={() => setVisible((v) => !v)}
+        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+        tabIndex={-1}
+      >
+        {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+      </button>
+    </div>
+  );
+}
 
 export function LoginPage() {
   const router = useRouter();
@@ -274,60 +288,66 @@ export function LoginPage() {
       )}
       {needsBootstrap && (
         <FieldGroup index={0}>
-          <Label htmlFor="name">Full Name</Label>
+          <Label htmlFor="name" className="text-xs font-medium text-foreground">Full Name</Label>
           <Input
             id="name"
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
             required
-            className="mt-1.5"
+            className="mt-1.5 h-10 text-sm"
             placeholder="Jane Doe"
+            autoFocus
           />
         </FieldGroup>
       )}
       <FieldGroup index={needsBootstrap ? 1 : 0}>
-        <Label htmlFor="email">Email</Label>
-        <Input
-          id="email"
-          type="email"
-          value={form.email}
-          onChange={(e) => setForm({ ...form, email: e.target.value })}
-          required
-          className="mt-1.5"
-          placeholder="you@company.com"
-        />
+        <Label htmlFor="email" className="text-xs font-medium text-foreground">Email</Label>
+        <div className="relative mt-1.5">
+          <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            id="email"
+            type="email"
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            required
+            className="h-10 pl-9 text-sm"
+            placeholder="you@company.com"
+            autoFocus={!needsBootstrap}
+          />
+        </div>
       </FieldGroup>
       <FieldGroup index={needsBootstrap ? 2 : 1}>
-        <Label htmlFor="password">Password</Label>
-        <Input
-          id="password"
-          type="password"
-          minLength={8}
-          value={form.password}
-          onChange={(e) => setForm({ ...form, password: e.target.value })}
-          required
-          className="mt-1.5"
-          placeholder="••••••••"
-        />
+        <Label htmlFor="password" className="text-xs font-medium text-foreground">Password</Label>
+        <div className="mt-1.5">
+          <PasswordInput
+            id="password"
+            value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+            placeholder="Enter your password"
+          />
+        </div>
       </FieldGroup>
       {error && (
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="rounded-lg border border-destructive/25 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          className="rounded-lg border border-danger/25 bg-danger/10 px-3 py-2 text-sm text-danger"
         >
           {error}
         </motion.p>
       )}
-      <Button
-        type="submit"
-        variant="teal"
-        size="lg"
-        className="w-full"
-        disabled={loading}
-      >
-        <LogIn className="mr-2 h-4 w-4" />
-        {loading ? "Please wait..." : needsBootstrap ? "Create Admin Account" : "Sign In"}
+      <Button type="submit" variant="teal" size="lg" className="w-full h-11 text-sm font-semibold" disabled={loading}>
+        {loading ? (
+          <span className="flex items-center gap-2">
+            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+            Please wait...
+          </span>
+        ) : (
+          <span className="flex items-center gap-2">
+            <LogIn className="h-4 w-4" />
+            {needsBootstrap ? "Create Admin Account" : "Sign In"}
+          </span>
+        )}
       </Button>
     </form>
   );
@@ -347,52 +367,47 @@ export function LoginPage() {
           Enter the 6-digit OTP sent to{" "}
           <span className="font-medium text-foreground">
             {otpChallenge?.maskedEmail || "your email"}
-          </span>
-          .
+          </span>.
         </p>
       </motion.div>
       <FieldGroup index={0}>
-        <Label htmlFor="otp">Email OTP</Label>
+        <Label htmlFor="otp" className="text-xs font-medium text-foreground">Email OTP</Label>
         <Input
           id="otp"
           inputMode="numeric"
           pattern="[0-9]{6}"
           maxLength={6}
           value={otpForm.code}
-          onChange={(e) =>
-            setOtpForm({ code: e.target.value.replace(/\D/g, "").slice(0, 6) })
-          }
+          onChange={(e) => setOtpForm({ code: e.target.value.replace(/\D/g, "").slice(0, 6) })}
           required
-          className="mt-1.5 text-center text-lg font-mono tracking-[0.4em]"
+          className="mt-1.5 h-12 text-center text-lg font-mono tracking-[0.4em]"
           autoFocus
           placeholder="000000"
         />
       </FieldGroup>
       {error && (
-        <p className="rounded-lg border border-destructive/25 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+        <p className="rounded-lg border border-danger/25 bg-danger/10 px-3 py-2 text-sm text-danger">
           {error}
         </p>
       )}
-      <Button
-        type="submit"
-        variant="teal"
-        size="lg"
-        className="w-full"
-        disabled={loading}
-      >
-        <LogIn className="mr-2 h-4 w-4" />
-        {loading ? "Please wait..." : "Verify OTP & Sign In"}
+      <Button type="submit" variant="teal" size="lg" className="w-full h-11 text-sm font-semibold" disabled={loading}>
+        {loading ? (
+          <span className="flex items-center gap-2">
+            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+            Please wait...
+          </span>
+        ) : (
+          <span className="flex items-center gap-2">
+            <LogIn className="h-4 w-4" />
+            Verify OTP &amp; Sign In
+          </span>
+        )}
       </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        className="w-full"
-        onClick={() => {
-          setOtpChallenge(null);
-          setOtpForm({ code: "" });
-          setError("");
-        }}
-      >
+      <Button type="button" variant="ghost" className="w-full h-9 text-xs" onClick={() => {
+        setOtpChallenge(null);
+        setOtpForm({ code: "" });
+        setError("");
+      }}>
         Back to password
       </Button>
     </form>
@@ -470,45 +485,36 @@ export function SetupPasswordPage() {
     >
       <form onSubmit={submit} className="space-y-4">
         <FieldGroup index={0}>
-          <Label htmlFor="new-password">New Password</Label>
-          <Input
-            id="new-password"
-            type="password"
-            minLength={8}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            disabled={!invitation}
-            className="mt-1.5"
-            placeholder="At least 8 characters"
-          />
+          <Label htmlFor="new-password" className="text-xs font-medium text-foreground">New Password</Label>
+          <div className="mt-1.5">
+            <PasswordInput
+              id="new-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="At least 8 characters"
+              disabled={!invitation}
+              autoFocus
+            />
+          </div>
         </FieldGroup>
         <FieldGroup index={1}>
-          <Label htmlFor="confirm-password">Confirm Password</Label>
-          <Input
-            id="confirm-password"
-            type="password"
-            minLength={8}
-            value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-            required
-            disabled={!invitation}
-            className="mt-1.5"
-            placeholder="Re-enter your password"
-          />
+          <Label htmlFor="confirm-password" className="text-xs font-medium text-foreground">Confirm Password</Label>
+          <div className="mt-1.5">
+            <PasswordInput
+              id="confirm-password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              placeholder="Re-enter your password"
+              disabled={!invitation}
+            />
+          </div>
         </FieldGroup>
         {error && (
-          <p className="rounded-lg border border-destructive/25 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <p className="rounded-lg border border-danger/25 bg-danger/10 px-3 py-2 text-sm text-danger">
             {error}
           </p>
         )}
-        <Button
-          type="submit"
-          variant="teal"
-          size="lg"
-          className="w-full"
-          disabled={!invitation}
-        >
+        <Button type="submit" variant="teal" size="lg" className="w-full h-11 text-sm font-semibold" disabled={!invitation}>
           <KeyRound className="mr-2 h-4 w-4" />
           Create Password
         </Button>

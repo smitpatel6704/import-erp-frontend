@@ -1,81 +1,50 @@
 "use client";
-import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
 import {
-  Ship,
-  Search,
-  Plus,
-  Eye,
-  LayoutGrid,
-  List,
-  MapPin,
-  Clock,
-  Package,
-  FileText,
-  DollarSign,
-  ArrowRight,
-  X,
-  Globe,
-  Pencil,
-  Building2,
-  RefreshCw,
-  Loader2,
-  WandSparkles,
-  Keyboard,
-  CheckCircle2,
-  AlertCircle,
-  Trash2,
-  Truck,
-  PackageCheck,
-  Anchor,
-  Inbox,
+  Ship, Search, Plus, Eye, LayoutGrid, List, MapPin, Clock,
+  ArrowRight, X, Globe, Pencil, Building2, RefreshCw, Loader2,
+  CheckCircle2, AlertCircle, Trash2, Truck, PackageCheck, Anchor,
+  Inbox, FileText, DollarSign, Box, Calendar, ChevronDown,
+  MoreHorizontal, Filter, Save, ArrowLeft, Upload,
 } from "lucide-react";
-import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+  DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarUI } from "@/components/ui/calendar";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
+  Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious,
 } from "@/components/ui/pagination";
+import {
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
+} from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { cn } from "@/lib/utils";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { cn, readJsonResponse } from "@/lib/utils";
 import { format } from "date-fns";
 import { useERPStore } from "@/lib/store";
+import { PageHeader } from "@/components/erp/page-header";
+import { StatCard } from "@/components/erp/stat-card";
+import { StatusBadge, PriorityBadge } from "@/components/erp/status-badge";
+import { SectionHeader } from "@/components/erp/section-header";
+import { EmptyState } from "@/components/erp/empty-state";
+import { TableSkeleton } from "@/components/erp/loading-state";
+import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { toast } from "@/hooks/use-toast";
-// ─── Constants ────────────────────────────────────────────────────────────────
+
 const STATUSES = [
   { value: "all", label: "All Statuses" },
   { value: "draft", label: "Draft" },
@@ -95,120 +64,42 @@ const PRIORITIES = [
   { value: "normal", label: "Normal" },
   { value: "low", label: "Low" },
 ];
-// Options fetched from database API now
-const statusLabelMap = Object.fromEntries(
-  STATUSES.map((s) => [s.value, s.label]),
-);
-const statusColorMap = {
-  draft:
-    "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700",
-  booking_confirmed:
-    "bg-teal/10 text-teal-dark border-teal/20 dark:bg-teal/20 dark:text-teal-light",
-  at_pol:
-    "bg-amber/10 text-amber-dark border-amber/20 dark:bg-amber/20 dark:text-amber-light",
-  vessel_departed:
-    "bg-cyan-100 text-cyan-700 border-cyan-200 dark:bg-cyan-900/30 dark:text-cyan-400 dark:border-cyan-800",
-  in_transit:
-    "bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-900/30 dark:text-sky-400 dark:border-sky-800",
-  at_pod:
-    "bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-900/30 dark:text-violet-400 dark:border-violet-800",
-  customs_clearance:
-    "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800",
-  duty_paid:
-    "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800",
-  in_transport:
-    "bg-pink-100 text-pink-700 border-pink-200 dark:bg-pink-900/30 dark:text-pink-400 dark:border-pink-800",
-  offloaded:
-    "bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-900/30 dark:text-rose-400 dark:border-rose-800",
-  delivered:
-    "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800",
-  closed:
-    "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700",
-};
-const statusDotMap = {
-  draft: "bg-slate-400",
-  booking_confirmed: "bg-teal",
-  at_pol: "bg-amber",
-  vessel_departed: "bg-cyan-500",
-  in_transit: "bg-sky-500",
-  at_pod: "bg-violet-500",
-  customs_clearance: "bg-orange-500",
-  duty_paid: "bg-emerald-500",
-  in_transport: "bg-pink-500",
-  offloaded: "bg-rose-500",
-  delivered: "bg-green-500",
-  closed: "bg-gray-500",
-};
-const priorityColorMap = {
-  urgent:
-    "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800",
-  high: "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800",
-  normal:
-    "bg-teal/10 text-teal-dark border-teal/20 dark:bg-teal/20 dark:text-teal-light",
-  low: "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700",
-};
+const statusLabelMap = Object.fromEntries(STATUSES.map((s) => [s.value, s.label]));
+
 const currencyFmt = (val, cur = "USD") =>
-  new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: cur,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(val);
+  new Intl.NumberFormat("en-US", { style: "currency", currency: cur, minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(val || 0);
 const dateInputValue = (value) => {
   if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toISOString().slice(0, 10);
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? "" : d.toISOString().slice(0, 10);
 };
 const shipmentStatusFromCarrier = (status) => {
-  const value = String(status || "").toLowerCase();
-  if (value.includes("delivered") || value.includes("empty received"))
-    return "delivered";
-  if (value.includes("transship")) return "in_transit";
-  if (
-    value.includes("arrived") ||
-    value.includes("arrival") ||
-    value.includes("discharge") ||
-    value.includes("import to consignee")
-  )
-    return "at_pod";
-  if (value.includes("in transit") || value.includes("transship"))
-    return "in_transit";
-  if (value.includes("depart") || value.includes("loaded on vessel"))
-    return "vessel_departed";
-  if (value.includes("gate in") || value.includes("export received"))
-    return "at_pol";
+  const v = String(status || "").toLowerCase();
+  if (v.includes("delivered") || v.includes("empty received")) return "delivered";
+  if (v.includes("transship")) return "in_transit";
+  if (v.includes("arrived") || v.includes("arrival") || v.includes("discharge") || v.includes("import to consignee")) return "at_pod";
+  if (v.includes("in transit") || v.includes("transship")) return "in_transit";
+  if (v.includes("depart") || v.includes("loaded on vessel")) return "vessel_departed";
+  if (v.includes("gate in") || v.includes("export received")) return "at_pol";
   return "booking_confirmed";
 };
 const carrierSupported = (shippingLine) => {
-  const value = String(shippingLine || "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, "");
-  return (
-    value.includes("maersk") ||
-    value.includes("mersk") ||
-    value.includes("msc") ||
-    value.includes("mediterraneanshipping") ||
-    value.includes("evergreen") ||
-    value.includes("shipmentlink") ||
-    value.includes("hapag") ||
-    value.includes("hlag")
-  );
+  const v = String(shippingLine || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  return v.includes("maersk") || v.includes("mersk") || v.includes("msc") ||
+    v.includes("mediterraneanshipping") || v.includes("evergreen") ||
+    v.includes("shipmentlink") || v.includes("hapag") || v.includes("hlag");
 };
-const containerOptionValue = (size, type) => `${size || ""}|||${type || ""}`;
-const parseContainerOptionValue = (value) => {
-  const [size = "", type = ""] = String(value || "").split("|||");
-  return { size, type };
-};
-// ─── Main Component ───────────────────────────────────────────────────────────
+const kanbanColumns = ["draft","booking_confirmed","at_pol","vessel_departed","in_transit","at_pod","customs_clearance","in_transport","delivered"];
+
 export default function ShipmentsModule() {
-  var _a, _b, _c, _d, _e;
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const canCreateShipments = useERPStore((state) => state.canAction("shipments", "create"));
-  const canUpdateShipments = useERPStore((state) => state.canAction("shipments", "update"));
-  const canDeleteShipments = useERPStore((state) => state.canAction("shipments", "delete"));
+  const canCreate = useERPStore((s) => s.canAction("shipments", "create"));
+  const canUpdate = useERPStore((s) => s.canAction("shipments", "update"));
+  const canDelete = useERPStore((s) => s.canAction("shipments", "delete"));
+
+  // Options state
   const [shippingLines, setShippingLines] = useState([]);
   const [containerSizes, setContainerSizes] = useState([]);
   const [containerTypes, setContainerTypes] = useState([]);
@@ -217,10 +108,10 @@ export default function ShipmentsModule() {
   const [companies, setCompanies] = useState([]);
   const [exporterCompanies, setExporterCompanies] = useState([]);
   const [notificationUsers, setNotificationUsers] = useState([]);
+
+  // List state
   const [shipments, setShipments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [deletingId, setDeletingId] = useState(null);
-  const [deleteShipmentObj, setDeleteShipmentObj] = useState(null);
   const [viewMode, setViewMode] = useState("table");
   const [statusFilter, setStatusFilter] = useState("all");
   const [containerTypeFilter, setContainerTypeFilter] = useState("all");
@@ -228,172 +119,109 @@ export default function ShipmentsModule() {
   const [searchQuery, setSearchQuery] = useState("");
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(1);
-  // Detail dialog
+
+  // Detail drawer
   const [selectedShipment, setSelectedShipment] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
-  // New / Edit shipment dialog
+
+  // Create/edit form
   const [newShipmentOpen, setNewShipmentOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [newForm, setNewForm] = useState({
-    blNumber: "",
-    invoiceNumber: "",
-    shippingLine: "",
-    freightForwarder: "",
-    vesselName: "",
-    voyageNumber: "",
-    etd: "",
-    eta: "",
-    originCountry: "",
-    originPort: "",
-    destinationPort: "",
-    priority: "normal",
-    status: "draft",
-    shipmentValue: "",
-    currency: "USD",
-    companyId: "",
-    exporterCompanyId: "",
-    goodsDescription: "",
-    notes: "",
-    internalNotes: "",
-    requiredDocumentIds: [],
-    notificationUserIds: [],
-    containers: [],
-  });
   const [entryMode, setEntryMode] = useState("automatic");
   const [trackingFetchState, setTrackingFetchState] = useState("idle");
   const [trackingFetchMessage, setTrackingFetchMessage] = useState("");
   const lastAutomaticLookup = useRef("");
-  // Document upload state
-  const [uploadDocOpen, setUploadDocOpen] = useState(false);
-  const [docUploading, setDocUploading] = useState(false);
-  const [newDocForm, setNewDocForm] = useState({
-    name: "",
-    documentType: "",
+
+  // Delete
+  const [deleteShipmentObj, setDeleteShipmentObj] = useState(null);
+
+  // Form state (shared for create & edit)
+  const [newForm, setNewForm] = useState({
+    blNumber: "", invoiceNumber: "", shippingLine: "",
+    vesselName: "", etd: "", eta: "",
+    originCountry: "", originPort: "", destinationPort: "",
+    status: "draft",
+    companyId: "", exporterCompanyId: "",
+    goodsDescription: "", notes: "", internalNotes: "",
+    requiredDocumentIds: [], notificationUserIds: [], containers: [],
   });
+
+  // ─── Fetch options ───────────────────────────────────────────────────
   useEffect(() => {
     const fetchOptions = async () => {
       try {
-        const [lines, sizes, types, docs, checklist, comps, exps, users] =
-          await Promise.all([
-            fetch("/api/settings/options?category=shipping_line").then((r) =>
-              r.json(),
-            ),
-            fetch("/api/settings/options?category=container_size").then((r) =>
-              r.json(),
-            ),
-            fetch("/api/settings/options?category=container_type").then((r) =>
-              r.json(),
-            ),
-            fetch("/api/settings/options?category=document_type").then((r) =>
-              r.json(),
-            ),
-            fetch("/api/shipment-documents/checklist-types").then((r) =>
-              r.json(),
-            ),
-            fetch("/api/companies?companyType=importer").then((r) => r.json()),
-            fetch("/api/exporter-companies").then((r) => r.json()),
-            fetch("/api/shipments/notification-users").then((r) => r.json()),
-          ]);
+        const [lines, sizes, types, docs, checklist, comps, exps, users] = await Promise.all([
+          fetch("/api/settings/options?category=shipping_line").then((r) => r.json()),
+          fetch("/api/settings/options?category=container_size").then((r) => r.json()),
+          fetch("/api/settings/options?category=container_type").then((r) => r.json()),
+          fetch("/api/settings/options?category=document_type").then((r) => r.json()),
+          fetch("/api/shipment-documents/checklist-types").then((r) => r.json()),
+          fetch("/api/companies?companyType=importer").then((r) => r.json()),
+          fetch("/api/exporter-companies").then((r) => r.json()),
+          fetch("/api/shipments/notification-users").then((r) => r.json()),
+        ]);
         if (lines.data) setShippingLines(lines.data.map((d) => d.label));
         if (sizes.data) setContainerSizes(sizes.data.map((d) => d.label));
         if (types.data) setContainerTypes(types.data.map((d) => d.label));
         if (docs.data) setDocumentTypes(docs.data.map((d) => d.label));
-        if (checklist.data)
-          setDocumentChecklist(checklist.data.filter((item) => item.isActive));
+        if (checklist.data) setDocumentChecklist(checklist.data.filter((i) => i.isActive));
         if (comps.data) setCompanies(comps.data);
         if (exps.data) setExporterCompanies(exps.data);
         if (users.data) setNotificationUsers(users.data);
-      } catch (err) {
-        console.error("Failed to fetch settings options:", err);
-      }
+      } catch (err) { console.error("Failed to fetch options:", err); }
     };
     fetchOptions();
   }, []);
+
+  // ─── Carrier tracking ────────────────────────────────────────────────
   const fetchTrackingDetails = useCallback(async (blNumber, shippingLine) => {
     const trackingNumber = String(blNumber || "").trim().toUpperCase();
     if (!trackingNumber || !shippingLine) return;
     setTrackingFetchState("loading");
     setTrackingFetchMessage("Fetching shipment details from the carrier...");
     try {
-      const response = await fetch("/api/shipments/tracking/lookup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch("/api/shipments/tracking/lookup", {
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ trackingNumber, shippingLine }),
       });
-      const payload = await response.json();
-      if (!response.ok) {
-        throw new Error(payload.error || "Carrier tracking request failed");
-      }
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload.error || "Carrier tracking request failed");
       const details = payload.data || {};
-      if (details.error) {
-        const manualMessage = [
-          details.error,
-          "Continue by entering the shipment details manually.",
-        ].filter(Boolean).join(" ");
-        throw new Error(manualMessage);
-      }
-      setNewForm((current) => ({
-        ...current,
+      if (details.error) throw new Error([details.error, "Continue by entering the shipment details manually."].filter(Boolean).join(" "));
+      setNewForm((cur) => ({
+        ...cur,
         blNumber: trackingNumber,
-        vesselName: details.vesselName || current.vesselName,
-        voyageNumber: details.voyageNumber || current.voyageNumber,
-        etd: dateInputValue(details.etd) || current.etd,
-        eta: dateInputValue(details.eta) || current.eta,
-        originCountry: details.originCountry || current.originCountry,
-        originPort: details.originPort || details.origin || current.originPort,
-        destinationPort:
-          details.destinationPort || details.destination || current.destinationPort,
-        status: shipmentStatusFromCarrier(
-          [details.status, details.lastEvent].filter(Boolean).join(" "),
-        ),
-        containers:
-          details.containers?.length > 0
-            ? details.containers.map((container) => ({
-                containerNumber: container.containerNumber || "",
-                size: container.containerSize || container.size || "20FT",
-                type: container.containerType || container.type || "Dry Container",
-                currentWeight:
-                  container.currentWeight || container.weight || container.grossWeight || "",
-                packageCount: container.packageCount || container.nos || container.packages || "",
-                measurementType: (container.packageCount || container.nos || container.packages) && !(container.currentWeight || container.weight || container.grossWeight) ? "nos" : "weight",
-                goodsDescription:
-                  container.goodsDescription || container.containerGoods || "",
-              }))
-            : current.containers,
+        vesselName: details.vesselName || cur.vesselName,
+        etd: dateInputValue(details.etd) || cur.etd,
+        eta: dateInputValue(details.eta) || cur.eta,
+        originCountry: details.originCountry || cur.originCountry,
+        originPort: details.originPort || details.origin || cur.originPort,
+        destinationPort: details.destinationPort || details.destination || cur.destinationPort,
+        status: shipmentStatusFromCarrier([details.status, details.lastEvent].filter(Boolean).join(" ")),
+        containers: details.containers?.length > 0
+          ? details.containers.map((c) => ({
+              containerNumber: c.containerNumber || "", size: c.containerSize || c.size || "20FT",
+              type: c.containerType || c.type || "Dry Container",
+              currentWeight: c.currentWeight || c.weight || c.grossWeight || "",
+              packageCount: c.packageCount || c.nos || c.packages || "",
+              measurementType: (c.packageCount || c.nos || c.packages) && !(c.currentWeight || c.weight || c.grossWeight) ? "nos" : "weight",
+              goodsDescription: c.goodsDescription || c.containerGoods || "",
+            }))
+          : cur.containers,
       }));
       setTrackingFetchState("success");
-      setTrackingFetchMessage(
-        details.lastEvent
-          ? `Fetched successfully. Latest: ${details.lastEvent}`
-          : "Shipment details fetched successfully.",
-      );
-      toast({
-        title: "Tracking updated",
-        description: details.lastEvent
-          ? `Latest carrier event: ${details.lastEvent}`
-          : "Shipment details were fetched from the carrier.",
-      });
+      setTrackingFetchMessage(details.lastEvent ? `Fetched successfully. Latest: ${details.lastEvent}` : "Shipment details fetched successfully.");
     } catch (error) {
       setTrackingFetchState("error");
       setTrackingFetchMessage(String(error.message || error));
-      toast({
-        title: "Tracking lookup failed",
-        description: String(error.message || error),
-        variant: "destructive",
-      });
+      toast({ title: "Tracking lookup failed", description: String(error.message || error), variant: "destructive" });
     }
   }, []);
+
+  // Auto-fetch on BL/shipping line change
   useEffect(() => {
-    if (
-      !newShipmentOpen ||
-      editingId ||
-      entryMode !== "automatic" ||
-      !newForm.blNumber.trim() ||
-      !carrierSupported(newForm.shippingLine)
-    ) {
-      return;
-    }
+    if (!newShipmentOpen || editingId || entryMode !== "automatic" || !newForm.blNumber.trim() || !carrierSupported(newForm.shippingLine)) return;
     const lookupKey = `${newForm.shippingLine}:${newForm.blNumber.trim().toUpperCase()}`;
     if (lastAutomaticLookup.current === lookupKey) return;
     const timeout = setTimeout(() => {
@@ -401,46 +229,29 @@ export default function ShipmentsModule() {
       void fetchTrackingDetails(newForm.blNumber, newForm.shippingLine);
     }, 700);
     return () => clearTimeout(timeout);
-  }, [
-    newShipmentOpen,
-    editingId,
-    entryMode,
-    newForm.blNumber,
-    newForm.shippingLine,
-    fetchTrackingDetails,
-  ]);
+  }, [newShipmentOpen, editingId, entryMode, newForm.blNumber, newForm.shippingLine, fetchTrackingDetails]);
+
+  // ─── Fetch shipments ─────────────────────────────────────────────────
   const fetchShipments = useCallback(async () => {
-    var _a;
     setLoading(true);
     try {
-      const paramsObj = { page: String(page), limit: "20" };
-      if (statusFilter !== "all") paramsObj.status = statusFilter;
-      if (containerTypeFilter !== "all") paramsObj.containerType = containerTypeFilter;
-      if (containerSizeFilter !== "all") paramsObj.containerSize = containerSizeFilter;
-      if (searchQuery) paramsObj.search = searchQuery;
-      const params = new URLSearchParams(paramsObj);
+      const params = new URLSearchParams({ page: String(page), limit: "20" });
+      if (statusFilter !== "all") params.set("status", statusFilter);
+      if (containerTypeFilter !== "all") params.set("containerType", containerTypeFilter);
+      if (containerSizeFilter !== "all") params.set("containerSize", containerSizeFilter);
+      if (searchQuery) params.set("search", searchQuery);
       const res = await fetch(`/api/shipments?${params}`);
       const json = await res.json();
       setShipments(json.data || []);
-      setTotalCount(
-        ((_a = json.pagination) === null || _a === void 0
-          ? void 0
-          : _a.total) || 0,
-      );
+      setTotalCount(json.pagination?.total || 0);
     } catch (e) {
-      console.error(e);
-      toast({
-        title: "Shipments could not load",
-        description: e.message || "Please refresh and try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
+      toast({ title: "Shipments could not load", description: e.message || "Please refresh.", variant: "destructive" });
+    } finally { setLoading(false); }
   }, [page, statusFilter, containerTypeFilter, containerSizeFilter, searchQuery]);
-  useEffect(() => {
-    fetchShipments();
-  }, [fetchShipments]);
+
+  useEffect(() => { fetchShipments(); }, [fetchShipments]);
+
+  // ─── Detail ───────────────────────────────────────────────────────────
   const openDetail = async (id) => {
     setDetailLoading(true);
     setDetailOpen(true);
@@ -449,116 +260,39 @@ export default function ShipmentsModule() {
       const json = await res.json();
       setSelectedShipment(json.data);
     } catch (e) {
-      console.error(e);
-      toast({
-        title: "Shipment details could not load",
-        description: e.message || "Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setDetailLoading(false);
-    }
+      toast({ title: "Shipment details could not load", description: e.message || "Please try again.", variant: "destructive" });
+    } finally { setDetailLoading(false); }
   };
-  const handleUploadDocument = async () => {
-    if (!selectedShipment || !newDocForm.name || !newDocForm.documentType)
-      return;
-    setDocUploading(true);
-    try {
-      const res = await fetch("/api/documents", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(
-          Object.assign(Object.assign({}, newDocForm), {
-            shipmentId: selectedShipment.id,
-            fileUrl: `https://storage.example.com/docs/${Date.now()}.pdf`,
-            fileType: "application/pdf",
-            fileSize: 1024 * 1024,
-          }),
-        ),
-      });
-      if (res.ok) {
-        // Refresh detail
-        await openDetail(selectedShipment.id);
-        setUploadDocOpen(false);
-        setNewDocForm({ name: "", documentType: "" });
-        toast({
-          title: "Document added",
-          description: "Document was linked to this shipment.",
-        });
-      } else {
-        const json = await res.json().catch(() => ({}));
-        throw new Error(json.error || "Failed to add document");
-      }
-    } catch (e) {
-      console.error(e);
-      toast({
-        title: "Document could not be added",
-        description: e.message || "Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setDocUploading(false);
-    }
-  };
+
+  // ─── Create / Edit ────────────────────────────────────────────────────
   const openEdit = (shipment) => {
-    var _a, _b;
-    const defaultDocumentIds = documentChecklist
-      .filter((item) => item.isRequired)
-      .map((item) => item.id);
+    const defaultDocIds = documentChecklist.filter((i) => i.isRequired).map((i) => i.id);
     setEditingId(shipment.id);
     setNewForm({
       blNumber: shipment.blNumber || "",
-      invoiceNumber:
-        shipment.invoiceNumber ||
-        (Array.isArray(shipment.invoices) ? shipment.invoices[0]?.invoiceNumber : "") ||
-        "",
+      invoiceNumber: shipment.invoiceNumber || (Array.isArray(shipment.invoices) ? shipment.invoices[0]?.invoiceNumber : "") || "",
       shippingLine: shipment.shippingLine || "",
-      freightForwarder: shipment.freightForwarder || "",
       vesselName: shipment.vesselName || "",
-      voyageNumber: shipment.voyageNumber || "",
-      etd: shipment.etd
-        ? new Date(shipment.etd).toISOString().slice(0, 10)
-        : "",
-      eta: shipment.eta
-        ? new Date(shipment.eta).toISOString().slice(0, 10)
-        : "",
+      etd: shipment.etd ? new Date(shipment.etd).toISOString().slice(0, 10) : "",
+      eta: shipment.eta ? new Date(shipment.eta).toISOString().slice(0, 10) : "",
       originCountry: shipment.originCountry || "",
       originPort: shipment.originPort || "",
       destinationPort: shipment.destinationPort || "",
-      priority: shipment.priority || "normal",
       status: shipment.status || "draft",
-      shipmentValue: shipment.shipmentValue
-        ? String(shipment.shipmentValue)
-        : "",
-      currency: shipment.currency || "USD",
-      companyId:
-        ((_a = shipment.company) === null || _a === void 0 ? void 0 : _a.id) ||
-        shipment.companyId ||
-        "",
-      exporterCompanyId:
-        ((_b = shipment.exporterCompany) === null || _b === void 0
-          ? void 0
-          : _b.id) ||
-        shipment.exporterCompanyId ||
-        "",
-      internalNotes: shipment.internalNotes || "",
+      companyId: shipment.company?.id || shipment.companyId || "",
+      exporterCompanyId: shipment.exporterCompany?.id || shipment.exporterCompanyId || "",
       goodsDescription: shipment.goodsDescription || "",
       notes: shipment.notes || "",
-      requiredDocumentIds: defaultDocumentIds,
-      notificationUserIds: Array.isArray(shipment.notificationUserIds)
-        ? shipment.notificationUserIds
-        : [],
-      containers: Array.isArray(shipment.containers)
-        ? shipment.containers.map((c) => ({
-            containerNumber: c.containerNumber || "",
-            size: c.containerSize || c.size || "20FT",
-            type: c.containerType || c.type || "Dry Container",
-            currentWeight: c.currentWeight || "",
-            packageCount: c.packageCount || "",
-            measurementType: c.packageCount && !c.currentWeight ? "nos" : "weight",
-            goodsDescription: c.goodsDescription || "",
-          }))
-        : [],
+      internalNotes: shipment.internalNotes || "",
+      requiredDocumentIds: defaultDocIds,
+      notificationUserIds: Array.isArray(shipment.notificationUserIds) ? shipment.notificationUserIds : [],
+      containers: Array.isArray(shipment.containers) ? shipment.containers.map((c) => ({
+        containerNumber: c.containerNumber || "", size: c.containerSize || c.size || "20FT",
+        type: c.containerType || c.type || "Dry Container",
+        currentWeight: c.currentWeight || "", packageCount: c.packageCount || "",
+        measurementType: c.packageCount && !c.currentWeight ? "nos" : "weight",
+        goodsDescription: c.goodsDescription || "",
+      })) : [],
     });
     setEntryMode("manual");
     setTrackingFetchState("idle");
@@ -567,133 +301,76 @@ export default function ShipmentsModule() {
     setNewShipmentOpen(true);
     setDetailOpen(false);
     fetch(`/api/shipment-documents/shipment/${shipment.id}/checklist`)
-      .then((res) => res.json())
-      .then((json) => {
-        if (!Array.isArray(json.data))
-          return;
-        const selectedIds = json.data
-          .filter((item) => item.document)
-          .map((item) => item.checklistId);
-        setNewForm((current) => ({
-          ...current,
-          requiredDocumentIds: selectedIds,
-        }));
-      })
-      .catch((error) => {
-        console.error(error);
-        toast({
-          title: "Document checklist could not be loaded",
-          description: "You can still save shipment details.",
-          variant: "destructive",
-        });
-      });
+      .then((r) => r.json()).then((json) => {
+        if (!Array.isArray(json.data)) return;
+        const selected = json.data.filter((i) => i.document).map((i) => i.checklistId);
+        setNewForm((cur) => ({ ...cur, requiredDocumentIds: selected }));
+      }).catch(() => {});
   };
-  const openCreateShipment = useCallback(() => {
+
+  const openCreate = useCallback(() => {
     setEditingId(null);
     setEntryMode("automatic");
     setTrackingFetchState("idle");
     setTrackingFetchMessage("");
     lastAutomaticLookup.current = "";
     setNewForm({
-      blNumber: "",
-      invoiceNumber: "",
-      shippingLine: "",
-      freightForwarder: "",
-      vesselName: "",
-      voyageNumber: "",
-      etd: "",
-      eta: "",
-      originCountry: "",
-      originPort: "",
-      destinationPort: "",
-      priority: "normal",
-      status: "draft",
-      shipmentValue: "",
-      currency: "USD",
-      companyId: "",
-      exporterCompanyId: "",
-      goodsDescription: "",
-      notes: "",
-      internalNotes: "",
-      requiredDocumentIds: documentChecklist
-        .filter((item) => item.isRequired)
-        .map((item) => item.id),
-      notificationUserIds: [],
-      containers: [],
+      blNumber: "", invoiceNumber: "", shippingLine: "",
+      vesselName: "", etd: "", eta: "",
+      originCountry: "", originPort: "", destinationPort: "",
+      status: "draft", companyId: "", exporterCompanyId: "",
+      goodsDescription: "", notes: "", internalNotes: "",
+      requiredDocumentIds: documentChecklist.filter((i) => i.isRequired).map((i) => i.id),
+      notificationUserIds: [], containers: [],
     });
     setDetailOpen(false);
     setNewShipmentOpen(true);
   }, [documentChecklist]);
+
+  // Handle ?new=1 query param
   useEffect(() => {
-    const shouldOpenNewShipment =
-      searchParams.get("new") === "1" ||
-      searchParams.get("new") === "shipment" ||
-      searchParams.get("action") === "new";
-    if (!shouldOpenNewShipment) return;
-    if (canCreateShipments) {
-      openCreateShipment();
-    } else {
-      toast({
-        title: "Permission denied",
-        description: "You do not have create permission for shipments.",
-        variant: "destructive",
-      });
-    }
+    const shouldOpen = searchParams.get("new") === "1" || searchParams.get("new") === "shipment" || searchParams.get("action") === "new";
+    if (!shouldOpen) return;
+    if (canCreate) { openCreate(); } else { toast({ title: "Permission denied", description: "You do not have create permission.", variant: "destructive" }); }
     router.replace(pathname, { scroll: false });
-  }, [canCreateShipments, openCreateShipment, pathname, router, searchParams]);
+  }, [canCreate, openCreate, pathname, router, searchParams]);
+
+  // ─── Save ────────────────────────────────────────────────────────────
   const isFormValid = () => {
-    if (!newForm.companyId) return false;
-    if (!newForm.exporterCompanyId) return false;
-    if (!newForm.blNumber?.trim()) return false;
-    if (!newForm.invoiceNumber?.trim()) return false;
-    if (!newForm.shippingLine?.trim()) return false;
-    if (!newForm.vesselName?.trim()) return false;
-    if (!newForm.etd) return false;
-    if (!newForm.eta) return false;
-    if (!newForm.originCountry?.trim()) return false;
-    if (!newForm.originPort?.trim()) return false;
-    if (!newForm.destinationPort?.trim()) return false;
-    
-    for (const container of newForm.containers) {
-      if (!container.containerNumber?.trim()) return false;
-      if (!(container.containerSize || container.size)) return false;
-      if (!(container.containerType || container.type)) return false;
+    if (!newForm.companyId || !newForm.exporterCompanyId) return false;
+    if (!newForm.blNumber?.trim() || !newForm.invoiceNumber?.trim()) return false;
+    if (!newForm.shippingLine?.trim() || !newForm.vesselName?.trim()) return false;
+    if (!newForm.etd || !newForm.eta) return false;
+    if (!newForm.originCountry?.trim() || !newForm.originPort?.trim() || !newForm.destinationPort?.trim()) return false;
+    for (const c of newForm.containers) {
+      if (!c.containerNumber?.trim()) return false;
+      if (!(c.containerSize || c.size)) return false;
+      if (!(c.containerType || c.type)) return false;
     }
-    
     return true;
   };
 
   const saveShipment = async () => {
     try {
-    const url = editingId
-        ? `/api/shipments/${editingId}`
-        : `/api/shipments`;
+      const url = editingId ? `/api/shipments/${editingId}` : "/api/shipments";
       const method = editingId ? "PUT" : "POST";
       const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(
-          Object.assign(Object.assign({}, newForm), {
-            shipmentValue: parseFloat(newForm.shipmentValue) || 0,
-            invoiceNumber: newForm.invoiceNumber?.trim() || null,
-            etd: newForm.etd || null,
-            eta: newForm.eta || null,
-            requiredDocumentIds: editingId
-              ? newForm.requiredDocumentIds
-              : newForm.requiredDocumentIds.length
-                ? newForm.requiredDocumentIds
-                : documentChecklist
-                    .filter((item) => item.isRequired)
-                    .map((item) => item.id),
-            containers: newForm.containers.map((container) => ({
-              ...container,
-              containerSize: container.containerSize || container.size,
-              containerType: container.containerType || container.type,
-              currentWeight: parseFloat(container.currentWeight) || 0,
-              packageCount: parseInt(container.packageCount) || 0,
-            })),
-          }),
-        ),
+        method, headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...newForm,
+          invoiceNumber: newForm.invoiceNumber?.trim() || null,
+          etd: newForm.etd || null, eta: newForm.eta || null,
+          requiredDocumentIds: editingId ? newForm.requiredDocumentIds
+            : newForm.requiredDocumentIds.length ? newForm.requiredDocumentIds
+            : documentChecklist.filter((i) => i.isRequired).map((i) => i.id),
+          containers: newForm.containers.map((c) => ({
+            ...c,
+            containerSize: c.containerSize || c.size,
+            containerType: c.containerType || c.type,
+            currentWeight: parseFloat(c.currentWeight) || 0,
+            packageCount: parseInt(c.packageCount) || 0,
+          })),
+        }),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error || "Failed to save shipment");
@@ -703,2800 +380,681 @@ export default function ShipmentsModule() {
       setTrackingFetchState("idle");
       setTrackingFetchMessage("");
       lastAutomaticLookup.current = "";
-      setNewForm({
-        blNumber: "",
-        invoiceNumber: "",
-        shippingLine: "",
-        freightForwarder: "",
-        vesselName: "",
-        voyageNumber: "",
-        etd: "",
-        eta: "",
-        originCountry: "",
-        originPort: "",
-        destinationPort: "",
-        priority: "normal",
-        status: "draft",
-        shipmentValue: "",
-        currency: "USD",
-        companyId: "",
-        exporterCompanyId: "",
-        goodsDescription: "",
-        notes: "",
-        internalNotes: "",
-        requiredDocumentIds: [],
-        notificationUserIds: [],
-        containers: [],
-      });
+      setNewForm({ blNumber: "", invoiceNumber: "", shippingLine: "", vesselName: "", etd: "", eta: "", originCountry: "", originPort: "", destinationPort: "", status: "draft", companyId: "", exporterCompanyId: "", goodsDescription: "", notes: "", internalNotes: "", requiredDocumentIds: [], notificationUserIds: [], containers: [] });
       fetchShipments();
-      toast({
-        title: editingId ? "Shipment updated" : "Shipment created",
-        description: json.data?.shipmentNumber
-          ? `${json.data.shipmentNumber} saved successfully.`
-          : "Shipment saved successfully.",
-      });
+      toast({ title: editingId ? "Shipment updated" : "Shipment created", description: json.data?.shipmentNumber ? `${json.data.shipmentNumber} saved successfully.` : "Saved." });
     } catch (e) {
-      console.error(e);
-      toast({
-        title: "Shipment could not be saved",
-        description: e.message || "Please check the details and try again.",
-        variant: "destructive",
-      });
+      toast({ title: "Could not save", description: e.message || "Please check details.", variant: "destructive" });
     }
   };
+
+  // ─── Delete ──────────────────────────────────────────────────────────
   const deleteShipment = async (shipment) => {
-    if (!shipment || deletingId) return;
-    if (!canDeleteShipments) {
-      toast({
-        title: "Permission denied",
-        description: "You do not have delete permission for shipments.",
-        variant: "destructive",
-      });
-      return;
-    }
-    setDeletingId(shipment.id);
+    if (!shipment) return;
+    if (!canDelete) { toast({ title: "Permission denied", variant: "destructive" }); return; }
     try {
-      const res = await fetch(`/api/shipments/${shipment.id}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(`/api/shipments/${shipment.id}`, { method: "DELETE" });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.error || "Failed to delete shipment");
-      setShipments((current) => current.filter((item) => item.id !== shipment.id));
-      setTotalCount((current) => Math.max(0, current - 1));
-      if (selectedShipment?.id === shipment.id) {
-        setDetailOpen(false);
-        setSelectedShipment(null);
-      }
-      await fetchShipments();
-      toast({
-        title: "Shipment deleted",
-        description: `${shipment.shipmentNumber} was removed from active lists.`,
-      });
-    } catch (error) {
-      console.error("Shipment delete error:", error);
-      toast({
-        title: "Shipment could not be deleted",
-        description: error.message || "Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setDeletingId(null);
+      if (!res.ok) throw new Error(json.error || "Failed to delete");
+      setShipments((cur) => cur.filter((i) => i.id !== shipment.id));
+      setTotalCount((cur) => Math.max(0, cur - 1));
+      if (selectedShipment?.id === shipment.id) { setDetailOpen(false); setSelectedShipment(null); }
+      fetchShipments();
+      toast({ title: "Shipment deleted", description: `${shipment.shipmentNumber} removed.` });
+    } catch (e) {
+      toast({ title: "Could not delete", description: e.message, variant: "destructive" });
     }
   };
-  // Status counts for stats bar
+
+  // ─── Derived state ───────────────────────────────────────────────────
   const statusCounts = React.useMemo(() => {
     const counts = {};
-    shipments.forEach((s) => {
-      counts[s.status] = (counts[s.status] || 0) + 1;
-    });
+    shipments.forEach((s) => { counts[s.status] = (counts[s.status] || 0) + 1; });
     return counts;
   }, [shipments]);
-  // Kanban groupings
-  const kanbanColumns = [
-    "draft",
-    "booking_confirmed",
-    "at_pol",
-    "vessel_departed",
-    "in_transit",
-    "at_pod",
-    "customs_clearance",
-    "in_transport",
-    "delivered",
+
+  const kpis = [
+    { label: "Total", value: totalCount || 0, icon: Ship },
+    { label: "Active", value: (statusCounts.booking_confirmed || 0) + (statusCounts.at_pol || 0) + (statusCounts.vessel_departed || 0) + (statusCounts.in_transit || 0) + (statusCounts.at_pod || 0) + (statusCounts.customs_clearance || 0) + (statusCounts.in_transport || 0), icon: Truck },
+    { label: "In Transit", value: statusCounts.in_transit || 0, icon: Anchor },
+    { label: "Delivered", value: statusCounts.delivered || 0, icon: PackageCheck },
   ];
-  const kpiTiles = [
-    {
-      label: "Total",
-      value: totalCount || 0,
-      icon: Ship,
-      iconColor: "text-teal",
-      iconBg: "bg-teal/12",
-      ring: "ring-teal/25",
-    },
-    {
-      label: "Active",
-      value:
-        (statusCounts.booking_confirmed || 0) +
-        (statusCounts.at_pol || 0) +
-        (statusCounts.vessel_departed || 0) +
-        (statusCounts.in_transit || 0) +
-        (statusCounts.at_pod || 0) +
-        (statusCounts.customs_clearance || 0) +
-        (statusCounts.in_transport || 0),
-      icon: Truck,
-      iconColor: "text-sky-600 dark:text-sky-400",
-      iconBg: "bg-sky-500/12",
-      ring: "ring-sky-500/25",
-    },
-    {
-      label: "In Transit",
-      value: statusCounts.in_transit || 0,
-      icon: Anchor,
-      iconColor: "text-cyan-600 dark:text-cyan-400",
-      iconBg: "bg-cyan-500/12",
-      ring: "ring-cyan-500/25",
-    },
-    {
-      label: "Delivered",
-      value: statusCounts.delivered || 0,
-      icon: PackageCheck,
-      iconColor: "text-emerald-600 dark:text-emerald-400",
-      iconBg: "bg-emerald-500/12",
-      ring: "ring-emerald-500/25",
-    },
-  ];
-  return _jsxs(motion.div, {
-    initial: { opacity: 0, y: 8 },
-    animate: { opacity: 1, y: 0 },
-    transition: { duration: 0.3 },
-    className: "space-y-4",
-    children: [
-      _jsx("div", {
-        className:
-          "grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-4 gap-3",
-        children: kpiTiles.map((tile, i) =>
-          _jsx(
-            motion.div,
-            {
-              initial: { opacity: 0, y: 8 },
-              animate: { opacity: 1, y: 0 },
-              transition: {
-                delay: i * 0.05,
-                duration: 0.32,
-                ease: [0.4, 0, 0.2, 1],
-              },
-              children: _jsx(Card, {
-                className: "hover-lift overflow-hidden",
-                children: _jsxs(CardContent, {
-                  className:
-                    "p-3.5 flex items-center justify-between gap-3",
-                  children: [
-                    _jsxs("div", {
-                      className: "min-w-0",
-                      children: [
-                        _jsx("p", {
-                          className:
-                            "text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground",
-                          children: tile.label,
-                        }),
-                        _jsx("p", {
-                          className:
-                            "text-xl font-bold mt-0.5 tracking-tight tabular-nums",
-                          children: loading ? "-" : tile.value,
-                        }),
-                      ],
-                    }),
-                    _jsx("div", {
-                      className: cn(
-                        "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ring-1 shadow-sm",
-                        tile.iconBg,
-                        tile.ring,
-                      ),
-                      children: _jsx(tile.icon, {
-                        className: cn("h-4 w-4", tile.iconColor),
-                      }),
-                    }),
-                  ],
-                }),
-              }),
-            },
-            tile.label,
-          ),
-        ),
-      }),
-      _jsx(Card, {
-        className: "border-0 shadow-enterprise-md",
-        children: _jsx(CardContent, {
-          className: "p-4",
-          children: _jsxs("div", {
-            className:
-              "flex flex-col sm:flex-row items-start sm:items-center gap-3",
-            children: [
-              _jsxs("div", {
-                className: "relative flex-1 w-full sm:max-w-xs",
-                children: [
-                  _jsx(Search, {
-                    className:
-                      "absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground",
-                  }),
-                  _jsx(Input, {
-                    placeholder: "Search shipment, BL, booking...",
-                    value: searchQuery,
-                    onChange: (e) => {
-                      setSearchQuery(e.target.value);
-                      setPage(1);
-                    },
-                    className: "pl-9 h-9 text-sm",
-                  }),
-                ],
-              }),
-              _jsxs(Select, {
-                value: statusFilter,
-                onValueChange: (v) => {
-                  setStatusFilter(v);
-                  setPage(1);
-                },
-                children: [
-                  _jsx(SelectTrigger, {
-                    className: "w-full sm:w-[180px] h-9 text-sm",
-                    children: _jsx(SelectValue, {}),
-                  }),
-                  _jsx(SelectContent, {
-                    children: STATUSES.map((s) =>
-                      _jsx(
-                        SelectItem,
-                        { value: s.value, children: s.label },
-                        s.value,
-                      ),
-                    ),
-                  }),
-                ],
-              }),
-              _jsxs(Select, {
-                value: containerTypeFilter,
-                onValueChange: (v) => {
-                  setContainerTypeFilter(v);
-                  setPage(1);
-                },
-                children: [
-                  _jsx(SelectTrigger, {
-                    className: "w-full sm:w-[140px] h-9 text-sm",
-                    children: _jsx(SelectValue, { placeholder: "All Types" }),
-                  }),
-                  _jsx(SelectContent, {
-                    children: [
-                      _jsx(SelectItem, { value: "all", children: "All Types" }),
-                      ...containerTypes.map((t) =>
-                        _jsx(SelectItem, { value: t, children: t }, t)
-                      )
-                    ]
-                  }),
-                ],
-              }),
-              _jsxs(Select, {
-                value: containerSizeFilter,
-                onValueChange: (v) => {
-                  setContainerSizeFilter(v);
-                  setPage(1);
-                },
-                children: [
-                  _jsx(SelectTrigger, {
-                    className: "w-full sm:w-[140px] h-9 text-sm",
-                    children: _jsx(SelectValue, { placeholder: "All Sizes" }),
-                  }),
-                  _jsx(SelectContent, {
-                    children: [
-                      _jsx(SelectItem, { value: "all", children: "All Sizes" }),
-                      ...containerSizes.map((s) =>
-                        _jsx(SelectItem, { value: s, children: s }, s)
-                      )
-                    ]
-                  }),
-                ],
-              }),
-              _jsxs("div", {
-                className: "flex items-center gap-2 ml-auto",
-                children: [
-                  _jsxs("div", {
-                    className: "flex items-center border rounded-lg p-0.5",
-                    children: [
-                      _jsxs(Button, {
-                        variant: viewMode === "table" ? "secondary" : "ghost",
-                        size: "sm",
-                        className: "h-7 px-2.5 text-xs",
-                        onClick: () => setViewMode("table"),
-                        children: [
-                          _jsx(List, { className: "h-3.5 w-3.5 mr-1" }),
-                          " Table",
-                        ],
-                      }),
-                      _jsxs(Button, {
-                        variant: viewMode === "kanban" ? "secondary" : "ghost",
-                        size: "sm",
-                        className: "h-7 px-2.5 text-xs",
-                        onClick: () => setViewMode("kanban"),
-                        children: [
-                          _jsx(LayoutGrid, { className: "h-3.5 w-3.5 mr-1" }),
-                          " Kanban",
-                        ],
-                      }),
-                    ],
-                  }),
-                  canCreateShipments &&
-                    _jsxs(Button, {
-                      size: "sm",
-                      className: "h-9 text-xs ml-auto",
-                      onClick: openCreateShipment,
-                      children: [
-                        _jsx(Plus, { className: "h-3.5 w-3.5 mr-1" }),
-                        " New Shipment",
-                      ],
-                    }),
-                ],
-              }),
-            ],
-          }),
-        }),
-      }),
-      _jsx("div", {
-        className:
-          "flex gap-2 overflow-x-auto pb-1 custom-scrollbar [mask-image:linear-gradient(to_right,transparent,black_1%,black_99%,transparent)]",
-        children: kanbanColumns.map((status, chipIdx) => {
-          const count = statusCounts[status] || 0;
-          if (statusFilter !== "all" && statusFilter !== status) return null;
-          const isActive = statusFilter === status;
-          return _jsxs(
-            motion.button,
-            {
-              layout: true,
-              initial: { opacity: 0, y: 6 },
-              animate: { opacity: 1, y: 0 },
-              transition: {
-                delay: chipIdx * 0.025,
-                duration: 0.22,
-                ease: [0.4, 0, 0.2, 1],
-              },
-              whileHover: { scale: 1.03 },
-              whileTap: { scale: 0.97 },
-              onClick: () => {
-                setStatusFilter(isActive ? "all" : status);
-                setPage(1);
-              },
-              className: cn(
-                "relative flex shrink-0 items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap border backdrop-blur-sm transition-colors",
-                isActive
-                  ? statusColorMap[status] +
-                      " shadow-sm"
-                  : "bg-white/50 dark:bg-white/[0.04] border-border/60 text-muted-foreground hover:bg-white/80 dark:hover:bg-white/[0.08] hover:text-foreground",
-              ),
-              children: [
-                isActive &&
-                  _jsx(motion.span, {
-                    layoutId: "activeChip",
-                    className:
-                      "absolute inset-0 rounded-lg ring-2 ring-current/40 pointer-events-none",
-                    transition: {
-                      type: "spring",
-                      stiffness: 340,
-                      damping: 30,
-                    },
-                  }),
-                _jsx("span", {
-                  className: cn(
-                    "relative h-1.5 w-1.5 rounded-full",
-                    statusDotMap[status],
-                    isActive && "shadow-[0_0_6px_currentColor]",
-                  ),
-                }),
-                _jsx("span", {
-                  className: "relative",
-                  children: statusLabelMap[status],
-                }),
-                _jsx("span", {
-                  className: cn(
-                    "relative inline-flex h-4 min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold tabular-nums",
-                    isActive
-                      ? "bg-current/15 text-current"
-                      : "bg-muted/70 text-muted-foreground",
-                  ),
-                  children: count,
-                }),
-              ],
-            },
-            status,
-          );
-        }),
-      }),
-      loading
-        ? _jsx("div", {
-            className: "grid grid-cols-1 gap-3",
-            children: Array.from({ length: 5 }).map((_, i) =>
-              _jsx(
-                Card,
-                {
-                  className: "glass border-0 shadow-enterprise animate-pulse",
-                  children: _jsx(CardContent, { className: "p-4 h-16" }),
-                },
-                i,
-              ),
-            ),
-          })
-        : viewMode === "table"
-          ? /* Table View */
-            _jsx(Card, {
-              className: "glass border-0 shadow-enterprise",
-              children: _jsxs(CardContent, {
-                className: "p-0",
-                children: [
-                  _jsx("div", {
-                    className: "overflow-x-auto",
-                    children: _jsxs(Table, {
-                      children: [
-                        _jsx(TableHeader, {
-                          children: _jsxs(TableRow, {
-                            children: [
-                              _jsx(TableHead, {
-                                className: "text-[11px] font-semibold",
-                                children: "Shipment",
-                              }),
-                              _jsx(TableHead, {
-                                className:
-                                  "text-[11px] font-semibold hidden md:table-cell",
-                                children: "Booking/BL",
-                              }),
-                              _jsx(TableHead, {
-                                className:
-                                  "text-[11px] font-semibold hidden lg:table-cell",
-                                children: "Shipping Line *",
-                              }),
-                              _jsx(TableHead, {
-                                className: "text-[11px] font-semibold",
-                                children: "Route",
-                              }),
-                              _jsx(TableHead, {
-                                className:
-                                  "text-[11px] font-semibold hidden sm:table-cell",
-                                children: "ETD/ETA",
-                              }),
-                              _jsx(TableHead, {
-                                className: "text-[11px] font-semibold",
-                                children: "Status",
-                              }),
-                              _jsx(TableHead, {
-                                className:
-                                  "text-[11px] font-semibold hidden md:table-cell",
-                                children: "Invoice No.",
-                              }),
-                              _jsx(TableHead, {
-                                className: "text-[11px] font-semibold w-10",
-                              }),
-                            ],
-                          }),
-                        }),
-                        _jsx(TableBody, {
-                          children:
-                            shipments.length === 0
-                              ? _jsx(TableRow, {
-                                  children: _jsx(TableCell, {
-                                    colSpan: 8,
-                                    className: "py-16",
-                                    children: _jsxs("div", {
-                                      className:
-                                        "flex flex-col items-center gap-3 text-center text-muted-foreground",
-                                      children: [
-                                        _jsx("div", {
-                                          className:
-                                            "flex h-14 w-14 items-center justify-center rounded-2xl bg-teal/8 ring-1 ring-teal/15",
-                                          children: _jsx(Inbox, {
-                                            className: "h-7 w-7 text-teal/60",
-                                          }),
-                                        }),
-                                        _jsxs("div", {
-                                          children: [
-                                            _jsx("p", {
-                                              className:
-                                                "text-sm font-semibold text-foreground",
-                                              children: "No shipments found",
-                                            }),
-                                            _jsx("p", {
-                                              className: "text-xs mt-0.5",
-                                              children:
-                                                "Try adjusting your search or filters, or create a new shipment.",
-                                            }),
-                                          ],
-                                        }),
-                                      ],
-                                    }),
-                                  }),
-                                })
-                              : shipments.map((s, i) => {
-                                  const priorityAccent =
-                                    s.priority === "urgent"
-                                      ? "before:bg-danger"
-                                      : s.priority === "high"
-                                        ? "before:bg-amber"
-                                        : s.priority === "low"
-                                          ? "before:bg-muted-foreground/30"
-                                          : "before:bg-transparent";
-                                  return _jsxs(
-                                    motion.tr,
-                                    {
-                                      initial: { opacity: 0, y: 6 },
-                                      animate: { opacity: 1, y: 0 },
-                                      transition: {
-                                        delay: i * 0.035,
-                                        duration: 0.24,
-                                        ease: [0.4, 0, 0.2, 1],
-                                      },
-                                      className: cn(
-                                        "group cursor-pointer border-b border-border/60 transition-all",
-                                        "hover:bg-teal/[0.04] hover:shadow-[inset_0_0_0_1px_var(--teal)]/5",
-                                      ),
-                                      onClick: () => openDetail(s.id),
-                                      children: [
-                                        _jsx(TableCell, {
-                                          className: cn(
-                                            "relative",
-                                            "before:absolute before:left-0 before:top-2 before:bottom-2 before:w-[3px] before:rounded-r-full before:transition-all",
-                                            priorityAccent,
-                                            "group-hover:before:w-1"
-                                          ),
-                                          children: _jsxs("div", {
-                                            className:
-                                              "flex items-center gap-2.5",
-                                            children: [
-                                              _jsx("div", {
-                                                className:
-                                                  "flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-teal/20 to-teal/5 ring-1 ring-teal/20 text-teal shrink-0 shadow-sm group-hover:from-teal/25 group-hover:ring-teal/30 transition-colors",
-                                                children: _jsx(Ship, {
-                                                  className:
-                                                    "h-4 w-4 text-teal",
-                                                }),
-                                              }),
-                                              _jsxs("div", {
-                                                children: [
-                                                  _jsx("p", {
-                                                    className:
-                                                      "text-sm font-medium",
-                                                    children: s.shipmentNumber,
-                                                  }),
-                                                  _jsxs("div", {
-                                                    className: "flex flex-col",
-                                                    children: [
-                                                      s.company &&
-                                                        _jsxs("p", {
-                                                          className:
-                                                            "text-[10px] text-muted-foreground leading-tight",
-                                                          children: [
-                                                            "I: ",
-                                                            s.company.name,
-                                                          ],
-                                                        }),
-                                                      s.exporterCompany &&
-                                                        _jsxs("p", {
-                                                          className:
-                                                            "text-[10px] text-muted-foreground leading-tight",
-                                                          children: [
-                                                            "E: ",
-                                                            s.exporterCompany
-                                                              .name,
-                                                          ],
-                                                        }),
-                                                    ],
-                                                  }),
-                                                ],
-                                              }),
-                                            ],
-                                          }),
-                                        }),
-                                        _jsxs(TableCell, {
-                                          className: "hidden md:table-cell",
-                                          children: [
-                                            _jsx("p", {
-                                              className: "text-xs",
-                                              children: s.bookingNumber || "—",
-                                            }),
-                                            _jsx("p", {
-                                              className:
-                                                "text-[11px] text-muted-foreground",
-                                              children: s.blNumber || "—",
-                                            }),
-                                          ],
-                                        }),
-                                        _jsx(TableCell, {
-                                          className:
-                                            "hidden lg:table-cell text-xs",
-                                          children: s.shippingLine || "—",
-                                        }),
-                                        _jsx(TableCell, {
-                                          children: _jsxs("div", {
-                                            className:
-                                              "flex items-center gap-1 text-xs",
-                                            children: [
-                                              _jsx("span", {
-                                                children: s.originPort || "?",
-                                              }),
-                                              _jsx(ArrowRight, {
-                                                className:
-                                                  "h-3 w-3 text-muted-foreground",
-                                              }),
-                                              _jsx("span", {
-                                                children:
-                                                  s.destinationPort || "?",
-                                              }),
-                                            ],
-                                          }),
-                                        }),
-                                        _jsxs(TableCell, {
-                                          className: "hidden sm:table-cell",
-                                          children: [
-                                            _jsx("p", {
-                                              className: "text-[11px]",
-                                              children: s.etd
-                                                ? format(
-                                                    new Date(s.etd),
-                                                    "MMM d",
-                                                  )
-                                                : "—",
-                                            }),
-                                            _jsx("p", {
-                                              className:
-                                                "text-[11px] text-muted-foreground",
-                                              children: s.eta
-                                                ? format(
-                                                    new Date(s.eta),
-                                                    "MMM d",
-                                                  )
-                                                : "—",
-                                            }),
-                                          ],
-                                        }),
-                                        _jsx(TableCell, {
-                                          children: _jsxs("span", {
-                                            className: cn(
-                                              "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap",
-                                              statusColorMap[s.status] || "",
-                                            ),
-                                            children: [
-                                              _jsx("span", {
-                                                className: cn(
-                                                  "h-1.5 w-1.5 rounded-full",
-                                                  statusDotMap[s.status],
-                                                ),
-                                              }),
-                                              _jsx("span", {
-                                                children:
-                                                  statusLabelMap[s.status] ||
-                                                  s.status,
-                                              }),
-                                            ],
-                                          }),
-                                        }),
-                                        _jsx(TableCell, {
-                                          className:
-                                            "hidden md:table-cell text-xs font-medium",
-                                          children: s.invoiceNumber || "—",
-                                        }),
-                                        _jsx(TableCell, {
-                                          children: _jsxs("div", {
-                                            className:
-                                              "flex items-center justify-end gap-1 opacity-0 translate-x-2 transition-all duration-200 group-hover:opacity-100 group-hover:translate-x-0",
-                                            children: [
-                                              _jsx(Button, {
-                                                variant: "ghost",
-                                                size: "icon",
-                                                className:
-                                                  "h-7 w-7 rounded-lg hover:bg-teal/10 hover:text-teal",
-                                                onClick: (event) => {
-                                                  event.stopPropagation();
-                                                  openDetail(s.id);
-                                                },
-                                                title: "View shipment",
-                                                children: _jsx(Eye, {
-                                                  className: "h-3.5 w-3.5",
-                                                }),
-                                              }),
-                                              canDeleteShipments &&
-                                                _jsx(Button, {
-                                                  variant: "ghost",
-                                                  size: "icon",
-                                                  className:
-                                                    "h-7 w-7 rounded-lg text-destructive hover:bg-destructive/10 hover:text-destructive",
-                                                  disabled: deletingId === s.id,
-                                                  onClick: (event) => {
-                                                    event.stopPropagation();
-                                                    setDeleteShipmentObj(s);
-                                                  },
-                                                  title: "Delete shipment",
-                                                  children:
-                                                    deletingId === s.id
-                                                      ? _jsx(Loader2, {
-                                                          className:
-                                                            "h-3.5 w-3.5 animate-spin",
-                                                        })
-                                                      : _jsx(Trash2, {
-                                                          className:
-                                                            "h-3.5 w-3.5",
-                                                        }),
-                                                }),
-                                            ],
-                                          }),
-                                        }),
-                                      ],
-                                    },
-                                    s.id,
-                                  );
-                                }),
-                        }),
-                      ],
-                    }),
-                  }),
-                  totalCount > 20 &&
-                    _jsxs("div", {
-                      className:
-                        "flex items-center justify-between px-4 py-3 border-t border-border/60",
-                      children: [
-                        _jsxs("p", {
-                          className:
-                            "text-xs text-muted-foreground tabular-nums",
-                          children: [
-                            "Showing ",
-                            _jsx("span", {
-                              className: "font-semibold text-foreground",
-                              children: (page - 1) * 20 + 1,
-                            }),
-                            "-",
-                            _jsx("span", {
-                              className: "font-semibold text-foreground",
-                              children: Math.min(page * 20, totalCount),
-                            }),
-                            " of ",
-                            _jsx("span", {
-                              className: "font-semibold text-foreground",
-                              children: totalCount,
-                            }),
-                          ],
-                        }),
-                        _jsxs("div", {
-                          className: "flex items-center gap-1",
-                          children: [
-                            _jsxs(Button, {
-                              variant: "outline",
-                              size: "sm",
-                              disabled: page === 1,
-                              onClick: () => setPage(page - 1),
-                              className: "h-8 text-xs gap-1 rounded-lg",
-                              children: [
-                                _jsx(ArrowRight, {
-                                  className: "h-3.5 w-3.5 rotate-180",
-                                }),
-                                "Prev",
-                              ],
-                            }),
-                            _jsxs("div", {
-                              className:
-                                "px-2 text-xs font-semibold text-muted-foreground tabular-nums",
-                              children: [
-                                page,
-                                " / ",
-                                Math.max(1, Math.ceil(totalCount / 20)),
-                              ],
-                            }),
-                            _jsxs(Button, {
-                              variant: "outline",
-                              size: "sm",
-                              disabled: page * 20 >= totalCount,
-                              onClick: () => setPage(page + 1),
-                              className: "h-8 text-xs gap-1 rounded-lg",
-                              children: [
-                                "Next",
-                                _jsx(ArrowRight, {
-                                  className: "h-3.5 w-3.5",
-                                }),
-                              ],
-                            }),
-                          ],
-                        }),
-                      ],
-                    }),
-                ],
-              }),
-            })
-          : /* Kanban View */
-            _jsx("div", {
-              className: "overflow-x-auto custom-scrollbar pb-2",
-              children: _jsx("div", {
-                className: "flex gap-4 min-w-max",
-                children: kanbanColumns.map((status) => {
-                  const items = shipments.filter((s) => s.status === status);
-                  if (statusFilter !== "all" && statusFilter !== status)
-                    return null;
-                  return _jsxs(
-                    "div",
-                    {
-                      className: "w-72 shrink-0",
-                      children: [
-                        _jsxs("div", {
-                          className: "flex items-center gap-2 mb-3 px-1",
-                          children: [
-                            _jsx("span", {
-                              className: cn(
-                                "h-2 w-2 rounded-full",
-                                statusDotMap[status],
-                              ),
-                            }),
-                            _jsx("span", {
-                              className: "text-xs font-semibold",
-                              children: statusLabelMap[status],
-                            }),
-                            _jsx(Badge, {
-                              variant: "secondary",
-                              className:
-                                "h-4 min-w-[18px] px-1 text-[10px] ml-auto",
-                              children: items.length,
-                            }),
-                          ],
-                        }),
-                        _jsx("div", {
-                          className:
-                            "space-y-2 max-h-[65vh] overflow-y-auto custom-scrollbar pr-1",
-                          children:
-                            items.length === 0
-                              ? _jsx("div", {
-                                  className:
-                                    "rounded-xl border border-dashed border-border/60 p-4 text-center text-xs text-muted-foreground",
-                                  children: "No shipments",
-                                })
-                              : items.map((s) =>
-                                  _jsxs(
-                                    motion.div,
-                                    {
-                                      initial: { opacity: 0, scale: 0.95 },
-                                      animate: { opacity: 1, scale: 1 },
-                                      whileHover: { scale: 1.02 },
-                                      className:
-                                        "rounded-xl border border-border/50 bg-card/80 p-3 cursor-pointer hover:shadow-enterprise transition-shadow",
-                                      onClick: () => openDetail(s.id),
-                                      children: [
-                                        _jsxs("div", {
-                                          className:
-                                            "flex items-start justify-between mb-2",
-                                          children: [
-                                            _jsx("p", {
-                                              className: "text-sm font-medium",
-                                              children: s.invoiceNumber || "-",
-                                            }),
-                                            _jsxs("div", {
-                                              className:
-                                                "flex shrink-0 items-center gap-1",
-                                              children: [
-                                                _jsx(Badge, {
-                                                  variant: "outline",
-                                                  className: cn(
-                                                    "text-[9px] font-semibold",
-                                                    priorityColorMap[
-                                                      s.priority
-                                                    ],
-                                                  ),
-                                                  children: s.priority,
-                                                }),
-                                                canDeleteShipments &&
-                                                  _jsx(Button, {
-                                                    variant: "ghost",
-                                                    size: "icon",
-                                                    className:
-                                                      "h-6 w-6 text-red-600 hover:bg-red-500/10 hover:text-red-700",
-                                                    disabled:
-                                                      deletingId === s.id,
-                                                    onClick: (event) => {
-                                                      event.stopPropagation();
-                                                      setDeleteShipmentObj(s);
-                                                    },
-                                                    title: "Delete shipment",
-                                                    children:
-                                                      deletingId === s.id
-                                                        ? _jsx(Loader2, {
-                                                            className:
-                                                              "h-3 w-3 animate-spin",
-                                                          })
-                                                        : _jsx(Trash2, {
-                                                            className:
-                                                              "h-3 w-3",
-                                                          }),
-                                                  }),
-                                              ],
-                                            }),
-                                          ],
-                                        }),
-                                        _jsxs("div", {
-                                          className:
-                                            "flex items-center gap-1 text-[11px] text-muted-foreground mb-1.5",
-                                          children: [
-                                            _jsx("span", {
-                                              children: s.originPort || "?",
-                                            }),
-                                            _jsx(ArrowRight, {
-                                              className: "h-3 w-3",
-                                            }),
-                                            _jsx("span", {
-                                              children:
-                                                s.destinationPort || "?",
-                                            }),
-                                          ],
-                                        }),
-                                        s.company &&
-                                          _jsxs("p", {
-                                            className:
-                                              "text-[10px] text-muted-foreground truncate",
-                                            children: ["I: ", s.company.name],
-                                          }),
-                                        s.exporterCompany &&
-                                          _jsxs("p", {
-                                            className:
-                                              "text-[10px] text-muted-foreground truncate",
-                                            children: [
-                                              "E: ",
-                                              s.exporterCompany.name,
-                                            ],
-                                          }),
-                                        _jsxs("div", {
-                                          className:
-                                            "flex items-center justify-between mt-2",
-                                          children: [
-                                            _jsx("span", {
-                                              className: "text-xs font-medium",
-                                              children:
-                                                s.shipmentValue > 0
-                                                  ? currencyFmt(
-                                                      s.shipmentValue,
-                                                      s.currency,
-                                                    )
-                                                  : "—",
-                                            }),
-                                            _jsxs("span", {
-                                              className:
-                                                "text-[10px] text-muted-foreground",
-                                              children: [
-                                                s._count.containers,
-                                                "C \u00B7 ",
-                                                s._count.documents,
-                                                "D",
-                                              ],
-                                            }),
-                                          ],
-                                        }),
-                                      ],
-                                    },
-                                    s.id,
-                                  ),
-                                ),
-                        }),
-                      ],
-                    },
-                    status,
-                  );
-                }),
-              }),
-            }),
-      _jsx(Dialog, {
-        open: detailOpen,
-        onOpenChange: setDetailOpen,
-        children: _jsxs(DialogContent, {
-          className: "max-w-3xl max-h-[85vh] overflow-hidden p-0",
-          children: [
-            _jsx(DialogHeader, {
-              className: "border-b py-3 pl-4 pr-14",
-              children: _jsxs("div", {
-                className: "flex items-center gap-3",
-                children: [
-                  _jsx("div", {
-                    className:
-                      "flex h-10 w-10 items-center justify-center rounded-xl bg-teal/10",
-                    children: _jsx(Ship, { className: "h-5 w-5 text-teal" }),
-                  }),
-                  _jsxs("div", {
-                    children: [
-                      _jsx(DialogTitle, {
-                        className: "text-lg",
-                        children:
-                          (selectedShipment === null ||
-                          selectedShipment === void 0
-                            ? void 0
-                            : selectedShipment.shipmentNumber) || "Loading...",
-                      }),
-                      _jsxs(DialogDescription, {
-                        className:
-                          "text-[10px] mt-0.5 flex flex-wrap gap-x-3 gap-y-1",
-                        children: [
-                          _jsxs("span", {
-                            className: "flex items-center gap-1",
-                            children: [
-                              _jsx(Building2, { className: "h-3 w-3" }),
-                              " Importer: ",
-                              ((_a =
-                                selectedShipment === null ||
-                                selectedShipment === void 0
-                                  ? void 0
-                                  : selectedShipment.company) === null ||
-                              _a === void 0
-                                ? void 0
-                                : _a.name) || "N/A",
-                            ],
-                          }),
-                          _jsxs("span", {
-                            className: "flex items-center gap-1",
-                            children: [
-                              _jsx(Globe, { className: "h-3 w-3" }),
-                              " Exporter: ",
-                              ((_b =
-                                selectedShipment === null ||
-                                selectedShipment === void 0
-                                  ? void 0
-                                  : selectedShipment.exporterCompany) ===
-                                null || _b === void 0
-                                ? void 0
-                                : _b.name) || "N/A",
-                            ],
-                          }),
-                        ],
-                      }),
-                    ],
-                  }),
-                  selectedShipment &&
-                    _jsxs("div", {
-                      className: "ml-auto mr-8 flex shrink-0 items-center gap-2",
-                      children: [
-                        _jsx(Badge, {
-                          variant: "outline",
-                          className: cn(
-                            "text-[10px] font-semibold",
-                            statusColorMap[selectedShipment.status],
-                          ),
-                          children: statusLabelMap[selectedShipment.status],
-                        }),
-                        canUpdateShipments &&
-                          _jsxs(Button, {
-                            variant: "outline",
-                            size: "sm",
-                            onClick: () => openEdit(selectedShipment),
-                            className: "h-7 px-2 text-xs",
-                            children: [
-                              _jsx(Pencil, { className: "w-3 h-3 mr-1" }),
-                              " Edit",
-                            ],
-                          }),
-                        canDeleteShipments &&
-                          _jsxs(Button, {
-                            variant: "outline",
-                            size: "sm",
-                            onClick: () => setDeleteShipmentObj(selectedShipment),
-                            disabled: deletingId === selectedShipment.id,
-                            className:
-                              "h-7 px-2 text-xs border-red-500/30 text-red-600 hover:bg-red-500/10 hover:text-red-700",
-                            title: "Delete shipment",
-                            "aria-label": "Delete shipment",
-                            children: [
-                              deletingId === selectedShipment.id
-                                ? _jsx(Loader2, {
-                                    className: "w-3 h-3 mr-1 animate-spin",
-                                  })
-                                : _jsx(Trash2, {
-                                    className: "w-3 h-3 mr-1",
-                                  }),
-                              " Delete",
-                            ],
-                          }),
-                      ],
-                    }),
-                ],
-              }),
-            }),
-            detailLoading
-              ? _jsx("div", {
-                  className: "p-6 space-y-4",
-                  children: Array.from({ length: 6 }).map((_, i) =>
-                    _jsx(
-                      "div",
-                      { className: "h-4 bg-muted rounded animate-pulse" },
-                      i,
-                    ),
-                  ),
-                })
-              : selectedShipment
-                ? _jsxs(Tabs, {
-                    defaultValue: "overview",
-                    className: "w-full",
-                    children: [
-                      _jsx("div", {
-                        className:
-                          "flex w-full justify-center overflow-x-auto px-4 pt-3",
-                        children: _jsxs(TabsList, {
-                          className: "h-8 shrink-0",
-                          children: [
-                            _jsx(TabsTrigger, {
-                              value: "overview",
-                              className: "text-xs h-7 px-3",
-                              children: "Overview",
-                            }),
-                            _jsx(TabsTrigger, {
-                              value: "timeline",
-                              className: "text-xs h-7 px-3",
-                              children: "Timeline",
-                            }),
-                            _jsxs(TabsTrigger, {
-                              value: "containers",
-                              className: "text-xs h-7 px-3",
-                              children: [
-                                "Containers (",
-                                ((_c = selectedShipment.containers) === null ||
-                                _c === void 0
-                                  ? void 0
-                                  : _c.length) || 0,
-                                ")",
-                              ],
-                            }),
-                            _jsxs(TabsTrigger, {
-                              value: "documents",
-                              className: "text-xs h-7 px-3",
-                              children: [
-                                "Documents (",
-                                ((_d = selectedShipment.documents) === null ||
-                                _d === void 0
-                                  ? void 0
-                                  : _d.length) || 0,
-                                ")",
-                              ],
-                            }),
-                            _jsxs(TabsTrigger, {
-                              value: "expenses",
-                              className: "text-xs h-7 px-3",
-                              children: [
-                                "Expenses (",
-                                ((_e = selectedShipment.expenses) === null ||
-                                _e === void 0
-                                  ? void 0
-                                  : _e.length) || 0,
-                                ")",
-                              ],
-                            }),
-                          ],
-                        }),
-                      }),
-                      _jsxs(ScrollArea, {
-                        className: "h-[55vh] px-4 pb-4",
-                        children: [
-                          _jsxs(TabsContent, {
-                            value: "overview",
-                            className: "mt-2",
-                            children: [
-                              _jsx("div", {
-                                className: "grid grid-cols-2 gap-4",
-                                children: [
-                                  {
-                                    label: "Booking Number",
-                                    value: selectedShipment.bookingNumber,
-                                  },
-                                  {
-                                    label: "BL Number",
-                                    value: selectedShipment.blNumber,
-                                  },
-                                  {
-                                    label: "Invoice Number",
-                                    value:
-                                      selectedShipment.invoiceNumber ||
-                                      selectedShipment.invoices?.[0]?.invoiceNumber,
-                                  },
-                                  {
-                                    label: "Shipping Line",
-                                    value: selectedShipment.shippingLine,
-                                  },
-                                  {
-                                    label: "Vessel",
-                                    value: selectedShipment.vesselName,
-                                  },
-                                  {
-                                    label: "Voyage",
-                                    value: selectedShipment.voyageNumber,
-                                  },
-                                  {
-                                    label: "Freight Forwarder",
-                                    value: selectedShipment.freightForwarder,
-                                  },
-                                  {
-                                    label: "Origin Country",
-                                    value: selectedShipment.originCountry,
-                                  },
-                                  {
-                                    label: "Origin Port",
-                                    value: selectedShipment.originPort,
-                                  },
-                                  {
-                                    label: "Destination Port",
-                                    value: selectedShipment.destinationPort,
-                                  },
-                                  {
-                                    label: "Priority",
-                                    value: selectedShipment.priority,
-                                  },
-                                  {
-                                    label: "ETD",
-                                    value: selectedShipment.etd
-                                      ? format(
-                                          new Date(selectedShipment.etd),
-                                          "MMM d, yyyy",
-                                        )
-                                      : null,
-                                  },
-                                  {
-                                    label: "ETA",
-                                    value: selectedShipment.eta
-                                      ? format(
-                                          new Date(selectedShipment.eta),
-                                          "MMM d, yyyy",
-                                        )
-                                      : null,
-                                  },
-                                  {
-                                    label: "Shipment Value",
-                                    value:
-                                      selectedShipment.shipmentValue > 0
-                                        ? currencyFmt(
-                                            selectedShipment.shipmentValue,
-                                            selectedShipment.currency,
-                                          )
-                                        : null,
-                                  },
-                                  {
-                                    label: "Warehouse",
-                                    value: selectedShipment.warehouseLocation,
-                                  },
-                                ].map((field) =>
-                                  _jsxs(
-                                    "div",
-                                    {
-                                      children: [
-                                        _jsx("p", {
-                                          className:
-                                            "text-[11px] font-semibold text-muted-foreground uppercase tracking-wider",
-                                          children: field.label,
-                                        }),
-                                        _jsx("p", {
-                                          className: "text-sm mt-0.5",
-                                          children: field.value || "—",
-                                        }),
-                                      ],
-                                    },
-                                    field.label,
-                                  ),
-                                ),
-                              }),
-                              selectedShipment.internalNotes &&
-                                _jsxs("div", {
-                                  className:
-                                    "mt-4 p-3 rounded-lg bg-amber/5 border border-amber/20",
-                                  children: [
-                                    _jsx("p", {
-                                      className:
-                                        "text-[11px] font-semibold text-amber-dark mb-1",
-                                      children: "Internal Notes",
-                                    }),
-                                    _jsx("p", {
-                                      className: "text-xs",
-                                      children: selectedShipment.internalNotes,
-                                    }),
-                                  ],
-                                }),
-                            ],
-                          }),
-                          _jsx(TabsContent, {
-                            value: "timeline",
-                            className: "mt-2",
-                            children:
-                              selectedShipment.timelineEvents.length === 0
-                                ? _jsx("p", {
-                                    className:
-                                      "text-sm text-muted-foreground text-center py-8",
-                                    children: "No timeline events",
-                                  })
-                                : _jsxs("div", {
-                                    className: "relative",
-                                    children: [
-                                      _jsx("div", {
-                                        className:
-                                          "absolute left-4 top-0 bottom-0 w-px bg-border",
-                                      }),
-                                      _jsx("div", {
-                                        className: "space-y-4",
-                                        children:
-                                          selectedShipment.timelineEvents.map(
-                                            (event, i) =>
-                                              _jsxs(
-                                                "div",
-                                                {
-                                                  className:
-                                                    "relative flex items-start gap-4 pl-10",
-                                                  children: [
-                                                    _jsx("div", {
-                                                      className: cn(
-                                                        "absolute left-2.5 top-1 h-3 w-3 rounded-full border-2 border-background",
-                                                        i === 0
-                                                          ? "bg-teal"
-                                                          : "bg-muted-foreground/30",
-                                                      ),
-                                                    }),
-                                                    _jsxs("div", {
-                                                      className: "flex-1",
-                                                      children: [
-                                                        _jsx("p", {
-                                                          className:
-                                                            "text-sm font-medium",
-                                                          children: event.event,
-                                                        }),
-                                                        event.description &&
-                                                          _jsx("p", {
-                                                            className:
-                                                              "text-xs text-muted-foreground mt-0.5",
-                                                            children:
-                                                              event.description,
-                                                          }),
-                                                        _jsxs("div", {
-                                                          className:
-                                                            "flex items-center gap-2 mt-1",
-                                                          children: [
-                                                            event.location &&
-                                                              _jsxs("span", {
-                                                                className:
-                                                                  "text-[10px] text-muted-foreground flex items-center gap-1",
-                                                                children: [
-                                                                  _jsx(MapPin, {
-                                                                    className:
-                                                                      "h-3 w-3",
-                                                                  }),
-                                                                  event.location,
-                                                                ],
-                                                              }),
-                                                            _jsxs("span", {
-                                                              className:
-                                                                "text-[10px] text-muted-foreground flex items-center gap-1",
-                                                              children: [
-                                                                _jsx(Clock, {
-                                                                  className:
-                                                                    "h-3 w-3",
-                                                                }),
-                                                                format(
-                                                                  new Date(
-                                                                    event.timestamp,
-                                                                  ),
-                                                                  "MMM d, yyyy h:mm a",
-                                                                ),
-                                                              ],
-                                                            }),
-                                                          ],
-                                                        }),
-                                                      ],
-                                                    }),
-                                                  ],
-                                                },
-                                                event.id,
-                                              ),
-                                          ),
-                                      }),
-                                    ],
-                                  }),
-                          }),
-                          _jsx(TabsContent, {
-                            value: "containers",
-                            className: "mt-2",
-                            children:
-                              selectedShipment.containers.length === 0
-                                ? _jsx("p", {
-                                    className:
-                                      "text-sm text-muted-foreground text-center py-8",
-                                    children: "No containers",
-                                  })
-                                : _jsx("div", {
-                                    className: "space-y-2",
-                                    children: selectedShipment.containers.map(
-                                      (c) =>
-                                        _jsxs(
-                                          "div",
-                                          {
-                                            className:
-                                              "flex items-center gap-3 p-3 rounded-lg border border-border/50 hover:bg-accent/20 transition-colors",
-                                            children: [
-                                              _jsx("div", {
-                                                className:
-                                                  "flex h-8 w-8 items-center justify-center rounded-lg bg-amber/10",
-                                                children: _jsx(Package, {
-                                                  className:
-                                                    "h-4 w-4 text-amber-dark",
-                                                }),
-                                              }),
-                                              _jsxs("div", {
-                                                className: "flex-1",
-                                                children: [
-                                                  _jsx("p", {
-                                                    className:
-                                                      "text-sm font-medium",
-                                                    children: c.containerNumber,
-                                                  }),
-                                                  _jsxs("p", {
-                                                    className:
-                                                      "text-[11px] text-muted-foreground",
-                                                    children: [
-                                                      c.containerSize,
-                                                      " \u00B7 ",
-                                                      c.containerType,
-                                                      Number(c.currentWeight) > 0
-                                                        ? ` \u00B7 ${Number(c.currentWeight).toLocaleString()} kg`
-                                                        : "",
-                                                    ],
-                                                  }),
-                                                ],
-                                              }),
-                                            ],
-                                          },
-                                          c.id,
-                                        ),
-                                    ),
-                                  }),
-                          }),
-                          _jsxs(TabsContent, {
-                            value: "documents",
-                            className: "mt-2",
-                            children: [
-                              _jsxs("div", {
-                                className:
-                                  "flex items-center justify-between mb-4",
-                                children: [
-                                  _jsx("h4", {
-                                    className: "text-sm font-semibold",
-                                    children: "Shipment Documents",
-                                  }),
-                                  _jsxs(Button, {
-                                    variant: "outline",
-                                    size: "sm",
-                                    className: "h-7 text-[10px]",
-                                    onClick: () =>
-                                      setUploadDocOpen(!uploadDocOpen),
-                                    children: [
-                                      uploadDocOpen
-                                        ? _jsx(X, { className: "h-3 w-3 mr-1" })
-                                        : _jsx(Plus, {
-                                            className: "h-3 w-3 mr-1",
-                                          }),
-                                      uploadDocOpen ? "Cancel" : "Add Document",
-                                    ],
-                                  }),
-                                ],
-                              }),
-                              _jsx(AnimatePresence, {
-                                children:
-                                  uploadDocOpen &&
-                                  _jsx(motion.div, {
-                                    initial: { height: 0, opacity: 0 },
-                                    animate: { height: "auto", opacity: 1 },
-                                    exit: { height: 0, opacity: 0 },
-                                    className: "overflow-hidden mb-6",
-                                    children: _jsxs("div", {
-                                      className:
-                                        "p-4 rounded-xl border border-teal/20 bg-teal/5 space-y-4",
-                                      children: [
-                                        _jsxs("div", {
-                                          className: "grid grid-cols-2 gap-4",
-                                          children: [
-                                            _jsxs("div", {
-                                              className: "space-y-1.5",
-                                              children: [
-                                                _jsx(Label, {
-                                                  className:
-                                                    "text-[10px] uppercase tracking-wider text-muted-foreground font-bold",
-                                                  children: "Document Name",
-                                                }),
-                                                _jsx(Input, {
-                                                  value: newDocForm.name,
-                                                  onChange: (e) =>
-                                                    setNewDocForm(
-                                                      Object.assign(
-                                                        Object.assign(
-                                                          {},
-                                                          newDocForm,
-                                                        ),
-                                                        {
-                                                          name: e.target.value,
-                                                        },
-                                                      ),
-                                                    ),
-                                                  placeholder: "Invoice #1234",
-                                                  className: "h-8 text-sm",
-                                                }),
-                                              ],
-                                            }),
-                                            _jsxs("div", {
-                                              className: "space-y-1.5",
-                                              children: [
-                                                _jsx(Label, {
-                                                  className:
-                                                    "text-[10px] uppercase tracking-wider text-muted-foreground font-bold",
-                                                  children: "Document Type",
-                                                }),
-                                                _jsxs(Select, {
-                                                  value:
-                                                    newDocForm.documentType,
-                                                  onValueChange: (v) =>
-                                                    setNewDocForm(
-                                                      Object.assign(
-                                                        Object.assign(
-                                                          {},
-                                                          newDocForm,
-                                                        ),
-                                                        { documentType: v },
-                                                      ),
-                                                    ),
-                                                  children: [
-                                                    _jsx(SelectTrigger, {
-                                                      className: "h-8 text-sm",
-                                                      children: _jsx(
-                                                        SelectValue,
-                                                        {
-                                                          placeholder:
-                                                            "Select type",
-                                                        },
-                                                      ),
-                                                    }),
-                                                    _jsx(SelectContent, {
-                                                      children:
-                                                        documentTypes.length > 0
-                                                          ? documentTypes.map(
-                                                              (type) =>
-                                                                _jsx(
-                                                                  SelectItem,
-                                                                  {
-                                                                    value: type
-                                                                      .toLowerCase()
-                                                                      .replace(
-                                                                        / /g,
-                                                                        "_",
-                                                                      ),
-                                                                    children:
-                                                                      type,
-                                                                  },
-                                                                  type,
-                                                                ),
-                                                            )
-                                                          : _jsx(SelectItem, {
-                                                              value: "other",
-                                                              children: "Other",
-                                                            }),
-                                                    }),
-                                                  ],
-                                                }),
-                                              ],
-                                            }),
-                                          ],
-                                        }),
-                                        _jsx("div", {
-                                          className: "flex justify-end",
-                                          children: _jsx(Button, {
-                                            size: "sm",
-                                            className:
-                                              "h-8 text-xs bg-primary hover:bg-primary/90",
-                                            disabled:
-                                              docUploading ||
-                                              !newDocForm.name ||
-                                              !newDocForm.documentType,
-                                            onClick: handleUploadDocument,
-                                            children: docUploading
-                                              ? "Uploading..."
-                                              : "Save Document",
-                                          }),
-                                        }),
-                                      ],
-                                    }),
-                                  }),
-                              }),
-                              selectedShipment.documents.length === 0
-                                ? _jsxs("div", {
-                                    className:
-                                      "text-center py-12 rounded-xl border border-dashed border-border/60",
-                                    children: [
-                                      _jsx(FileText, {
-                                        className:
-                                          "h-8 w-8 text-muted-foreground/30 mx-auto mb-3",
-                                      }),
-                                      _jsx("p", {
-                                        className:
-                                          "text-sm text-muted-foreground",
-                                        children: "No documents uploaded yet",
-                                      }),
-                                      _jsx("p", {
-                                        className:
-                                          "text-[11px] text-muted-foreground/60 mt-1",
-                                        children:
-                                          "Upload required shipment documents above",
-                                      }),
-                                    ],
-                                  })
-                                : _jsx("div", {
-                                    className: "space-y-2",
-                                    children: selectedShipment.documents.map(
-                                      (d) =>
-                                        _jsxs(
-                                          "div",
-                                          {
-                                            className:
-                                              "flex items-center gap-3 p-3 rounded-lg border border-border/50 hover:bg-accent/20 transition-colors group",
-                                            children: [
-                                              _jsx("div", {
-                                                className:
-                                                  "flex h-8 w-8 items-center justify-center rounded-lg bg-teal/10",
-                                                children: _jsx(FileText, {
-                                                  className:
-                                                    "h-4 w-4 text-teal",
-                                                }),
-                                              }),
-                                              _jsxs("div", {
-                                                className: "flex-1 min-w-0",
-                                                children: [
-                                                  _jsx("p", {
-                                                    className:
-                                                      "text-sm font-medium truncate",
-                                                    children: d.name,
-                                                  }),
-                                                  _jsxs("div", {
-                                                    className:
-                                                      "flex items-center gap-2 mt-0.5",
-                                                    children: [
-                                                      _jsx("p", {
-                                                        className:
-                                                          "text-[11px] text-muted-foreground",
-                                                        children: d.documentType
-                                                          .replace(/_/g, " ")
-                                                          .replace(
-                                                            /\b\w/g,
-                                                            (l) =>
-                                                              l.toUpperCase(),
-                                                          ),
-                                                      }),
-                                                      _jsx("span", {
-                                                        className:
-                                                          "text-[11px] text-muted-foreground/40",
-                                                        children: "\u2022",
-                                                      }),
-                                                      _jsx("p", {
-                                                        className:
-                                                          "text-[11px] text-muted-foreground",
-                                                        children: format(
-                                                          new Date(d.createdAt),
-                                                          "MMM d, yyyy",
-                                                        ),
-                                                      }),
-                                                    ],
-                                                  }),
-                                                ],
-                                              }),
-                                              _jsxs("div", {
-                                                className:
-                                                  "flex items-center gap-2",
-                                                children: [
-                                                  _jsx(Badge, {
-                                                    variant: d.isVerified
-                                                      ? "default"
-                                                      : "outline",
-                                                    className: cn(
-                                                      "text-[10px]",
-                                                      d.isVerified
-                                                        ? "bg-emerald-500 hover:bg-emerald-600"
-                                                        : "text-muted-foreground",
-                                                    ),
-                                                    children: d.isVerified
-                                                      ? "Verified"
-                                                      : "Pending",
-                                                  }),
-                                                  _jsx(Button, {
-                                                    variant: "ghost",
-                                                    size: "icon",
-                                                    className:
-                                                      "h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity",
-                                                    children: _jsx(Eye, {
-                                                      className: "h-3.5 w-3.5",
-                                                    }),
-                                                  }),
-                                                ],
-                                              }),
-                                            ],
-                                          },
-                                          d.id,
-                                        ),
-                                    ),
-                                  }),
-                            ],
-                          }),
-                          _jsx(TabsContent, {
-                            value: "expenses",
-                            className: "mt-2",
-                            children:
-                              selectedShipment.expenses.length === 0
-                                ? _jsx("p", {
-                                    className:
-                                      "text-sm text-muted-foreground text-center py-8",
-                                    children: "No expenses",
-                                  })
-                                : _jsx("div", {
-                                    className: "space-y-2",
-                                    children: selectedShipment.expenses.map(
-                                      (e) =>
-                                        _jsxs(
-                                          "div",
-                                          {
-                                            className:
-                                              "flex items-center gap-3 p-3 rounded-lg border border-border/50 hover:bg-accent/20 transition-colors",
-                                            children: [
-                                              _jsx("div", {
-                                                className:
-                                                  "flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/30",
-                                                children: _jsx(DollarSign, {
-                                                  className:
-                                                    "h-4 w-4 text-emerald-600",
-                                                }),
-                                              }),
-                                              _jsxs("div", {
-                                                className: "flex-1",
-                                                children: [
-                                                  _jsx("p", {
-                                                    className:
-                                                      "text-sm font-medium",
-                                                    children: e.category
-                                                      .replace(/_/g, " ")
-                                                      .replace(/\b\w/g, (l) =>
-                                                        l.toUpperCase(),
-                                                      ),
-                                                  }),
-                                                  e.description &&
-                                                    _jsx("p", {
-                                                      className:
-                                                        "text-[11px] text-muted-foreground",
-                                                      children: e.description,
-                                                    }),
-                                                ],
-                                              }),
-                                              _jsxs("div", {
-                                                className: "text-right",
-                                                children: [
-                                                  _jsx("p", {
-                                                    className:
-                                                      "text-sm font-medium",
-                                                    children: currencyFmt(
-                                                      e.amount,
-                                                      e.currency,
-                                                    ),
-                                                  }),
-                                                  _jsx(Badge, {
-                                                    variant: "outline",
-                                                    className: cn(
-                                                      "text-[9px]",
-                                                      e.paymentStatus === "paid"
-                                                        ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-                                                        : e.paymentStatus ===
-                                                            "overdue"
-                                                          ? "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                                                          : "",
-                                                    ),
-                                                    children: e.paymentStatus,
-                                                  }),
-                                                ],
-                                              }),
-                                            ],
-                                          },
-                                          e.id,
-                                        ),
-                                    ),
-                                  }),
-                          }),
-                        ],
-                      }),
-                    ],
-                  })
-                : null,
-          ],
-        }),
-      }),
-      _jsx(Dialog, {
-        open: newShipmentOpen,
-        onOpenChange: setNewShipmentOpen,
-        children: _jsxs(DialogContent, {
-          className:
-            "max-w-lg h-[calc(100svh-1rem)] max-h-none grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:h-[80svh]",
-          children: [
-            _jsxs(DialogHeader, {
-              className: "border-b px-2 pb-2 pt-2 pr-14",
-              children: [
-                _jsx(DialogTitle, {
-                  children: editingId ? "Edit Shipment" : "Create New Shipment",
-                }),
-                _jsx(DialogDescription, {
-                  children: editingId
-                    ? "Update shipment details"
-                    : "Enter shipment details to create a new draft shipment",
-                }),
-              ],
-            }),
-            _jsx(ScrollArea, {
-              className: "h-full min-h-0 px-2 pb-1",
-              children: _jsxs("div", {
-                className: "space-y-3 pt-2",
-                children: [
-                  _jsxs("div", {
-                      className: "rounded-lg border bg-muted/20 p-3 space-y-3",
-                      children: [
-                        _jsxs("div", {
-                          children: [
-                            _jsx(Label, {
-                              className: "text-xs font-semibold",
-                              children: "Shipment Entry Method",
-                            }),
-                            _jsx("p", {
-                              className: "text-[11px] text-muted-foreground mt-0.5",
-                              children:
-                                "Choose whether carrier details should be fetched or entered manually.",
-                            }),
-                          ],
-                        }),
-                        _jsxs("div", {
-                          className: "grid grid-cols-2 gap-2",
-                          children: [
-                            _jsxs("button", {
-                              type: "button",
-                              onClick: () => {
-                                setEntryMode("automatic");
-                                setTrackingFetchState("idle");
-                                setTrackingFetchMessage("");
-                                lastAutomaticLookup.current = "";
-                              },
-                              className: cn(
-                                "flex items-start gap-2 rounded-md border p-2.5 text-left transition-colors",
-                                entryMode === "automatic"
-                                  ? "border-teal-500 bg-teal-500/10 text-teal-800 dark:text-teal-200"
-                                  : "bg-background hover:bg-muted/50",
-                              ),
-                              children: [
-                                _jsx(WandSparkles, {
-                                  className: "h-4 w-4 mt-0.5 shrink-0",
-                                }),
-                                _jsxs("span", {
-                                  children: [
-                                    _jsx("span", {
-                                      className: "block text-xs font-semibold",
-                                      children: "Automatic Fetch",
-                                    }),
-                                    _jsx("span", {
-                                      className:
-                                        "block text-[10px] opacity-75 mt-0.5",
-                                      children: "Fill from Maersk, MSC, or Hapag-Lloyd",
-                                    }),
-                                  ],
-                                }),
-                              ],
-                            }),
-                            _jsxs("button", {
-                              type: "button",
-                              onClick: () => {
-                                setEntryMode("manual");
-                                setTrackingFetchState("idle");
-                                setTrackingFetchMessage("");
-                              },
-                              className: cn(
-                                "flex items-start gap-2 rounded-md border p-2.5 text-left transition-colors",
-                                entryMode === "manual"
-                                  ? "border-teal-500 bg-teal-500/10 text-teal-800 dark:text-teal-200"
-                                  : "bg-background hover:bg-muted/50",
-                              ),
-                              children: [
-                                _jsx(Keyboard, {
-                                  className: "h-4 w-4 mt-0.5 shrink-0",
-                                }),
-                                _jsxs("span", {
-                                  children: [
-                                    _jsx("span", {
-                                      className: "block text-xs font-semibold",
-                                      children: "Manual Entry",
-                                    }),
-                                    _jsx("span", {
-                                      className:
-                                        "block text-[10px] opacity-75 mt-0.5",
-                                      children: "Enter every field yourself",
-                                    }),
-                                  ],
-                                }),
-                              ],
-                            }),
-                          ],
-                        }),
-                      ],
-                    }),
-                  _jsxs("div", {
-                    className: "grid grid-cols-2 gap-4",
-                    children: [
-                      _jsxs("div", {
-                        className: "col-span-2 sm:col-span-1",
-                        children: [
-                          _jsx(Label, {
-                            className: "text-xs",
-                            children: "Importer Company (Client) *",
-                          }),
-                          _jsxs(Select, {
-                            value: newForm.companyId,
-                            onValueChange: (v) =>
-                              setNewForm(
-                                Object.assign(Object.assign({}, newForm), {
-                                  companyId: v,
-                                }),
-                              ),
-                            children: [
-                              _jsx(SelectTrigger, {
-                                className: "h-8 text-sm mt-1",
-                                children: _jsx(SelectValue, {
-                                  placeholder: "Select Importer",
-                                }),
-                              }),
-                              _jsx(SelectContent, {
-                                children: companies.map((c) =>
-                                  _jsx(
-                                    SelectItem,
-                                    { value: c.id, children: c.name },
-                                    c.id,
-                                  ),
-                                ),
-                              }),
-                            ],
-                          }),
-                        ],
-                      }),
-                      _jsxs("div", {
-                        className: "col-span-2 sm:col-span-1",
-                        children: [
-                          _jsx(Label, {
-                            className: "text-xs",
-                            children: "Exporter Company *",
-                          }),
-                          _jsxs(Select, {
-                            value: newForm.exporterCompanyId,
-                            onValueChange: (v) =>
-                              setNewForm(
-                                Object.assign(Object.assign({}, newForm), {
-                                  exporterCompanyId: v,
-                                }),
-                              ),
-                            children: [
-                              _jsx(SelectTrigger, {
-                                className: "h-8 text-sm mt-1",
-                                children: _jsx(SelectValue, {
-                                  placeholder: "Select Exporter",
-                                }),
-                              }),
-                              _jsx(SelectContent, {
-                                children: exporterCompanies.map((c) =>
-                                  _jsx(
-                                    SelectItem,
-                                    { value: c.id, children: c.name },
-                                    c.id,
-                                  ),
-                                ),
-                              }),
-                            ],
-                          }),
-                        ],
-                      }),
-                      _jsxs("div", {
-                        children: [
-                          _jsx(Label, {
-                            className: "text-xs",
-                            children: "BL Number *",
-                          }),
-                          _jsx(Input, {
-                            value: newForm.blNumber,
-                            onChange: (e) =>
-                              setNewForm(
-                                Object.assign(Object.assign({}, newForm), {
-                                  blNumber: e.target.value,
-                                }),
-                              ),
-                            className: "h-8 text-sm mt-1",
-                            placeholder: "BL-2025-001",
-                          }),
-                        ],
-                      }),
-                      _jsxs("div", {
-                        children: [
-                          _jsx(Label, {
-                            className: "text-xs",
-                            children: "Invoice Number *",
-                          }),
-                          _jsx(Input, {
-                            value: newForm.invoiceNumber,
-                            onChange: (e) =>
-                              setNewForm(
-                                Object.assign(Object.assign({}, newForm), {
-                                  invoiceNumber: e.target.value,
-                                }),
-                              ),
-                            className: "h-8 text-sm mt-1",
-                            placeholder: "INV-2026-001",
-                          }),
-                        ],
-                      }),
-                      _jsxs("div", {
-                        children: [
-                          _jsx(Label, {
-                            className: "text-xs",
-                            children: "Shipping Line *",
-                          }),
-                          _jsxs(Select, {
-                            value: newForm.shippingLine,
-                            onValueChange: (v) =>
-                              setNewForm(
-                                Object.assign(Object.assign({}, newForm), {
-                                  shippingLine: v,
-                                }),
-                              ),
-                            children: [
-                              _jsx(SelectTrigger, {
-                                className: "h-8 text-sm mt-1",
-                                children: _jsx(SelectValue, {
-                                  placeholder: "Select a shipping line",
-                                }),
-                              }),
-                              _jsx(SelectContent, {
-                                children: shippingLines.map((line) =>
-                                  _jsx(
-                                    SelectItem,
-                                    { value: line, children: line },
-                                    line,
-                                  ),
-                                ),
-                              }),
-                            ],
-                          }),
-                        ],
-                      }),
-                      _jsxs("div", {
-                        children: [
-                          _jsx(Label, {
-                            className: "text-xs",
-                            children: "Shipment Value",
-                          }),
-                          _jsx(Input, {
-                            type: "number",
-                            value: newForm.shipmentValue,
-                            onChange: (e) =>
-                              setNewForm(
-                                Object.assign(Object.assign({}, newForm), {
-                                  shipmentValue: e.target.value,
-                                }),
-                              ),
-                            className: "h-8 text-sm mt-1",
-                            placeholder: "0",
-                          }),
-                        ],
-                      }),
-                      !editingId &&
-                        entryMode === "automatic" &&
-                        _jsxs("div", {
-                          className:
-                            "col-span-2 rounded-md border px-3 py-2.5 bg-background",
-                          children: [
-                            _jsxs("div", {
-                              className:
-                                "flex items-center justify-between gap-3",
-                              children: [
-                                _jsxs("div", {
-                                  className: "flex items-start gap-2 min-w-0",
-                                  children: [
-                                    trackingFetchState === "loading"
-                                      ? _jsx(Loader2, {
-                                          className:
-                                            "h-4 w-4 mt-0.5 shrink-0 animate-spin text-teal-600",
-                                        })
-                                      : trackingFetchState === "success"
-                                        ? _jsx(CheckCircle2, {
-                                            className:
-                                              "h-4 w-4 mt-0.5 shrink-0 text-emerald-600",
-                                          })
-                                        : trackingFetchState === "error"
-                                          ? _jsx(AlertCircle, {
-                                              className:
-                                                "h-4 w-4 mt-0.5 shrink-0 text-red-600",
-                                            })
-                                          : _jsx(WandSparkles, {
-                                              className:
-                                                "h-4 w-4 mt-0.5 shrink-0 text-muted-foreground",
-                                            }),
-                                    _jsxs("div", {
-                                      className: "min-w-0",
-                                      children: [
-                                        _jsx("p", {
-                                          className: "text-xs font-medium",
-                                          children:
-                                            trackingFetchState === "idle"
-                                              ? "Enter BL and select supported carrier"
-                                              : trackingFetchState === "loading"
-                                                ? "Fetching carrier details"
-                                                : trackingFetchState ===
-                                                    "success"
-                                                  ? "Carrier details added"
-                                                  : "Could not fetch details",
-                                        }),
-                                        _jsx("p", {
-                                          className: cn(
-                                            "text-[10px] mt-0.5 break-words",
-                                            trackingFetchState === "error"
-                                              ? "text-red-600"
-                                              : "text-muted-foreground",
-                                          ),
-                                          children:
-                                            trackingFetchMessage ||
-                                            "Vessel, ports, dates, status and containers will be filled automatically.",
-                                        }),
-                                      ],
-                                    }),
-                                  ],
-                                }),
-                                _jsxs(Button, {
-                                  type: "button",
-                                  variant: "outline",
-                                  size: "sm",
-                                  className: "h-7 text-[11px] shrink-0",
-                                  disabled:
-                                    trackingFetchState === "loading" ||
-                                    !newForm.blNumber.trim() ||
-                                    !carrierSupported(newForm.shippingLine),
-                                  onClick: () => {
-                                    lastAutomaticLookup.current = `${newForm.shippingLine}:${newForm.blNumber.trim().toUpperCase()}`;
-                                    void fetchTrackingDetails(
-                                      newForm.blNumber,
-                                      newForm.shippingLine,
-                                    );
-                                  },
-                                  children: [
-                                    _jsx(RefreshCw, {
-                                      className: cn(
-                                        "h-3 w-3 mr-1",
-                                        trackingFetchState === "loading" &&
-                                          "animate-spin",
-                                      ),
-                                    }),
-                                    trackingFetchState === "success"
-                                      ? "Refresh"
-                                      : "Fetch Now",
-                                  ],
-                                }),
-                              ],
-                            }),
-                          ],
-                        }),
-                      _jsxs("div", {
-                        children: [
-                          _jsx(Label, {
-                            className: "text-xs",
-                            children: "Vessel Name *",
-                          }),
-                          _jsx(Input, {
-                            value: newForm.vesselName,
-                            onChange: (e) =>
-                              setNewForm(
-                                Object.assign(Object.assign({}, newForm), {
-                                  vesselName: e.target.value,
-                                }),
-                              ),
-                            className: "h-8 text-sm mt-1",
-                          }),
-                        ],
-                      }),
-                      _jsxs("div", {
-                        children: [
-                          _jsx(Label, {
-                            className: "text-xs",
-                            children: "Origin Port *",
-                          }),
-                          _jsx(Input, {
-                            value: newForm.originPort,
-                            onChange: (e) =>
-                              setNewForm(
-                                Object.assign(Object.assign({}, newForm), {
-                                  originPort: e.target.value,
-                                }),
-                              ),
-                            className: "h-8 text-sm mt-1",
-                            placeholder: "Shanghai",
-                          }),
-                        ],
-                      }),
-                      _jsxs("div", {
-                        children: [
-                          _jsx(Label, {
-                            className: "text-xs",
-                            children: "Destination Port *",
-                          }),
-                          _jsx(Input, {
-                            value: newForm.destinationPort,
-                            onChange: (e) =>
-                              setNewForm(
-                                Object.assign(Object.assign({}, newForm), {
-                                  destinationPort: e.target.value,
-                                }),
-                              ),
-                            className: "h-8 text-sm mt-1",
-                            placeholder: "Nhava Sheva",
-                          }),
-                        ],
-                      }),
-                      _jsxs("div", {
-                        children: [
-                          _jsx(Label, {
-                            className: "text-xs",
-                            children: "ETD *",
-                          }),
-                          _jsx(Input, {
-                            type: "date",
-                            value: newForm.etd,
-                            onChange: (e) =>
-                              setNewForm(
-                                Object.assign(Object.assign({}, newForm), {
-                                  etd: e.target.value,
-                                }),
-                              ),
-                            className: "h-8 text-sm mt-1",
-                          }),
-                        ],
-                      }),
-                      _jsxs("div", {
-                        children: [
-                          _jsx(Label, {
-                            className: "text-xs",
-                            children: "ETA *",
-                          }),
-                          _jsx(Input, {
-                            type: "date",
-                            value: newForm.eta,
-                            onChange: (e) =>
-                              setNewForm(
-                                Object.assign(Object.assign({}, newForm), {
-                                  eta: e.target.value,
-                                }),
-                              ),
-                            className: "h-8 text-sm mt-1",
-                          }),
-                        ],
-                      }),
-                      _jsxs("div", {
-                        children: [
-                          _jsx(Label, {
-                            className: "text-xs",
-                            children: "Status",
-                          }),
-                          _jsxs(Select, {
-                            value: newForm.status,
-                            onValueChange: (v) =>
-                              setNewForm(
-                                Object.assign(Object.assign({}, newForm), {
-                                  status: v,
-                                }),
-                              ),
-                            children: [
-                              _jsx(SelectTrigger, {
-                                className: "h-8 text-sm mt-1",
-                                children: _jsx(SelectValue, {}),
-                              }),
-                              _jsx(SelectContent, {
-                                children: STATUSES.filter(
-                                  (s) => s.value !== "all",
-                                ).map((s) =>
-                                  _jsx(
-                                    SelectItem,
-                                    { value: s.value, children: s.label },
-                                    s.value,
-                                  ),
-                                ),
-                              }),
-                            ],
-                          }),
-                        ],
-                      }),
-                    ],
-                  }),
-                  _jsxs("div", {
-                    children: [
-                      _jsx(Label, {
-                        className: "text-xs",
-                        children: "Origin Country *",
-                      }),
-                      _jsx(Input, {
-                        value: newForm.originCountry,
-                        onChange: (e) =>
-                          setNewForm(
-                            Object.assign(Object.assign({}, newForm), {
-                              originCountry: e.target.value,
-                            }),
-                          ),
-                        className: "h-8 text-sm mt-1",
-                        placeholder: "China",
-                      }),
-                    ],
-                  }),
-                  _jsxs("div", {
-                    className: "grid grid-cols-1 sm:grid-cols-2 gap-4",
-                    children: [
-                      _jsxs("div", {
-                        children: [
-                          _jsx(Label, {
-                            className: "text-xs",
-                            children: "Goods Description",
-                          }),
-                          _jsx(Input, {
-                            value: newForm.goodsDescription,
-                            onChange: (e) =>
-                              setNewForm({
-                                ...newForm,
-                                goodsDescription: e.target.value,
-                              }),
-                            className: "h-8 text-sm mt-1",
-                            placeholder: "Main goods in this shipment",
-                          }),
-                        ],
-                      }),
-                      _jsxs("div", {
-                        children: [
-                          _jsx(Label, {
-                            className: "text-xs",
-                            children: "Notes",
-                          }),
-                          _jsx(Input, {
-                            value: newForm.notes,
-                            onChange: (e) =>
-                              setNewForm({
-                                ...newForm,
-                                notes: e.target.value,
-                              }),
-                            className: "h-8 text-sm mt-1",
-                            placeholder: "Shipment notes",
-                          }),
-                        ],
-                      }),
-                    ],
-                  }),
-                  _jsxs("div", {
-                    className: "border rounded-lg p-3 space-y-2",
-                    children: [
-                      _jsxs("div", {
-                        children: [
-                          _jsx(Label, {
-                            className: "text-xs font-semibold",
-                            children: "Tracking Notification Recipients",
-                          }),
-                          _jsx("p", {
-                            className: "text-[10px] text-muted-foreground mt-0.5",
-                            children:
-                              "All active admins are included automatically. Select additional people for status and ETA emails.",
-                          }),
-                        ],
-                      }),
-                      notificationUsers.length === 0
-                        ? _jsx("p", {
-                            className: "text-xs text-muted-foreground",
-                            children: "No active users are available.",
-                          })
-                        : _jsx("div", {
-                            className:
-                              "grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-36 overflow-y-auto",
-                            children: notificationUsers
-                              .filter(
-                                (user) =>
-                                  !["admin", "super_admin"].includes(user.role),
-                              )
-                              .map((user) =>
-                                _jsxs(
-                                  "label",
-                                  {
-                                    className:
-                                      "flex items-start gap-2 rounded-md border px-3 py-2 text-xs cursor-pointer",
-                                    children: [
-                                      _jsx("input", {
-                                        type: "checkbox",
-                                        className: "mt-0.5",
-                                        checked:
-                                          newForm.notificationUserIds.includes(
-                                            user.id,
-                                          ),
-                                        onChange: (event) =>
-                                          setNewForm({
-                                            ...newForm,
-                                            notificationUserIds: event.target
-                                              .checked
-                                              ? [
-                                                  ...newForm.notificationUserIds,
-                                                  user.id,
-                                                ]
-                                              : newForm.notificationUserIds.filter(
-                                                  (id) => id !== user.id,
-                                                ),
-                                          }),
-                                      }),
-                                      _jsxs("span", {
-                                        className: "min-w-0",
-                                        children: [
-                                          _jsx("span", {
-                                            className:
-                                              "block font-medium truncate",
-                                            children: user.name,
-                                          }),
-                                          _jsx("span", {
-                                            className:
-                                              "block text-[10px] text-muted-foreground truncate",
-                                            children: user.email,
-                                          }),
-                                        ],
-                                      }),
-                                    ],
-                                  },
-                                  user.id,
-                                ),
-                              ),
-                          }),
-                    ],
-                  }),
-                  _jsxs("div", {
-                      className: "border rounded-lg p-3 space-y-2",
-                      children: [
-                        _jsx(Label, {
-                          className: "text-xs font-semibold",
-                          children: "Documents Required",
-                        }),
-                        documentChecklist.length === 0
-                          ? _jsx("p", {
-                              className: "text-xs text-muted-foreground",
-                              children:
-                                "No document checklist items are configured.",
-                            })
-                          : _jsx("div", {
-                              className:
-                                "grid grid-cols-1 sm:grid-cols-2 gap-2",
-                              children: documentChecklist.map((document) =>
-                                _jsxs(
-                                  "label",
-                                  {
-                                    className:
-                                      "flex items-center gap-2 rounded-md border px-3 py-2 text-xs cursor-pointer",
-                                    children: [
-                                      _jsx("input", {
-                                        type: "checkbox",
-                                        checked:
-                                          newForm.requiredDocumentIds.includes(
-                                            document.id,
-                                          ),
-                                        onChange: (event) =>
-                                          setNewForm({
-                                            ...newForm,
-                                            requiredDocumentIds: event.target
-                                              .checked
-                                              ? [
-                                                  ...newForm.requiredDocumentIds,
-                                                  document.id,
-                                                ]
-                                              : newForm.requiredDocumentIds.filter(
-                                                  (id) => id !== document.id,
-                                                ),
-                                          }),
-                                      }),
-                                      _jsx("span", {
-                                        className: "flex-1",
-                                        children: document.name,
-                                      }),
-                                      document.isRequired &&
-                                        _jsx(Badge, {
-                                          variant: "outline",
-                                          className: "text-[9px]",
-                                          children: "Required",
-                                        }),
-                                    ],
-                                  },
-                                  document.id,
-                                ),
-                              ),
-                            }),
-                      ],
-                    }),
-                  _jsxs("div", {
-                    className: "border-t pt-4",
-                    children: [
-                      _jsxs("div", {
-                        className: "flex items-center justify-between mb-3",
-                        children: [
-                          _jsx(Label, {
-                            className: "text-xs font-semibold",
-                            children: "Containers",
-                          }),
-                          _jsxs(Button, {
-                            type: "button",
-                            onClick: () =>
-                              setNewForm(
-                                Object.assign(Object.assign({}, newForm), {
-                                  containers: [
-                                    ...newForm.containers,
-                                    {
-                                      containerNumber: "",
-                                      size: "20FT",
-                                      type: "Dry Container",
-                                      currentWeight: "",
-                                      packageCount: "",
-                                      measurementType: "weight",
-                                      goodsDescription: "",
-                                    },
-                                  ],
-                                }),
-                              ),
-                            className: "h-6 text-xs px-2 shrink-0",
-                            size: "sm",
-                            children: [
-                              _jsx(Plus, { className: "w-3 h-3 mr-1" }),
-                              " Add Container",
-                            ],
-                          }),
-                        ],
-                      }),
-                      newForm.containers.length === 0
-                        ? _jsx("p", {
-                            className: "text-xs text-gray-500",
-                            children: "No containers added yet",
-                          })
-                        : _jsx("div", {
-                            className: "space-y-2",
-                            children: newForm.containers.map((container, idx) =>
-                              _jsxs(
-                                "div",
-                                {
-                                  className:
-                                    "flex flex-wrap gap-3 relative rounded-lg border p-3 pt-6",
-                                  children: [
-                                    _jsxs("div", {
-                                      className: "flex-1 min-w-[120px]",
-                                      children: [
-                                        _jsx(Label, {
-                                          className: "text-xs",
-                                          children: "Container Number *",
-                                        }),
-                                        _jsx(Input, {
-                                          value: container.containerNumber,
-                                          onChange: (e) => {
-                                            const newContainers = [
-                                              ...newForm.containers,
-                                            ];
-                                            newContainers[idx].containerNumber =
-                                              e.target.value;
-                                            setNewForm(
-                                              Object.assign(
-                                                Object.assign({}, newForm),
-                                                { containers: newContainers },
-                                              ),
-                                            );
-                                          },
-                                          className: "h-7 text-xs mt-1",
-                                          placeholder: "CONT-123456",
-                                        }),
-                                      ],
-                                    }),
-                                    _jsxs("div", {
-                                      className: "w-full sm:w-[190px] shrink-0",
-                                      children: [
-                                        _jsx(Label, {
-                                          className: "text-xs",
-                                          children: "Size / Type *",
-                                        }),
-                                        _jsxs(Select, {
-                                          value: containerOptionValue(
-                                            container.size,
-                                            container.type,
-                                          ),
-                                          onValueChange: (v) => {
-                                            const option =
-                                              parseContainerOptionValue(v);
-                                            const newContainers = [
-                                              ...newForm.containers,
-                                            ];
-                                            newContainers[idx].size =
-                                              option.size;
-                                            newContainers[idx].type =
-                                              option.type;
-                                            setNewForm(
-                                              Object.assign(
-                                                Object.assign({}, newForm),
-                                                { containers: newContainers },
-                                              ),
-                                            );
-                                          },
-                                          children: [
-                                            _jsx(SelectTrigger, {
-                                              className: "h-7 text-xs mt-1",
-                                              children: _jsx(SelectValue, {}),
-                                            }),
-                                            _jsx(SelectContent, {
-                                              children: containerSizes.flatMap(
-                                                (size) =>
-                                                  containerTypes.map((type) =>
-                                                    _jsx(
-                                                      SelectItem,
-                                                      {
-                                                        value:
-                                                          containerOptionValue(
-                                                            size,
-                                                            type,
-                                                          ),
-                                                        children: `${size} / ${type}`,
-                                                      },
-                                                      containerOptionValue(
-                                                        size,
-                                                        type,
-                                                      ),
-                                                    ),
-                                                  ),
-                                              ),
-                                            }),
-                                          ],
-                                        }),
-                                      ],
-                                    }),
-                                    _jsxs("div", {
-                                      className: "w-[100px] sm:w-[90px] shrink-0",
-                                      children: [
-                                        _jsx(Label, {
-                                          className: "text-xs",
-                                          children: "Weight",
-                                        }),
-                                        _jsx(Input, {
-                                          type: "number",
-                                          min: "0",
-                                          step: "0.01",
-                                          value: container.currentWeight || "",
-                                          onChange: (e) => {
-                                            const newContainers = [...newForm.containers];
-                                            newContainers[idx].currentWeight = e.target.value;
-                                            setNewForm({ ...newForm, containers: newContainers });
-                                          },
-                                          className: "h-7 text-xs mt-1",
-                                          placeholder: "kg",
-                                        })
-                                      ]
-                                    }),
-                                    _jsxs("div", {
-                                      className: "w-[100px] sm:w-[90px] shrink-0",
-                                      children: [
-                                        _jsx(Label, {
-                                          className: "text-xs",
-                                          children: "Nos",
-                                        }),
-                                        _jsx(Input, {
-                                          type: "number",
-                                          min: "0",
-                                          value: container.packageCount || "",
-                                          onChange: (e) => {
-                                            const newContainers = [...newForm.containers];
-                                            newContainers[idx].packageCount = e.target.value;
-                                            setNewForm({ ...newForm, containers: newContainers });
-                                          },
-                                          className: "h-7 text-xs mt-1",
-                                          placeholder: "0",
-                                        })
-                                      ]
-                                    }),
-                                    _jsxs("div", {
-                                      className: "w-full",
-                                      children: [
-                                        _jsx(Label, {
-                                          className: "text-xs",
-                                          children: "Container Goods",
-                                        }),
-                                        _jsx(Input, {
-                                          value:
-                                            container.goodsDescription || "",
-                                          onChange: (e) => {
-                                            const newContainers = [
-                                              ...newForm.containers,
-                                            ];
-                                            newContainers[
-                                              idx
-                                            ].goodsDescription = e.target.value;
-                                            setNewForm({
-                                              ...newForm,
-                                              containers: newContainers,
-                                            });
-                                          },
-                                          className: "h-7 text-xs mt-1",
-                                          placeholder:
-                                            "Goods description for this container",
-                                        }),
-                                      ],
-                                    }),
-                                    _jsx(Button, {
-                                      type: "button",
-                                      onClick: () =>
-                                        setNewForm(
-                                          Object.assign(
-                                            Object.assign({}, newForm),
-                                            {
-                                              containers:
-                                                newForm.containers.filter(
-                                                  (_, i) => i !== idx,
-                                                ),
-                                            },
-                                          ),
-                                        ),
-                                      variant: "ghost",
-                                      className:
-                                        "absolute top-1 right-1 h-7 px-2 text-xs text-red-600 hover:bg-red-50 hover:text-red-700 rounded-md",
-                                      size: "sm",
-                                      children: _jsx(X, {
-                                        className: "w-3 h-3",
-                                      }),
-                                    }),
-                                  ],
-                                },
-                                idx,
-                              ),
-                            ),
-                          }),
-                    ],
-                  }),
-                  _jsxs("div", {
-                    children: [
-                      _jsx(Label, {
-                        className: "text-xs",
-                        children: "Internal Notes",
-                      }),
-                      _jsx(Input, {
-                        value: newForm.internalNotes,
-                        onChange: (e) =>
-                          setNewForm(
-                            Object.assign(Object.assign({}, newForm), {
-                              internalNotes: e.target.value,
-                            }),
-                          ),
-                        className: "h-8 text-sm mt-1",
-                      }),
-                    ],
-                  }),
-                ],
-              }),
-            }),
-            _jsxs(DialogFooter, {
-              className: "border-t px-2 py-1",
-              children: [
-                _jsx(Button, {
-                  variant: "outline",
-                  onClick: () => setNewShipmentOpen(false),
-                  className: "h-8 text-xs",
-                  children: "Cancel",
-                }),
-                _jsx(Button, {
-                  onClick: saveShipment,
-                  disabled: !isFormValid(),
-                  className: "h-8 text-xs",
-                  children: editingId ? "Save Changes" : "Create Shipment",
-                }),
-              ],
-            }),
-          ],
-        }),
-      }),
-      _jsx(ConfirmDeleteDialog, { 
-        open: !!deleteShipmentObj, 
-        onOpenChange: (open) => !open && setDeleteShipmentObj(null), 
-        onConfirm: () => { 
-          if (deleteShipmentObj) { 
-            deleteShipment(deleteShipmentObj); 
-            setDeleteShipmentObj(null); 
-          } 
-        }, 
-        title: "Delete Shipment", 
-        description: deleteShipmentObj ? `Delete shipment ${deleteShipmentObj.shipmentNumber}? This will remove it from active shipment lists.` : "" 
-      }),
-    ],
+  const isDelayed = (s) => s.eta && new Date(s.eta) < new Date() && !["delivered", "closed"].includes(s.status);
+  const delayed = shipments.filter(isDelayed).length;
+  if (delayed > 0) kpis.push({ label: "Delayed", value: delayed, icon: AlertCircle });
+
+  // ─── Container management helpers ────────────────────────────────────
+  const addContainer = () => setNewForm((cur) => ({ ...cur, containers: [...cur.containers, { containerNumber: "", size: "20FT", type: "Dry Container", currentWeight: "", packageCount: "", measurementType: "weight", goodsDescription: "" }] }));
+  const removeContainer = (i) => setNewForm((cur) => ({ ...cur, containers: cur.containers.filter((_, idx) => idx !== i) }));
+  const updateContainer = (i, field, value) => setNewForm((cur) => {
+    const updated = [...cur.containers];
+    updated[i] = { ...updated[i], [field]: value };
+    return { ...cur, containers: updated };
   });
+
+  // ─── Render ──────────────────────────────────────────────────────────
+  return (
+    <>
+      <div className="space-y-5">
+        <PageHeader icon={Ship} title="Shipments" description="Track and manage all import and export shipments">
+          <Button variant="outline" size="sm" className="h-9">Export</Button>
+          {canCreate && <Button size="sm" className="h-9" onClick={openCreate}><Plus className="mr-1.5 h-4 w-4" />New Shipment</Button>}
+        </PageHeader>
+
+        {/* KPI Summary */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5">
+          {kpis.map((kpi) => (
+            <StatCard key={kpi.label} label={kpi.label} value={kpi.value} icon={kpi.icon} compact className="p-3" />
+          ))}
+        </div>
+
+        {/* Filters */}
+        <Card>
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="relative flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search shipment, BL, booking..."
+                  value={searchQuery}
+                  onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
+                  className="h-9 pl-9 text-sm"
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
+                <SelectTrigger className="h-9 w-full sm:w-[170px] text-sm"><SelectValue placeholder="All Statuses" /></SelectTrigger>
+                <SelectContent>{STATUSES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
+              </Select>
+              <Select value={containerTypeFilter} onValueChange={(v) => { setContainerTypeFilter(v); setPage(1); }}>
+                <SelectTrigger className="h-9 w-full sm:w-[150px] text-sm"><SelectValue placeholder="All Types" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  {containerTypes.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={containerSizeFilter} onValueChange={(v) => { setContainerSizeFilter(v); setPage(1); }}>
+                <SelectTrigger className="h-9 w-full sm:w-[150px] text-sm"><SelectValue placeholder="All Sizes" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Sizes</SelectItem>
+                  {containerSizes.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <div className="flex items-center gap-2">
+                <div className="flex rounded-lg border p-0.5">
+                  <Button variant={viewMode === "table" ? "secondary" : "ghost"} size="sm" className="h-7 px-2 text-xs" onClick={() => setViewMode("table")}>
+                    <List className="h-3.5 w-3.5 mr-1" />Table
+                  </Button>
+                  <Button variant={viewMode === "kanban" ? "secondary" : "ghost"} size="sm" className="h-7 px-2 text-xs" onClick={() => setViewMode("kanban")}>
+                    <LayoutGrid className="h-3.5 w-3.5 mr-1" />Kanban
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Status chips */}
+        <div className="flex gap-1.5 overflow-x-auto pb-1">
+          {kanbanColumns.map((status) => {
+            const count = statusCounts[status] || 0;
+            if (statusFilter !== "all" && statusFilter !== status) return null;
+            const isActive = statusFilter === status;
+            return (
+              <button
+                key={status}
+                onClick={() => { setStatusFilter(isActive ? "all" : status); setPage(1); }}
+                className={cn(
+                  "flex shrink-0 items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium whitespace-nowrap transition-colors",
+                  isActive ? "bg-primary/10 text-primary border-primary/20" : "bg-card text-muted-foreground border-border hover:bg-muted/50 hover:text-foreground"
+                )}
+              >
+                <StatusBadge status={status} dot={false} className="border-0 px-0 text-xs" />
+                <span className={cn("inline-flex h-4 min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold tabular-nums", isActive ? "bg-primary/15" : "bg-muted text-muted-foreground")}>{count}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Content */}
+        {loading ? (
+          <Card><CardContent className="p-5"><TableSkeleton rows={8} cols={6} /></CardContent></Card>
+        ) : viewMode === "table" ? (
+          <Card className="overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    <th className="px-4 py-3 font-semibold">Shipment</th>
+                    <th className="hidden px-4 py-3 font-semibold md:table-cell">Booking / BL</th>
+                    <th className="hidden px-4 py-3 font-semibold lg:table-cell">Shipping Line</th>
+                    <th className="px-4 py-3 font-semibold">Route</th>
+                    <th className="hidden px-4 py-3 font-semibold sm:table-cell">ETD / ETA</th>
+                    <th className="px-4 py-3 font-semibold">Status</th>
+                    <th className="w-10 px-4 py-3" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {shipments.length === 0 ? (
+                    <tr>
+                      <td colSpan={7}>
+                        <EmptyState icon={Inbox} title="No shipments found" description="Try adjusting your search or filters, or create a new shipment." compact className="py-16" />
+                      </td>
+                    </tr>
+                  ) : shipments.map((s, i) => (
+                    <tr
+                      key={s.id}
+                      onClick={() => openDetail(s.id)}
+                      className="cursor-pointer border-b border-border/50 transition-colors hover:bg-muted/30 last:border-0"
+                    >
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/8 text-primary ring-1 ring-primary/15">
+                            <Ship className="h-4 w-4" strokeWidth={1.8} />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-foreground">{s.shipmentNumber}</p>
+                            <div className="text-[10px] text-muted-foreground leading-tight">
+                              {s.company && <span>I: {s.company.name}</span>}
+                              {s.exporterCompany && <span className="ml-1.5">E: {s.exporterCompany.name}</span>}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="hidden px-4 py-3 md:table-cell">
+                        <p className="text-xs text-foreground">{s.bookingNumber || "—"}</p>
+                        <p className="text-[11px] text-muted-foreground">{s.blNumber || "—"}</p>
+                      </td>
+                      <td className="hidden px-4 py-3 text-xs lg:table-cell">{s.shippingLine || "—"}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1 text-xs">
+                          <span className="font-medium text-foreground">{s.originPort || "?"}</span>
+                          <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                          <span className="font-medium text-foreground">{s.destinationPort || "?"}</span>
+                        </div>
+                      </td>
+                      <td className="hidden px-4 py-3 sm:table-cell">
+                        <p className="text-xs text-foreground">{s.etd ? format(new Date(s.etd), "MMM d") : "—"}</p>
+                        <p className={cn("text-[11px]", isDelayed(s) ? "text-danger" : "text-muted-foreground")}>
+                          {s.eta ? format(new Date(s.eta), "MMM d") : "—"}
+                          {isDelayed(s) && " (late)"}
+                        </p>
+                      </td>
+                      <td className="px-4 py-3"><StatusBadge status={s.status} /></td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-0.5" onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-3.5 w-3.5" /></Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-40">
+                              <DropdownMenuItem onClick={() => openDetail(s.id)}><Eye className="mr-2 h-4 w-4" />View</DropdownMenuItem>
+                              {canUpdate && <DropdownMenuItem onClick={() => openEdit(s)}><Pencil className="mr-2 h-4 w-4" />Edit</DropdownMenuItem>}
+                              {canDelete && <DropdownMenuSeparator />}
+                              {canDelete && <DropdownMenuItem onClick={() => setDeleteShipmentObj(s)} className="text-danger"><Trash2 className="mr-2 h-4 w-4" />Delete</DropdownMenuItem>}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {totalCount > 20 && (
+              <div className="flex items-center justify-between border-t border-border px-4 py-3">
+                <p className="text-xs text-muted-foreground tabular-nums">
+                  Showing <span className="font-semibold text-foreground">{(page - 1) * 20 + 1}</span>-
+                  <span className="font-semibold text-foreground">{Math.min(page * 20, totalCount)}</span> of{" "}
+                  <span className="font-semibold text-foreground">{totalCount}</span>
+                </p>
+                <div className="flex items-center gap-1">
+                  <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(page - 1)} className="h-8 text-xs gap-1">
+                    <ArrowRight className="h-3.5 w-3.5 rotate-180" />Prev
+                  </Button>
+                  <span className="px-2 text-xs font-semibold tabular-nums text-muted-foreground">{page} / {Math.max(1, Math.ceil(totalCount / 20))}</span>
+                  <Button variant="outline" size="sm" disabled={page * 20 >= totalCount} onClick={() => setPage(page + 1)} className="h-8 text-xs gap-1">
+                    Next<ArrowRight className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </Card>
+        ) : (
+          /* Kanban View */
+          <div className="flex gap-4 overflow-x-auto pb-4">
+            {kanbanColumns.map((status) => {
+              const items = shipments.filter((s) => statusFilter === "all" ? s.status === status : s.status === statusFilter);
+              if (items.length === 0 && statusFilter !== "all") return null;
+              return (
+                <div key={status} className="min-w-[260px] flex-1">
+                  <div className="mb-2 flex items-center gap-2 px-1">
+                    <StatusBadge status={status} />
+                    <span className="text-xs font-semibold tabular-nums text-muted-foreground">{items.length}</span>
+                  </div>
+                  <div className="space-y-2">
+                    {items.map((s) => (
+                      <div
+                        key={s.id}
+                        onClick={() => openDetail(s.id)}
+                        className="cursor-pointer rounded-lg border bg-card p-3 shadow-xs transition-all hover:border-primary/20 hover:shadow-sm"
+                      >
+                        <div className="mb-1.5">
+                          <span className="text-sm font-semibold text-foreground">{s.shipmentNumber}</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
+                          <Globe className="h-3 w-3" />
+                          <span>{s.originPort || "?"}</span>
+                          <ArrowRight className="h-2.5 w-2.5" />
+                          <span>{s.destinationPort || "?"}</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Clock className="h-3 w-3" />
+                          <span>ETA: {s.eta ? format(new Date(s.eta), "MMM d") : "—"}</span>
+                        </div>
+                        <div className="mt-1.5 text-xs text-muted-foreground truncate">
+                          {s.company?.name || s.exporterCompany?.name || ""}
+                        </div>
+                      </div>
+                    ))}
+                    {items.length === 0 && statusFilter === "all" && (
+                      <div className="rounded-lg border border-dashed border-border p-4 text-center text-xs text-muted-foreground">No {statusLabelMap[status]} shipments</div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ─── Detail Modal ───────────────────────────────────────── */}
+      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+        <DialogContent className="w-full sm:max-w-2xl lg:max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="mb-6">
+            <div className="flex items-start justify-between">
+              <div>
+                <DialogTitle className="text-xl">{selectedShipment?.shipmentNumber || "Shipment Details"}</DialogTitle>
+                {selectedShipment && (
+                  <StatusBadge status={selectedShipment.status} />
+                )}
+              </div>
+            </div>
+          </DialogHeader>
+
+          {detailLoading ? (
+            <div className="space-y-4">
+              <div className="animate-shimmer h-6 w-48 rounded-lg" />
+              <div className="animate-shimmer h-20 w-full rounded-lg" />
+              <div className="animate-shimmer h-20 w-full rounded-lg" />
+            </div>
+          ) : selectedShipment ? (
+            <Tabs defaultValue="overview" className="w-full">
+              <TabsList className="mb-4">
+                <TabsTrigger value="overview" className="text-xs">Overview</TabsTrigger>
+                <TabsTrigger value="containers" className="text-xs">Containers ({selectedShipment.containers?.length || 0})</TabsTrigger>
+                <TabsTrigger value="documents" className="text-xs">Documents</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="overview" className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Identifiers */}
+                  <div className="rounded-xl border border-border/50 bg-card/40 p-4 shadow-sm flex flex-col gap-3">
+                    <div className="flex items-center gap-2 text-primary">
+                      <FileText className="h-4 w-4" />
+                      <h4 className="text-sm font-semibold tracking-tight">Identifiers</h4>
+                    </div>
+                    <div className="space-y-2.5">
+                      <div className="flex justify-between items-center text-sm"><span className="text-muted-foreground">BL Number</span><span className="font-medium text-foreground">{selectedShipment.blNumber || "—"}</span></div>
+                      <div className="flex justify-between items-center text-sm"><span className="text-muted-foreground">Booking</span><span className="font-medium text-foreground">{selectedShipment.bookingNumber || "—"}</span></div>
+                      <div className="flex justify-between items-center text-sm"><span className="text-muted-foreground">Invoice</span><span className="font-medium text-foreground">{selectedShipment.invoiceNumber || "—"}</span></div>
+                    </div>
+                  </div>
+
+                  {/* Route */}
+                  <div className="rounded-xl border border-border/50 bg-card/40 p-4 shadow-sm flex flex-col gap-3">
+                    <div className="flex items-center gap-2 text-primary">
+                      <MapPin className="h-4 w-4" />
+                      <h4 className="text-sm font-semibold tracking-tight">Route</h4>
+                    </div>
+                    <div className="space-y-2.5">
+                      <div className="flex flex-col gap-0.5 text-sm"><span className="text-[11px] font-medium uppercase text-muted-foreground">Origin</span><span className="font-medium text-foreground">{selectedShipment.originPort || "—"} {selectedShipment.originCountry ? `(${selectedShipment.originCountry})` : ""}</span></div>
+                      <div className="flex flex-col gap-0.5 text-sm"><span className="text-[11px] font-medium uppercase text-muted-foreground">Destination</span><span className="font-medium text-foreground">{selectedShipment.destinationPort || "—"}</span></div>
+                    </div>
+                  </div>
+
+                  {/* Schedule */}
+                  <div className="rounded-xl border border-border/50 bg-card/40 p-4 shadow-sm flex flex-col gap-3">
+                    <div className="flex items-center gap-2 text-primary">
+                      <Clock className="h-4 w-4" />
+                      <h4 className="text-sm font-semibold tracking-tight">Schedule</h4>
+                    </div>
+                    <div className="space-y-2.5">
+                      <div className="flex justify-between items-center text-sm"><span className="text-muted-foreground">ETD</span><span className="font-medium text-foreground">{selectedShipment.etd ? format(new Date(selectedShipment.etd), "MMM d, yyyy") : "—"}</span></div>
+                      <div className="flex justify-between items-center text-sm"><span className="text-muted-foreground">ETA</span><span className="font-medium text-foreground">{selectedShipment.eta ? format(new Date(selectedShipment.eta), "MMM d, yyyy") : "—"}</span></div>
+                    </div>
+                  </div>
+
+                  {/* Carrier */}
+                  <div className="rounded-xl border border-border/50 bg-card/40 p-4 shadow-sm flex flex-col gap-3">
+                    <div className="flex items-center gap-2 text-primary">
+                      <Ship className="h-4 w-4" />
+                      <h4 className="text-sm font-semibold tracking-tight">Carrier</h4>
+                    </div>
+                    <div className="space-y-2.5">
+                      <div className="flex justify-between items-center text-sm"><span className="text-muted-foreground">Shipping Line</span><span className="font-medium text-foreground">{selectedShipment.shippingLine || "—"}</span></div>
+                      <div className="flex justify-between items-center text-sm"><span className="text-muted-foreground">Vessel</span><span className="font-medium text-foreground">{selectedShipment.vesselName || "—"}</span></div>
+                    </div>
+                  </div>
+
+                  {/* Parties */}
+                  <div className="rounded-xl border border-border/50 bg-card/40 p-4 shadow-sm flex flex-col gap-3 md:col-span-2">
+                    <div className="flex items-center gap-2 text-primary">
+                      <Building2 className="h-4 w-4" />
+                      <h4 className="text-sm font-semibold tracking-tight">Parties</h4>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="flex flex-col gap-1 text-sm bg-muted/20 border border-border/40 p-3 rounded-lg"><span className="text-[11px] font-medium uppercase text-muted-foreground">Importer</span><span className="font-medium text-foreground">{selectedShipment.company?.name || "—"}</span></div>
+                      <div className="flex flex-col gap-1 text-sm bg-muted/20 border border-border/40 p-3 rounded-lg"><span className="text-[11px] font-medium uppercase text-muted-foreground">Exporter</span><span className="font-medium text-foreground">{selectedShipment.exporterCompany?.name || "—"}</span></div>
+                    </div>
+                  </div>
+                </div>
+
+                {(selectedShipment.goodsDescription || selectedShipment.notes) && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {selectedShipment.goodsDescription && (
+                      <div className="rounded-xl border border-border/50 bg-card/40 p-4 shadow-sm flex flex-col gap-2">
+                        <div className="flex items-center gap-2 text-primary mb-1">
+                          <Box className="h-4 w-4" />
+                          <h4 className="text-sm font-semibold tracking-tight">Goods Description</h4>
+                        </div>
+                        <p className="text-sm text-foreground/80 leading-relaxed">{selectedShipment.goodsDescription}</p>
+                      </div>
+                    )}
+                    {selectedShipment.notes && (
+                      <div className="rounded-xl border border-border/50 bg-card/40 p-4 shadow-sm flex flex-col gap-2">
+                        <div className="flex items-center gap-2 text-primary mb-1">
+                          <FileText className="h-4 w-4" />
+                          <h4 className="text-sm font-semibold tracking-tight">Notes</h4>
+                        </div>
+                        <p className="text-sm text-foreground/80 leading-relaxed">{selectedShipment.notes}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="containers">
+                {selectedShipment.containers?.length > 0 ? (
+                  <div className="space-y-2">
+                    {selectedShipment.containers.map((c, i) => (
+                      <div key={i} className="rounded-lg border bg-card p-3">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm font-semibold text-foreground">{c.containerNumber || "—"}</span>
+                          <StatusBadge status={c.status || "active"} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <span className="text-muted-foreground">Type: <span className="text-foreground font-medium">{c.containerType || c.type || "—"}</span></span>
+                          <span className="text-muted-foreground">Size: <span className="text-foreground font-medium">{c.containerSize || c.size || "—"}</span></span>
+                          <span className="text-muted-foreground">Weight: <span className="text-foreground font-medium">{c.currentWeight || "—"}</span></span>
+                          <span className="text-muted-foreground">Seal: <span className="text-foreground font-medium">{c.sealNumber || "—"}</span></span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyState icon={Box} title="No containers" description="No containers linked to this shipment." compact />
+                )}
+              </TabsContent>
+
+              <TabsContent value="documents">
+                <EmptyState icon={FileText} title="No documents" description="Documents will appear here once uploaded." compact />
+              </TabsContent>
+            </Tabs>
+          ) : null}
+
+          <div className="mt-6 flex items-center gap-2 border-t border-border pt-4">
+            {canUpdate && (
+              <Button variant="outline" size="sm" onClick={() => selectedShipment && openEdit(selectedShipment)}>
+                <Pencil className="mr-1.5 h-4 w-4" />Edit
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={() => setDetailOpen(false)}>Close</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Create / Edit Dialog ───────────────────────────────── */}
+      <Dialog open={newShipmentOpen} onOpenChange={(open) => { if (!open) { setNewShipmentOpen(false); setEditingId(null); } }}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingId ? "Edit Shipment" : "Create New Shipment"}</DialogTitle>
+            <DialogDescription>{editingId ? "Update shipment details." : "Register a new import or export shipment."}</DialogDescription>
+          </DialogHeader>
+
+          {/* Entry mode selector (for new shipments) */}
+          {!editingId && (
+            <div className="flex gap-2">
+              <Button variant={entryMode === "automatic" ? "default" : "outline"} size="sm" onClick={() => setEntryMode("automatic")} className="h-8 text-xs">
+                <RefreshCw className="mr-1.5 h-3.5 w-3.5" />Auto-fetch from Carrier
+              </Button>
+              <Button variant={entryMode === "manual" ? "default" : "outline"} size="sm" onClick={() => setEntryMode("manual")} className="h-8 text-xs">
+                <Pencil className="mr-1.5 h-3.5 w-3.5" />Manual Entry
+              </Button>
+            </div>
+          )}
+
+          {/* Tracking status */}
+          {trackingFetchState !== "idle" && (
+            <div className={cn("rounded-lg border px-3 py-2 text-xs", trackingFetchState === "loading" && "border-info/20 bg-info/5 text-info", trackingFetchState === "success" && "border-success/20 bg-success/5 text-success", trackingFetchState === "error" && "border-danger/20 bg-danger/5 text-danger")}>
+              {trackingFetchState === "loading" && <Loader2 className="mr-1.5 inline h-3 w-3 animate-spin" />}
+              {trackingFetchMessage}
+            </div>
+          )}
+
+          <div className="space-y-5">
+            {/* Parties */}
+            <div>
+              <SectionHeader title="Parties" />
+              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="grid gap-1.5">
+                  <Label className="text-xs">Importer Company <span className="text-danger">*</span></Label>
+                  <Select value={newForm.companyId} onValueChange={(v) => setNewForm((c) => ({ ...c, companyId: v }))}>
+                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select importer" /></SelectTrigger>
+                    <SelectContent>{companies.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-1.5">
+                  <Label className="text-xs">Exporter Company <span className="text-danger">*</span></Label>
+                  <Select value={newForm.exporterCompanyId} onValueChange={(v) => setNewForm((c) => ({ ...c, exporterCompanyId: v }))}>
+                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select exporter" /></SelectTrigger>
+                    <SelectContent>{exporterCompanies.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+
+            {/* Shipment Details */}
+            <div>
+              <SectionHeader title="Shipment Details" />
+              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="grid gap-1.5">
+                  <Label className="text-xs">BL Number <span className="text-danger">*</span></Label>
+                  <Input className="h-9 text-sm" value={newForm.blNumber} onChange={(e) => setNewForm((c) => ({ ...c, blNumber: e.target.value }))} placeholder="e.g. MSCU1234567" />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label className="text-xs">Invoice Number <span className="text-danger">*</span></Label>
+                  <Input className="h-9 text-sm" value={newForm.invoiceNumber} onChange={(e) => setNewForm((c) => ({ ...c, invoiceNumber: e.target.value }))} placeholder="e.g. INV-2024-001" />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label className="text-xs">Shipping Line <span className="text-danger">*</span></Label>
+                  <Select value={newForm.shippingLine} onValueChange={(v) => setNewForm((c) => ({ ...c, shippingLine: v }))}>
+                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select line" /></SelectTrigger>
+                    <SelectContent>{shippingLines.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-1.5">
+                  <Label className="text-xs">Vessel Name <span className="text-danger">*</span></Label>
+                  <Input className="h-9 text-sm" value={newForm.vesselName} onChange={(e) => setNewForm((c) => ({ ...c, vesselName: e.target.value }))} placeholder="e.g. MSC DIANA" />
+                </div>
+
+              </div>
+            </div>
+
+            {/* Route & Schedule */}
+            <div>
+              <SectionHeader title="Route & Schedule" />
+              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="grid gap-1.5">
+                  <Label className="text-xs">Origin Country <span className="text-danger">*</span></Label>
+                  <Input className="h-9 text-sm" value={newForm.originCountry} onChange={(e) => setNewForm((c) => ({ ...c, originCountry: e.target.value }))} placeholder="e.g. China" />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label className="text-xs">Origin Port <span className="text-danger">*</span></Label>
+                  <Input className="h-9 text-sm" value={newForm.originPort} onChange={(e) => setNewForm((c) => ({ ...c, originPort: e.target.value }))} placeholder="e.g. Shanghai" />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label className="text-xs">Destination Port <span className="text-danger">*</span></Label>
+                  <Input className="h-9 text-sm" value={newForm.destinationPort} onChange={(e) => setNewForm((c) => ({ ...c, destinationPort: e.target.value }))} placeholder="e.g. Mundra" />
+                </div>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-2">
+                <div className="grid gap-1.5">
+                  <Label className="text-xs">ETD <span className="text-danger">*</span></Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal h-9 px-3 text-sm",
+                          !newForm.etd && "text-muted-foreground"
+                        )}
+                      >
+                        <Calendar className="mr-2 h-4 w-4" />
+                        {newForm.etd ? format(new Date(newForm.etd), "PPP") : <span>Select date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarUI
+                        mode="single"
+                        selected={newForm.etd ? new Date(newForm.etd) : undefined}
+                        onSelect={(date) => setNewForm((c) => ({ ...c, etd: date ? format(date, "yyyy-MM-dd") : "" }))}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="grid gap-1.5">
+                  <Label className="text-xs">ETA <span className="text-danger">*</span></Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal h-9 px-3 text-sm",
+                          !newForm.eta && "text-muted-foreground"
+                        )}
+                      >
+                        <Calendar className="mr-2 h-4 w-4" />
+                        {newForm.eta ? format(new Date(newForm.eta), "PPP") : <span>Select date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarUI
+                        mode="single"
+                        selected={newForm.eta ? new Date(newForm.eta) : undefined}
+                        onSelect={(date) => setNewForm((c) => ({ ...c, eta: date ? format(date, "yyyy-MM-dd") : "" }))}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
+            </div>
+
+            {/* Containers */}
+            <div>
+              <SectionHeader title="Containers" badge={String(newForm.containers.length)}>
+                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={addContainer}><Plus className="mr-1 h-3.5 w-3.5" />Add</Button>
+              </SectionHeader>
+              <div className="mt-3 space-y-2">
+                {newForm.containers.map((container, i) => (
+                  <div key={i} className="rounded-lg border bg-card p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-semibold text-foreground">Container #{i + 1}</span>
+                      <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-danger" onClick={() => removeContainer(i)}><X className="h-3.5 w-3.5" /></Button>
+                    </div>
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                      <div className="grid gap-1">
+                        <Label className="text-[10px]">Number <span className="text-danger">*</span></Label>
+                        <Input className="h-8 text-xs" placeholder="MSCU1234567" value={container.containerNumber} onChange={(e) => updateContainer(i, "containerNumber", e.target.value)} />
+                      </div>
+                      <div className="grid gap-1">
+                        <Label className="text-[10px]">Size & Type <span className="text-danger">*</span></Label>
+                        <Select value={`${container.size || ""}|||${container.type || ""}`} onValueChange={(v) => {
+                          const [s, t] = v.split("|||");
+                          setNewForm((cur) => {
+                            const updated = [...cur.containers];
+                            updated[i] = { ...updated[i], size: s, type: t };
+                            return { ...cur, containers: updated };
+                          });
+                        }}>
+                          <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {containerSizes.flatMap((s) => containerTypes.map((t) => (
+                              <SelectItem key={`${s}|||${t}`} value={`${s}|||${t}`}>{`${s} - ${t}`}</SelectItem>
+                            )))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="grid gap-1">
+                        <Label className="text-[10px]">Weight</Label>
+                        <Input type="number" className="h-8 text-xs" placeholder="kg" value={container.currentWeight} onChange={(e) => updateContainer(i, "currentWeight", e.target.value)} />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {newForm.containers.length === 0 && (
+                  <button onClick={addContainer} className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border p-4 text-xs text-muted-foreground hover:border-primary/30 hover:text-primary transition-colors">
+                    <Plus className="h-4 w-4" />Add Container
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Notes */}
+            <div>
+              <SectionHeader title="Additional" />
+              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="grid gap-1.5">
+                  <Label className="text-xs">Goods Description</Label>
+                  <textarea className="min-h-[80px] rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring" value={newForm.goodsDescription} onChange={(e) => setNewForm((c) => ({ ...c, goodsDescription: e.target.value }))} placeholder="Describe the goods..." />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label className="text-xs">Notes</Label>
+                  <textarea className="min-h-[80px] rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring" value={newForm.notes} onChange={(e) => setNewForm((c) => ({ ...c, notes: e.target.value }))} placeholder="Additional notes..." />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 pt-4 border-t border-border">
+            <Button variant="outline" onClick={() => setNewShipmentOpen(false)}>Cancel</Button>
+            {editingId && <Button variant="outline" onClick={() => { setNewShipmentOpen(false); setEditingId(null); }}>Discard</Button>}
+            <Button onClick={saveShipment} disabled={!isFormValid()}>
+              <Save className="mr-1.5 h-4 w-4" />{editingId ? "Update Shipment" : "Create Shipment"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Delete Confirmation ──────────────────────────────── */}
+      <ConfirmDeleteDialog
+        open={!!deleteShipmentObj}
+        onOpenChange={(open) => { if (!open) setDeleteShipmentObj(null); }}
+        title="Delete Shipment"
+        description={`Are you sure you want to delete ${deleteShipmentObj?.shipmentNumber || "this shipment"}? This action cannot be undone.`}
+        onConfirm={() => { if (deleteShipmentObj) { const s = deleteShipmentObj; setDeleteShipmentObj(null); deleteShipment(s); } }}
+      />
+    </>
+  );
 }
