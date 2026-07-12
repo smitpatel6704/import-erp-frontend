@@ -223,7 +223,8 @@ export default function ShipmentsModule() {
   const [deleteShipmentObj, setDeleteShipmentObj] = useState(null);
   const [viewMode, setViewMode] = useState("table");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [priorityFilter, setPriorityFilter] = useState("all");
+  const [containerTypeFilter, setContainerTypeFilter] = useState("all");
+  const [containerSizeFilter, setContainerSizeFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(1);
@@ -412,18 +413,12 @@ export default function ShipmentsModule() {
     var _a;
     setLoading(true);
     try {
-      const params = new URLSearchParams(
-        Object.assign(
-          Object.assign(
-            Object.assign(
-              { page: String(page), limit: "20" },
-              statusFilter !== "all" && { status: statusFilter },
-            ),
-            priorityFilter !== "all" && { priority: priorityFilter },
-          ),
-          searchQuery && { search: searchQuery },
-        ),
-      );
+      const paramsObj = { page: String(page), limit: "20" };
+      if (statusFilter !== "all") paramsObj.status = statusFilter;
+      if (containerTypeFilter !== "all") paramsObj.containerType = containerTypeFilter;
+      if (containerSizeFilter !== "all") paramsObj.containerSize = containerSizeFilter;
+      if (searchQuery) paramsObj.search = searchQuery;
+      const params = new URLSearchParams(paramsObj);
       const res = await fetch(`/api/shipments?${params}`);
       const json = await res.json();
       setShipments(json.data || []);
@@ -442,7 +437,7 @@ export default function ShipmentsModule() {
     } finally {
       setLoading(false);
     }
-  }, [page, statusFilter, priorityFilter, searchQuery]);
+  }, [page, statusFilter, containerTypeFilter, containerSizeFilter, searchQuery]);
   useEffect(() => {
     fetchShipments();
   }, [fetchShipments]);
@@ -646,6 +641,28 @@ export default function ShipmentsModule() {
     }
     router.replace(pathname, { scroll: false });
   }, [canCreateShipments, openCreateShipment, pathname, router, searchParams]);
+  const isFormValid = () => {
+    if (!newForm.companyId) return false;
+    if (!newForm.exporterCompanyId) return false;
+    if (!newForm.blNumber?.trim()) return false;
+    if (!newForm.invoiceNumber?.trim()) return false;
+    if (!newForm.shippingLine?.trim()) return false;
+    if (!newForm.vesselName?.trim()) return false;
+    if (!newForm.etd) return false;
+    if (!newForm.eta) return false;
+    if (!newForm.originCountry?.trim()) return false;
+    if (!newForm.originPort?.trim()) return false;
+    if (!newForm.destinationPort?.trim()) return false;
+    
+    for (const container of newForm.containers) {
+      if (!container.containerNumber?.trim()) return false;
+      if (!(container.containerSize || container.size)) return false;
+      if (!(container.containerType || container.type)) return false;
+    }
+    
+    return true;
+  };
+
   const saveShipment = async () => {
     try {
     const url = editingId
@@ -935,24 +952,44 @@ export default function ShipmentsModule() {
                 ],
               }),
               _jsxs(Select, {
-                value: priorityFilter,
+                value: containerTypeFilter,
                 onValueChange: (v) => {
-                  setPriorityFilter(v);
+                  setContainerTypeFilter(v);
                   setPage(1);
                 },
                 children: [
                   _jsx(SelectTrigger, {
-                    className: "w-full sm:w-[150px] h-9 text-sm",
-                    children: _jsx(SelectValue, {}),
+                    className: "w-full sm:w-[140px] h-9 text-sm",
+                    children: _jsx(SelectValue, { placeholder: "All Types" }),
                   }),
                   _jsx(SelectContent, {
-                    children: PRIORITIES.map((p) =>
-                      _jsx(
-                        SelectItem,
-                        { value: p.value, children: p.label },
-                        p.value,
-                      ),
-                    ),
+                    children: [
+                      _jsx(SelectItem, { value: "all", children: "All Types" }),
+                      ...containerTypes.map((t) =>
+                        _jsx(SelectItem, { value: t, children: t }, t)
+                      )
+                    ]
+                  }),
+                ],
+              }),
+              _jsxs(Select, {
+                value: containerSizeFilter,
+                onValueChange: (v) => {
+                  setContainerSizeFilter(v);
+                  setPage(1);
+                },
+                children: [
+                  _jsx(SelectTrigger, {
+                    className: "w-full sm:w-[140px] h-9 text-sm",
+                    children: _jsx(SelectValue, { placeholder: "All Sizes" }),
+                  }),
+                  _jsx(SelectContent, {
+                    children: [
+                      _jsx(SelectItem, { value: "all", children: "All Sizes" }),
+                      ...containerSizes.map((s) =>
+                        _jsx(SelectItem, { value: s, children: s }, s)
+                      )
+                    ]
                   }),
                 ],
               }),
@@ -1109,7 +1146,7 @@ export default function ShipmentsModule() {
                               _jsx(TableHead, {
                                 className:
                                   "text-[11px] font-semibold hidden lg:table-cell",
-                                children: "Shipping Line",
+                                children: "Shipping Line *",
                               }),
                               _jsx(TableHead, {
                                 className: "text-[11px] font-semibold",
@@ -1127,12 +1164,7 @@ export default function ShipmentsModule() {
                               _jsx(TableHead, {
                                 className:
                                   "text-[11px] font-semibold hidden md:table-cell",
-                                children: "Priority",
-                              }),
-                              _jsx(TableHead, {
-                                className:
-                                  "text-[11px] font-semibold text-right",
-                                children: "Value",
+                                children: "Invoice No.",
                               }),
                               _jsx(TableHead, {
                                 className: "text-[11px] font-semibold w-10",
@@ -1145,7 +1177,7 @@ export default function ShipmentsModule() {
                             shipments.length === 0
                               ? _jsx(TableRow, {
                                   children: _jsx(TableCell, {
-                                    colSpan: 9,
+                                    colSpan: 8,
                                     className: "py-16",
                                     children: _jsxs("div", {
                                       className:
@@ -1340,29 +1372,9 @@ export default function ShipmentsModule() {
                                           }),
                                         }),
                                         _jsx(TableCell, {
-                                          className: "hidden md:table-cell",
-                                          children: _jsx(Badge, {
-                                            variant:
-                                              s.priority === "urgent"
-                                                ? "destructive"
-                                                : s.priority === "high"
-                                                  ? "warning"
-                                                  : s.priority === "low"
-                                                    ? "outline"
-                                                    : "secondary",
-                                            children: s.priority,
-                                          }),
-                                        }),
-                                        _jsx(TableCell, {
                                           className:
-                                            "text-right text-sm font-medium",
-                                          children:
-                                            s.shipmentValue > 0
-                                              ? currencyFmt(
-                                                  s.shipmentValue,
-                                                  s.currency,
-                                                )
-                                              : "—",
+                                            "hidden md:table-cell text-xs font-medium",
+                                          children: s.invoiceNumber || "—",
                                         }),
                                         _jsx(TableCell, {
                                           children: _jsxs("div", {
@@ -1551,7 +1563,7 @@ export default function ShipmentsModule() {
                                           children: [
                                             _jsx("p", {
                                               className: "text-sm font-medium",
-                                              children: s.shipmentNumber,
+                                              children: s.invoiceNumber || "-",
                                             }),
                                             _jsxs("div", {
                                               className:
@@ -1672,7 +1684,7 @@ export default function ShipmentsModule() {
           className: "max-w-3xl max-h-[85vh] overflow-hidden p-0",
           children: [
             _jsx(DialogHeader, {
-              className: "border-b px-2 pb-2 pt-2 pr-14",
+              className: "border-b py-3 pl-4 pr-14",
               children: _jsxs("div", {
                 className: "flex items-center gap-3",
                 children: [
@@ -1731,7 +1743,7 @@ export default function ShipmentsModule() {
                   }),
                   selectedShipment &&
                     _jsxs("div", {
-                      className: "ml-auto flex items-center gap-2",
+                      className: "ml-auto mr-8 flex shrink-0 items-center gap-2",
                       children: [
                         _jsx(Badge, {
                           variant: "outline",
@@ -1760,6 +1772,8 @@ export default function ShipmentsModule() {
                             disabled: deletingId === selectedShipment.id,
                             className:
                               "h-7 px-2 text-xs border-red-500/30 text-red-600 hover:bg-red-500/10 hover:text-red-700",
+                            title: "Delete shipment",
+                            "aria-label": "Delete shipment",
                             children: [
                               deletingId === selectedShipment.id
                                 ? _jsx(Loader2, {
@@ -1794,7 +1808,7 @@ export default function ShipmentsModule() {
                     children: [
                       _jsx("div", {
                         className:
-                          "flex w-full justify-center overflow-x-auto px-2 pt-2",
+                          "flex w-full justify-center overflow-x-auto px-4 pt-3",
                         children: _jsxs(TabsList, {
                           className: "h-8 shrink-0",
                           children: [
@@ -1848,7 +1862,7 @@ export default function ShipmentsModule() {
                         }),
                       }),
                       _jsxs(ScrollArea, {
-                        className: "h-[55vh] px-2 pb-2",
+                        className: "h-[55vh] px-4 pb-4",
                         children: [
                           _jsxs(TabsContent, {
                             value: "overview",
@@ -2118,17 +2132,6 @@ export default function ShipmentsModule() {
                                                     ],
                                                   }),
                                                 ],
-                                              }),
-                                              _jsx(Badge, {
-                                                variant: "outline",
-                                                className: cn(
-                                                  "text-[10px]",
-                                                  statusColorMap[c.status] ||
-                                                    "",
-                                                ),
-                                                children:
-                                                  statusLabelMap[c.status] ||
-                                                  c.status,
                                               }),
                                             ],
                                           },
@@ -2618,7 +2621,7 @@ export default function ShipmentsModule() {
                         children: [
                           _jsx(Label, {
                             className: "text-xs",
-                            children: "Importer Company (Client)",
+                            children: "Importer Company (Client) *",
                           }),
                           _jsxs(Select, {
                             value: newForm.companyId,
@@ -2653,7 +2656,7 @@ export default function ShipmentsModule() {
                         children: [
                           _jsx(Label, {
                             className: "text-xs",
-                            children: "Exporter Company",
+                            children: "Exporter Company *",
                           }),
                           _jsxs(Select, {
                             value: newForm.exporterCompanyId,
@@ -2687,7 +2690,7 @@ export default function ShipmentsModule() {
                         children: [
                           _jsx(Label, {
                             className: "text-xs",
-                            children: "BL Number",
+                            children: "BL Number *",
                           }),
                           _jsx(Input, {
                             value: newForm.blNumber,
@@ -2706,7 +2709,7 @@ export default function ShipmentsModule() {
                         children: [
                           _jsx(Label, {
                             className: "text-xs",
-                            children: "Invoice Number",
+                            children: "Invoice Number *",
                           }),
                           _jsx(Input, {
                             value: newForm.invoiceNumber,
@@ -2725,7 +2728,7 @@ export default function ShipmentsModule() {
                         children: [
                           _jsx(Label, {
                             className: "text-xs",
-                            children: "Shipping Line",
+                            children: "Shipping Line *",
                           }),
                           _jsxs(Select, {
                             value: newForm.shippingLine,
@@ -2874,7 +2877,7 @@ export default function ShipmentsModule() {
                         children: [
                           _jsx(Label, {
                             className: "text-xs",
-                            children: "Vessel Name",
+                            children: "Vessel Name *",
                           }),
                           _jsx(Input, {
                             value: newForm.vesselName,
@@ -2892,7 +2895,7 @@ export default function ShipmentsModule() {
                         children: [
                           _jsx(Label, {
                             className: "text-xs",
-                            children: "Origin Port",
+                            children: "Origin Port *",
                           }),
                           _jsx(Input, {
                             value: newForm.originPort,
@@ -2911,7 +2914,7 @@ export default function ShipmentsModule() {
                         children: [
                           _jsx(Label, {
                             className: "text-xs",
-                            children: "Destination Port",
+                            children: "Destination Port *",
                           }),
                           _jsx(Input, {
                             value: newForm.destinationPort,
@@ -2930,7 +2933,7 @@ export default function ShipmentsModule() {
                         children: [
                           _jsx(Label, {
                             className: "text-xs",
-                            children: "ETD",
+                            children: "ETD *",
                           }),
                           _jsx(Input, {
                             type: "date",
@@ -2949,7 +2952,7 @@ export default function ShipmentsModule() {
                         children: [
                           _jsx(Label, {
                             className: "text-xs",
-                            children: "ETA",
+                            children: "ETA *",
                           }),
                           _jsx(Input, {
                             type: "date",
@@ -3004,7 +3007,7 @@ export default function ShipmentsModule() {
                     children: [
                       _jsx(Label, {
                         className: "text-xs",
-                        children: "Origin Country",
+                        children: "Origin Country *",
                       }),
                       _jsx(Input, {
                         value: newForm.originCountry,
@@ -3258,7 +3261,7 @@ export default function ShipmentsModule() {
                                       children: [
                                         _jsx(Label, {
                                           className: "text-xs",
-                                          children: "Container Number",
+                                          children: "Container Number *",
                                         }),
                                         _jsx(Input, {
                                           value: container.containerNumber,
@@ -3285,7 +3288,7 @@ export default function ShipmentsModule() {
                                       children: [
                                         _jsx(Label, {
                                           className: "text-xs",
-                                          children: "Size / Type",
+                                          children: "Size / Type *",
                                         }),
                                         _jsxs(Select, {
                                           value: containerOptionValue(
@@ -3341,28 +3344,24 @@ export default function ShipmentsModule() {
                                       ],
                                     }),
                                     _jsxs("div", {
-                                      className: "w-[100px] sm:w-[100px] shrink-0",
+                                      className: "w-[100px] sm:w-[90px] shrink-0",
                                       children: [
                                         _jsx(Label, {
                                           className: "text-xs",
-                                          children: "Measure",
+                                          children: "Weight",
                                         }),
-                                        _jsxs(Select, {
-                                          value: container.measurementType || "weight",
-                                          onValueChange: (val) => {
+                                        _jsx(Input, {
+                                          type: "number",
+                                          min: "0",
+                                          step: "0.01",
+                                          value: container.currentWeight || "",
+                                          onChange: (e) => {
                                             const newContainers = [...newForm.containers];
-                                            newContainers[idx].measurementType = val;
+                                            newContainers[idx].currentWeight = e.target.value;
                                             setNewForm({ ...newForm, containers: newContainers });
                                           },
-                                          children: [
-                                            _jsx(SelectTrigger, { className: "h-7 text-xs mt-1", children: _jsx(SelectValue, {}) }),
-                                            _jsxs(SelectContent, {
-                                              children: [
-                                                _jsx(SelectItem, { value: "weight", children: "Weight" }),
-                                                _jsx(SelectItem, { value: "nos", children: "Nos" }),
-                                              ]
-                                            })
-                                          ]
+                                          className: "h-7 text-xs mt-1",
+                                          placeholder: "kg",
                                         })
                                       ]
                                     }),
@@ -3371,36 +3370,20 @@ export default function ShipmentsModule() {
                                       children: [
                                         _jsx(Label, {
                                           className: "text-xs",
-                                          children: container.measurementType === "nos" ? "Nos" : "Weight",
+                                          children: "Nos",
                                         }),
-                                        container.measurementType === "nos" ? (
-                                          _jsx(Input, {
-                                            type: "number",
-                                            min: "0",
-                                            value: container.packageCount || "",
-                                            onChange: (e) => {
-                                              const newContainers = [...newForm.containers];
-                                              newContainers[idx].packageCount = e.target.value;
-                                              setNewForm({ ...newForm, containers: newContainers });
-                                            },
-                                            className: "h-7 text-xs mt-1",
-                                            placeholder: "0",
-                                          })
-                                        ) : (
-                                          _jsx(Input, {
-                                            type: "number",
-                                            min: "0",
-                                            step: "0.01",
-                                            value: container.currentWeight || "",
-                                            onChange: (e) => {
-                                              const newContainers = [...newForm.containers];
-                                              newContainers[idx].currentWeight = e.target.value;
-                                              setNewForm({ ...newForm, containers: newContainers });
-                                            },
-                                            className: "h-7 text-xs mt-1",
-                                            placeholder: "kg",
-                                          })
-                                        )
+                                        _jsx(Input, {
+                                          type: "number",
+                                          min: "0",
+                                          value: container.packageCount || "",
+                                          onChange: (e) => {
+                                            const newContainers = [...newForm.containers];
+                                            newContainers[idx].packageCount = e.target.value;
+                                            setNewForm({ ...newForm, containers: newContainers });
+                                          },
+                                          className: "h-7 text-xs mt-1",
+                                          placeholder: "0",
+                                        })
                                       ]
                                     }),
                                     _jsxs("div", {
@@ -3493,6 +3476,7 @@ export default function ShipmentsModule() {
                 }),
                 _jsx(Button, {
                   onClick: saveShipment,
+                  disabled: !isFormValid(),
                   className: "h-8 text-xs",
                   children: editingId ? "Save Changes" : "Create Shipment",
                 }),

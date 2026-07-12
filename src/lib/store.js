@@ -29,15 +29,19 @@ export const useERPStore = create((set, get) => ({
         if (typeof window !== "undefined") {
             sessionStorage.setItem("nexport_token", token);
             sessionStorage.setItem("nexport_user", JSON.stringify(user));
-            localStorage.removeItem("nexport_token");
-            localStorage.removeItem("nexport_user");
+            localStorage.setItem("nexport_token", token);
+            localStorage.setItem("nexport_user", JSON.stringify(user));
         }
         set({ user, token, authReady: true });
+        if (user?.preferences?.theme) set({ theme: user.preferences.theme });
     },
     setCurrentUser: (user) => {
-        if (typeof window !== "undefined")
+        if (typeof window !== "undefined") {
             sessionStorage.setItem("nexport_user", JSON.stringify(user));
+            localStorage.setItem("nexport_user", JSON.stringify(user));
+        }
         set({ user });
+        if (user?.preferences?.theme) set({ theme: user.preferences.theme });
     },
     refreshCurrentUser: async () => {
         if (typeof window === "undefined" || !get().token)
@@ -58,10 +62,12 @@ export const useERPStore = create((set, get) => ({
     initializeAuth: () => {
         if (typeof window === "undefined")
             return;
-        const token = sessionStorage.getItem("nexport_token");
-        const storedUser = sessionStorage.getItem("nexport_user");
-        localStorage.removeItem("nexport_token");
-        localStorage.removeItem("nexport_user");
+        const token = sessionStorage.getItem("nexport_token") || localStorage.getItem("nexport_token");
+        const storedUser = sessionStorage.getItem("nexport_user") || localStorage.getItem("nexport_user");
+        if (token)
+            sessionStorage.setItem("nexport_token", token);
+        if (storedUser)
+            sessionStorage.setItem("nexport_user", storedUser);
         let user = null;
         let companyName = "Nexport ERP";
         try {
@@ -77,6 +83,7 @@ export const useERPStore = create((set, get) => ({
             // silent
         }
         set({ token, user, authReady: true, companyName });
+        if (user?.preferences?.theme) set({ theme: user.preferences.theme });
     },
     logout: () => {
         if (typeof window !== "undefined") {
@@ -127,7 +134,25 @@ export const useERPStore = create((set, get) => ({
     toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
     // Theme
     theme: "system",
-    setTheme: (theme) => set({ theme }),
+    setTheme: (theme) => {
+        set({ theme });
+        const token = get().token;
+        const user = get().user;
+        if (token && user) {
+            const preferences = { ...(user.preferences || {}), theme };
+            get().setCurrentUser({ ...user, preferences });
+            if (typeof window !== "undefined") {
+                window.fetch("/api/auth/me", {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ preferences }),
+                }).catch(console.error);
+            }
+        }
+    },
     // Command Palette
     searchOpen: false,
     setSearchOpen: (open) => set({ searchOpen: open }),

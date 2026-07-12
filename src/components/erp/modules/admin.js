@@ -1514,26 +1514,6 @@ function AuditLogTab() {
                                             activity.details,
                                           ),
                                         }),
-                                        _jsxs("div", {
-                                          className:
-                                            "flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-muted-foreground",
-                                          children: [
-                                            activity.entityId &&
-                                              _jsxs("span", {
-                                                children: [
-                                                  "Entity ID: ",
-                                                  activity.entityId,
-                                                ],
-                                              }),
-                                            activity.ipAddress &&
-                                              _jsxs("span", {
-                                                children: [
-                                                  "IP: ",
-                                                  activity.ipAddress,
-                                                ],
-                                              }),
-                                          ],
-                                        }),
                                       ],
                                     }),
                                   }),
@@ -1618,7 +1598,7 @@ function ConfigurationTab() {
               className: "space-y-4",
                 children: [
                     _jsxs("div", {
-                      key: "company-grid",
+
                       className: "grid grid-cols-1 sm:grid-cols-2 gap-4",
                       children: [
                         _jsxs("div", {
@@ -1736,7 +1716,7 @@ function ConfigurationTab() {
                   ],
                 }),
                 _jsxs("div", {
-                  key: "company-buttons",
+
                   className: "flex items-center justify-end gap-2 border-t pt-4",
                   children: [
                     savedSection === "company" &&
@@ -1787,7 +1767,7 @@ function ConfigurationTab() {
                   className: "space-y-4",
                   children: [
                     _jsxs("div", {
-                      key: "email-grid",
+
                       className: "grid grid-cols-1 sm:grid-cols-2 gap-4",
                       children: [
                         _jsxs("div", {
@@ -1847,7 +1827,7 @@ function ConfigurationTab() {
                   ],
                 }),
                 _jsxs("div", {
-                  key: "email-buttons",
+
                   className: "flex items-center justify-end gap-2 border-t pt-4",
                   children: [
                     savedSection === "email" &&
@@ -1898,36 +1878,36 @@ function ConfigurationTab() {
               className: "space-y-4",
               children: [
                 _jsx("div", {
-                  key: "features-list",
+
                   className: "space-y-4",
                   children: [
                     {
-                      key: "enableNotifications",
+
                       label: "Email Notifications",
                       desc: "Send email alerts for important events",
                     },
                     {
-                      key: "enableAutoBackup",
+
                       label: "Auto Backup",
                       desc: "Automatically backup database daily",
                     },
                     {
-                      key: "enableTwoFactor",
+
                       label: "Two-Factor Authentication",
                       desc: "Require 2FA for all users",
                     },
                     {
-                      key: "enableAuditLog",
+
                       label: "Audit Logging",
                       desc: "Track all user actions and system events",
                     },
                     {
-                      key: "enableDarkMode",
+
                       label: "Dark Mode Support",
                       desc: "Allow users to switch to dark theme",
                     },
                     {
-                      key: "enableApiAccess",
+
                       label: "API Access",
                       desc: "Enable external API access with API keys",
                     },
@@ -1966,7 +1946,7 @@ function ConfigurationTab() {
                   ),
                 }),
                 _jsxs("div", {
-                  key: "features-buttons",
+
                   className: "flex items-center justify-end gap-2 border-t pt-4",
                   children: [
                     savedSection === "features" &&
@@ -2539,22 +2519,22 @@ function WorkflowAutomationsTab() {
                 className: "space-y-4",
                 children: [
                   {
-                    key: "autoAssignTracking",
+
                     label: "Auto-Assign Tracking Numbers",
                     desc: "Automatically generate tracking IDs for new shipments",
                   },
                   {
-                    key: "requireDocumentsForClearance",
+
                     label: "Require Documents for Customs",
                     desc: "Block customs clearance status until all documents are uploaded",
                   },
                   {
-                    key: "notifyOnStatusChange",
+
                     label: "Status Change Notifications",
                     desc: "Notify assigned users when a shipment changes status",
                   },
                   {
-                    key: "notifyOnDelay",
+
                     label: "Delay Alerts",
                     desc: "Send alerts when a shipment misses its ETA",
                   },

@@ -43,13 +43,13 @@ import { format } from "date-fns";
 // ─── Constants ────────────────────────────────────────────────────────────────
 const CONTAINER_STATUSES = [
   { value: "all", label: "All Statuses" },
+  { value: "booking_confirmed", label: "Booking Confirmed" },
   { value: "at_pol", label: "At POL" },
-  { value: "loaded", label: "Loaded" },
+  { value: "vessel_departed", label: "Vessel Departed" },
   { value: "in_transit", label: "In Transit" },
   { value: "at_pod", label: "At POD" },
-  { value: "customs", label: "Customs" },
-  { value: "transport", label: "Transport" },
-  { value: "offloaded", label: "Offloaded" },
+  { value: "customs_clearance", label: "Customs Clearance" },
+  { value: "in_transport", label: "In Transport" },
   { value: "delivered", label: "Delivered" },
 ];
 // Types and sizes are now fetched dynamically from the db API
@@ -57,31 +57,23 @@ const statusLabelMap = Object.fromEntries(
   CONTAINER_STATUSES.map((s) => [s.value, s.label]),
 );
 const statusColorMap = {
-  at_pol:
-    "bg-amber/10 text-amber-dark border-amber/20 dark:bg-amber/20 dark:text-amber-light",
-  loaded:
-    "bg-teal/10 text-teal-dark border-teal/20 dark:bg-teal/20 dark:text-teal-light",
-  in_transit:
-    "bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-900/30 dark:text-sky-400 dark:border-sky-800",
-  at_pod:
-    "bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-900/30 dark:text-violet-400 dark:border-violet-800",
-  customs:
-    "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800",
-  transport:
-    "bg-pink-100 text-pink-700 border-pink-200 dark:bg-pink-900/30 dark:text-pink-400 dark:border-pink-800",
-  offloaded:
-    "bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-900/30 dark:text-rose-400 dark:border-rose-800",
-  delivered:
-    "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800",
+  booking_confirmed: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800",
+  at_pol: "bg-amber/10 text-amber-dark border-amber/20 dark:bg-amber/20 dark:text-amber-light",
+  vessel_departed: "bg-teal/10 text-teal-dark border-teal/20 dark:bg-teal/20 dark:text-teal-light",
+  in_transit: "bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-900/30 dark:text-sky-400 dark:border-sky-800",
+  at_pod: "bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-900/30 dark:text-violet-400 dark:border-violet-800",
+  customs_clearance: "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800",
+  in_transport: "bg-pink-100 text-pink-700 border-pink-200 dark:bg-pink-900/30 dark:text-pink-400 dark:border-pink-800",
+  delivered: "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800",
 };
 const statusDotMap = {
+  booking_confirmed: "bg-blue-500",
   at_pol: "bg-amber",
-  loaded: "bg-teal",
+  vessel_departed: "bg-teal",
   in_transit: "bg-sky-500",
   at_pod: "bg-violet-500",
-  customs: "bg-orange-500",
-  transport: "bg-pink-500",
-  offloaded: "bg-rose-500",
+  customs_clearance: "bg-orange-500",
+  in_transport: "bg-pink-500",
   delivered: "bg-green-500",
 };
 const typeIconMap = {
@@ -246,11 +238,7 @@ export default function ContainersModule() {
                   }),
                   _jsx(SelectContent, {
                     children: CONTAINER_STATUSES.map((s) =>
-                      _jsx(
-                        SelectItem,
-                        { value: s.value, children: s.label },
-                        s.value,
-                      ),
+                      _jsx(SelectItem, { value: s.value, children: s.label }, s.value),
                     ),
                   }),
                 ],
@@ -319,27 +307,18 @@ export default function ContainersModule() {
                     statusFilter === status.value && "ring-2 ring-teal/30",
                   ),
                   onClick: () => {
-                    setStatusFilter(
-                      statusFilter === status.value ? "all" : status.value,
-                    );
+                    setStatusFilter(statusFilter === status.value ? "all" : status.value);
                     setPage(1);
                   },
                   children: _jsxs(CardContent, {
                     className: "p-3 text-center",
                     children: [
                       _jsx("div", {
-                        className: cn(
-                          "h-2 w-2 rounded-full mx-auto mb-2",
-                          statusDotMap[status.value],
-                        ),
+                        className: cn("h-2 w-2 rounded-full mx-auto mb-2", statusDotMap[status.value]),
                       }),
+                      _jsx("p", { className: "text-xl font-bold", children: statusCounts[status.value] || 0 }),
                       _jsx("p", {
-                        className: "text-xl font-bold",
-                        children: statusCounts[status.value] || 0,
-                      }),
-                      _jsx("p", {
-                        className:
-                          "text-[10px] text-muted-foreground font-medium mt-0.5",
+                        className: "text-[10px] text-muted-foreground font-medium mt-0.5",
                         children: status.label,
                       }),
                     ],
@@ -540,9 +519,7 @@ export default function ContainersModule() {
                                               "text-[10px] font-semibold",
                                               statusColorMap[c.status] || "",
                                             ),
-                                            children:
-                                              statusLabelMap[c.status] ||
-                                              c.status,
+                                            children: statusLabelMap[c.status] || c.status,
                                           }),
                                         }),
                                         _jsx(TableCell, {
@@ -758,8 +735,7 @@ export default function ContainersModule() {
                         statusColorMap[selectedContainer.status],
                       ),
                       children:
-                        statusLabelMap[selectedContainer.status] ||
-                        selectedContainer.status,
+                        statusLabelMap[selectedContainer.status] || selectedContainer.status,
                     }),
                 ],
               }),

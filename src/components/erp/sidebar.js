@@ -194,7 +194,7 @@ export function ERPSidebar() {
                     return (
                       <Tooltip key={item.id} delayDuration={0}>
                         <TooltipTrigger asChild>{btn}</TooltipTrigger>
-                        <TooltipContent side="right" sideOffset={16} className="bg-popover/90 backdrop-blur">
+                        <TooltipContent side="right" sideOffset={12}>
                           <p className="font-semibold">{item.label}</p>
                         </TooltipContent>
                       </Tooltip>
