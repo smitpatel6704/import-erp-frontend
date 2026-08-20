@@ -751,6 +751,7 @@ function CronJobsTab() {
   const [loading, setLoading] = useState(true);
   const [runningJobId, setRunningJobId] = useState(null);
   const [togglingJobId, setTogglingJobId] = useState(null);
+  const [savingRecipientId, setSavingRecipientId] = useState(null);
   const [message, setMessage] = useState("");
   const fetchStatus = useCallback(async () => {
     try {
@@ -807,6 +808,29 @@ function CronJobsTab() {
       setMessage(error.message || "Failed to update job");
     } finally {
       setTogglingJobId(null);
+    }
+  };
+  const toggleCronRecipient = async (userId, enabled) => {
+    const currentIds = status?.cronEmailRecipients?.selectedUserIds || [];
+    const nextIds = enabled
+      ? [...new Set([...currentIds, userId])]
+      : currentIds.filter((id) => id !== userId);
+    try {
+      setSavingRecipientId(userId);
+      setMessage("");
+      const res = await fetch("/api/settings/cron/email-recipients", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userIds: nextIds }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to save cron email recipients");
+      setMessage("Cron email recipients saved successfully.");
+      await fetchStatus();
+    } catch (error) {
+      setMessage(error.message || "Failed to save cron email recipients");
+    } finally {
+      setSavingRecipientId(null);
     }
   };
   const jobs = (status === null || status === void 0 ? void 0 : status.jobs) || [];
@@ -976,6 +1000,45 @@ function CronJobsTab() {
             item.label,
           ),
         ),
+      }),
+      _jsx(Card, {
+        className: "shadow-sm",
+        children: _jsxs(CardContent, {
+          className: "p-4",
+          children: [
+            _jsx(CardTitle, {
+              className: "text-base font-semibold",
+              children: "Cron Email Recipients",
+            }),
+            _jsx("p", {
+              className: "mt-1 text-xs text-muted-foreground",
+              children: "Select users who receive ETA and pending-document emails from the daily reminder job.",
+            }),
+            _jsx("div", {
+              className: "mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3",
+              children: (status?.cronEmailRecipients?.users || []).map((user) =>
+                _jsxs("div", {
+                  className: "flex items-center justify-between gap-3 rounded-md border border-border/50 px-3 py-2",
+                  children: [
+                    _jsxs("div", {
+                      className: "min-w-0",
+                      children: [
+                        _jsx("p", { className: "truncate text-xs font-medium", children: user.name }),
+                        _jsx("p", { className: "truncate text-[10px] text-muted-foreground", children: user.email }),
+                      ],
+                    }),
+                    _jsx(Switch, {
+                      checked: (status?.cronEmailRecipients?.selectedUserIds || []).includes(user.id),
+                      disabled: savingRecipientId === user.id,
+                      onCheckedChange: (enabled) => toggleCronRecipient(user.id, enabled),
+                      "aria-label": `Send cron emails to ${user.name}`,
+                    }),
+                  ],
+                }, user.id),
+              ),
+            }),
+          ],
+        }),
       }),
       _jsx(Card, {
         className: "shadow-sm",
