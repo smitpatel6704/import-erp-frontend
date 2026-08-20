@@ -750,6 +750,7 @@ function CronJobsTab() {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [runningJobId, setRunningJobId] = useState(null);
+  const [togglingJobId, setTogglingJobId] = useState(null);
   const [message, setMessage] = useState("");
   const fetchStatus = useCallback(async () => {
     try {
@@ -787,6 +788,25 @@ function CronJobsTab() {
       setMessage(error.message || "Failed to run cron job");
     } finally {
       setRunningJobId(null);
+    }
+  };
+  const toggleJob = async (jobId, enabled) => {
+    try {
+      setTogglingJobId(jobId);
+      setMessage("");
+      const res = await fetch(`/api/settings/cron/jobs/${jobId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to update job");
+      setMessage(`${jobId} switched ${enabled ? "on" : "off"}.`);
+      await fetchStatus();
+    } catch (error) {
+      setMessage(error.message || "Failed to update job");
+    } finally {
+      setTogglingJobId(null);
     }
   };
   const jobs = (status === null || status === void 0 ? void 0 : status.jobs) || [];
@@ -854,7 +874,7 @@ function CronJobsTab() {
                       size: "sm",
                       className: "h-8 text-xs",
                       onClick: () => runJob("daily"),
-                      disabled: !!runningJobId,
+                      disabled: !!runningJobId || dailyJob?.enabled === false,
                       children: [
                         _jsx(Clock, {
                           className: cn("h-3.5 w-3.5 mr-1", runningJobId === "daily" && "animate-spin"),
@@ -870,7 +890,7 @@ function CronJobsTab() {
               _jsx("p", {
                 className: cn(
                   "mt-3 rounded-md border px-3 py-2 text-xs",
-                  message.toLowerCase().includes("success")
+                  message.toLowerCase().includes("success") || message.toLowerCase().includes("switched")
                     ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-700"
                     : "border-red-500/20 bg-red-500/10 text-red-600",
                 ),
@@ -885,7 +905,7 @@ function CronJobsTab() {
           {
             label: "Schedule",
             value: (dailyJob === null || dailyJob === void 0 ? void 0 : dailyJob.schedule) || "0 0 * * *",
-            sub: "Every day at midnight UTC",
+            sub: "Every day at 12:00 AM IST",
             icon: Clock,
             color: "text-teal",
           },
@@ -981,6 +1001,7 @@ function CronJobsTab() {
                         _jsx(TableHead, { className: "text-xs", children: "Schedule" }),
                         _jsx(TableHead, { className: "text-xs", children: "Last Run" }),
                         _jsx(TableHead, { className: "text-xs", children: "Result" }),
+                        _jsx(TableHead, { className: "text-xs", children: "Enabled" }),
                         _jsx(TableHead, { className: "text-xs text-right", children: "Action" }),
                       ],
                     }),
@@ -989,7 +1010,7 @@ function CronJobsTab() {
                     children: loading
                       ? _jsx(TableRow, {
                           children: _jsx(TableCell, {
-                            colSpan: 6,
+                            colSpan: 7,
                             className: "py-8 text-center text-xs text-muted-foreground",
                             children: "Loading cron jobs...",
                           }),
@@ -1044,13 +1065,30 @@ function CronJobsTab() {
                                   }),
                                 }),
                                 _jsx(TableCell, {
+                                  children: _jsxs("div", {
+                                    className: "flex items-center gap-2",
+                                    children: [
+                                      _jsx(Switch, {
+                                        checked: job.enabled !== false,
+                                        disabled: togglingJobId === job.id || (job.id === "email_delivery" && job.configured === false),
+                                        onCheckedChange: (enabled) => toggleJob(job.id, enabled),
+                                        "aria-label": `${job.enabled === false ? "Enable" : "Disable"} ${job.name}`,
+                                      }),
+                                      _jsx("span", {
+                                        className: "text-[10px] text-muted-foreground",
+                                        children: job.enabled === false ? "Off" : "On",
+                                      }),
+                                    ],
+                                  }),
+                                }),
+                                _jsx(TableCell, {
                                   className: "text-right",
                                   children: job.runnable
                                     ? _jsx(Button, {
                                         size: "sm",
                                         variant: "outline",
                                         className: "h-8 text-xs",
-                                        disabled: !!runningJobId,
+                                        disabled: !!runningJobId || job.enabled === false,
                                         onClick: () => runJob(job.id),
                                         children:
                                           runningJobId === job.id
@@ -1060,7 +1098,7 @@ function CronJobsTab() {
                                     : _jsx(Badge, {
                                         variant: "secondary",
                                         className: "text-[10px]",
-                                        children: job.enabled === false ? "Not configured" : "Auto",
+                                        children: job.configured === false ? "Not configured" : job.enabled === false ? "Off" : "Auto",
                                       }),
                                 }),
                               ],
@@ -2182,7 +2220,7 @@ function ConfigurableList({ category, title, icon: Icon }) {
                     : options.map((opt) => {
                         const isSystemShippingLine =
                           category === "shipping_line" &&
-                          ["EVERGREEN", "Hapag-Lloyd", "Maersk", "MSC"]
+                          ["COSCO", "EVERGREEN", "Hapag-Lloyd", "Maersk", "MSC"]
                             .map((s) => s.toLowerCase())
                             .includes(opt.label?.toLowerCase());
                         return _jsxs(

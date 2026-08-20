@@ -87,7 +87,16 @@ const carrierSupported = (shippingLine) => {
   const v = String(shippingLine || "").toLowerCase().replace(/[^a-z0-9]/g, "");
   return v.includes("maersk") || v.includes("mersk") || v.includes("msc") ||
     v.includes("mediterraneanshipping") || v.includes("evergreen") ||
-    v.includes("shipmentlink") || v.includes("hapag") || v.includes("hlag");
+    v.includes("shipmentlink") || v.includes("hapag") || v.includes("hlag") ||
+    v.includes("cosco");
+};
+const carrierContainerType = (container) => {
+  if (container.containerTypeLabel) return container.containerTypeLabel;
+  const code = String(container.containerType || container.type || "").toUpperCase();
+  if (/RF|REEFER|RH/.test(code)) return "Reefer";
+  if (/HC|HQ|HIGH/.test(code)) return "High Cube";
+  if (/GP|DRY|DV/.test(code)) return "Dry Container";
+  return container.containerType || container.type || "Dry Container";
 };
 const kanbanColumns = ["draft","booking_confirmed","at_pol","vessel_departed","in_transit","at_pod","customs_clearance","in_transport","delivered"];
 
@@ -202,7 +211,7 @@ export default function ShipmentsModule() {
         containers: details.containers?.length > 0
           ? details.containers.map((c) => ({
               containerNumber: c.containerNumber || "", size: c.containerSize || c.size || "20FT",
-              type: c.containerType || c.type || "Dry Container",
+              type: carrierContainerType(c),
               currentWeight: c.currentWeight || c.weight || c.grossWeight || "",
               packageCount: c.packageCount || c.nos || c.packages || "",
               measurementType: (c.packageCount || c.nos || c.packages) && !(c.currentWeight || c.weight || c.grossWeight) ? "nos" : "weight",
