@@ -151,6 +151,7 @@ export default function ShipmentsModule() {
     vesselName: "", etd: "", eta: "",
     originCountry: "", originPort: "", destinationPort: "",
     status: "draft",
+    carrierTrackingLastEvent: "",
     companyId: "", exporterCompanyId: "",
     goodsDescription: "", notes: "", internalNotes: "",
     requiredDocumentIds: [], notificationUserIds: [], containers: [],
@@ -208,6 +209,7 @@ export default function ShipmentsModule() {
         originPort: details.originPort || details.origin || cur.originPort,
         destinationPort: details.destinationPort || details.destination || cur.destinationPort,
         status: shipmentStatusFromCarrier([details.status, details.lastEvent].filter(Boolean).join(" ")),
+        carrierTrackingLastEvent: details.lastEvent || cur.carrierTrackingLastEvent,
         containers: details.containers?.length > 0
           ? details.containers.map((c) => ({
               containerNumber: c.containerNumber || "", size: c.containerSize || c.size || "20FT",
@@ -288,6 +290,7 @@ export default function ShipmentsModule() {
       originPort: shipment.originPort || "",
       destinationPort: shipment.destinationPort || "",
       status: shipment.status || "draft",
+      carrierTrackingLastEvent: shipment.carrierTrackingLastEvent || "",
       companyId: shipment.company?.id || shipment.companyId || "",
       exporterCompanyId: shipment.exporterCompany?.id || shipment.exporterCompanyId || "",
       goodsDescription: shipment.goodsDescription || "",
@@ -328,6 +331,7 @@ export default function ShipmentsModule() {
       vesselName: "", etd: "", eta: "",
       originCountry: "", originPort: "", destinationPort: "",
       status: "draft", companyId: "", exporterCompanyId: "",
+      carrierTrackingLastEvent: "",
       goodsDescription: "", notes: "", internalNotes: "",
       requiredDocumentIds: documentChecklist.filter((i) => i.isRequired).map((i) => i.id),
       notificationUserIds: [], containers: [],
@@ -380,7 +384,7 @@ export default function ShipmentsModule() {
       setTrackingFetchState("idle");
       setTrackingFetchMessage("");
       lastAutomaticLookup.current = "";
-      setNewForm({ blNumber: "", invoiceNumber: "", shippingLine: "", vesselName: "", etd: "", eta: "", originCountry: "", originPort: "", destinationPort: "", status: "draft", companyId: "", exporterCompanyId: "", goodsDescription: "", notes: "", internalNotes: "", requiredDocumentIds: [], notificationUserIds: [], containers: [] });
+      setNewForm({ blNumber: "", invoiceNumber: "", shippingLine: "", vesselName: "", etd: "", eta: "", originCountry: "", originPort: "", destinationPort: "", status: "draft", carrierTrackingLastEvent: "", companyId: "", exporterCompanyId: "", goodsDescription: "", notes: "", internalNotes: "", requiredDocumentIds: [], notificationUserIds: [], containers: [] });
       fetchShipments();
       toast({ title: editingId ? "Shipment updated" : "Shipment created", description: json.data?.shipmentNumber ? `${json.data.shipmentNumber} saved successfully.` : "Saved." });
     } catch (e) {
@@ -579,7 +583,14 @@ export default function ShipmentsModule() {
                           {isDelayed(s) && " (late)"}
                         </p>
                       </td>
-                      <td className="px-4 py-3"><StatusBadge status={s.status} /></td>
+                      <td className="px-4 py-3">
+                        <StatusBadge status={s.status} />
+                        {s.carrierTrackingLastEvent && (
+                          <p className="mt-1 max-w-[300px] whitespace-normal text-[10px] leading-4 text-muted-foreground">
+                            {s.carrierTrackingLastEvent}
+                          </p>
+                        )}
+                      </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-0.5" onClick={(e) => e.stopPropagation()}>
                           <DropdownMenu>

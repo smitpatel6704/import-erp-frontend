@@ -1012,7 +1012,7 @@ function CronJobsTab() {
             }),
             _jsx("p", {
               className: "mt-1 text-xs text-muted-foreground",
-              children: "Select users who receive ETA and pending-document emails from the daily reminder job.",
+              children: "Select users who receive emails from the separate ETA and pending-document reminder jobs.",
             }),
             _jsx("div", {
               className: "mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3",
